@@ -277,6 +277,7 @@ has any margin.
   timeout (`ASK_LLM_TIMEOUT`).
 * On the event box, also bound in-flight LLM calls with a semaphore and return
   503 + `Retry-After` instead of queueing without limit.
+* The event plan deliberately does NOT return 503/429. It waits a bounded time for a slot (`QUEUE_WAIT_S`, about 20 s), then returns the graceful degraded 200 (the most relevant pages, with `sources` set), because the scorer would count a 503/429 as a failed request. See docs/plan.md, Brief B steps 8 and 10. This supersedes the 503 suggestion here and under "Event-day pipeline" below.
 
 **Docs manifest and re-crawl.**
 * `results/docs-manifest-2026-10-16.json` is the baseline, with extractor commit 20b4bac.
