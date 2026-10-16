@@ -113,6 +113,18 @@ def main() -> None:
              f"{s2['latency_ms']['p50']} / {s2['latency_ms']['p95']} ms", cmd))
         add(("[canonical] full run wall time", f"{s2['total_wall_s']} s ({s2['ask_wall_s']} s asks + "
              f"{s2['judge_wall_s']} s judge)", cmd))
+    v2 = load("eval_run-canonical-v2-subset.json")
+    if v2 and ec:
+        ids = {r["id"] for r in v2["per_question"]}
+        v1rows = [r for r in ec["per_question"] if r["id"] in ids]
+        cmd = "`ASK_PROMPT_VERSION=v2` API + `eval.score --ids <25 non-answerable + 10 answerable>`"
+        for label, rows_ in (("v1", v1rows), ("v2", v2["per_question"])):
+            beh = sum(bool(r["behaviour_correct"]) for r in rows_)
+            cov = [r["judge"]["coverage"] for r in rows_ if "coverage" in r.get("judge", {})]
+            bp = [r["judge"]["behavior_pass"] for r in rows_ if "behavior_pass" in r.get("judge", {})]
+            add((f"[canonical A/B subset, {len(rows_)} rows] prompt {label}",
+                 f"behaviour correct {beh}/{len(rows_)}; fact coverage {sum(cov) / len(cov):.3f}; "
+                 f"BEHAVIOR pass {sum(bp)}/{len(bp)}", cmd))
     e = load("eval_run.json")
     if e:
         s = e["summary"]
