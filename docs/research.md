@@ -413,7 +413,11 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   - Without a reranker, troubleshooting (0.597) and sync-modes (0.674) are the weakest categories.
   - TinyBERT's gain is concentrated in troubleshooting and catalogs. It lowers destinations and sync-modes MRR, and
     behind the unchanged overall hit@10, two rows leave the top 10 (SRC-09 from rank 2, DST-06 from rank 8) while two
-    enter (SYNC-12 at rank 5, TRB-02 at rank 1). 11 rows gain rank 1 and 7 lose it (`first_hit_rank`).
+    enter (SYNC-12 at rank 5, TRB-02 at rank 1). 11 rows gain rank 1 and 7 lose it (`first_hit_rank`). This honest
+    single-run trade-off is why the upgrade is conditional. Checkpoint 2.7 keeps the aggregate rule (MRR@10 up by at least
+    0.02, aggregate hit@10 not lower) on purpose: any reranker swaps some rows across the top-10 boundary, and what matters
+    for answers is the net number of rows whose expected source reaches the 10-passage context. A guard line prefers
+    `RERANK=off` if a row that leaves the top 10 is in a category already weak at hit@10 (sync-modes, troubleshooting).
   - Fusion is covered: all 8 FUS rows have an expected source in the top 10, 7 of them at rank 1 or 2 (FUS-04 at 9).
   - Corpus v2 against v1 (`first_hit_rank` in `poc/results/retrieval-canonical.json` and `poc/results/retrieval-v2.json`):
     REL-01 moves from rank 8 to 2, because the GitHub release notes are now indexed, and FUS-07 from rank 5 to 1.
