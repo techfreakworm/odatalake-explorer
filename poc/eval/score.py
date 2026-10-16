@@ -58,10 +58,15 @@ def schema_ok(body) -> tuple[bool, str]:
     return True, ""
 
 
-def is_abstain(body: dict) -> bool:
-    """Documented rule: sources empty, or the answer matches the don't-know pattern anywhere.
-    (Known risk: a correct negative answer saying "the docs do not mention X" also matches.)"""
-    return not body.get("sources") or bool(IDK.search(body.get("answer", "")))
+def is_abstain(body: dict, qtype: str = "") -> bool:
+    """Sources empty, or the answer matches the don't-know pattern anywhere. Negative and
+    false-premise rows are answer rows scored on their must-mention facts ("not supported ..."),
+    so for them only an empty sources list counts as an abstain."""
+    if not body.get("sources"):
+        return True
+    if qtype in ("negative", "false-premise"):
+        return False
+    return bool(IDK.search(body.get("answer", "")))
 
 
 def pct(xs, p):
@@ -79,7 +84,9 @@ async def ask_one(client: httpx.AsyncClient, url: str, q: dict, sem: asyncio.Sem
                 body = r.json()
             except json.JSONDecodeError:
                 body = None
-            return {"status": r.status_code, "ms": round(ms, 1), "body": body}
+            dbg = {k: r.headers.get(f"x-ask-{k}") for k in ("reason", "rewrite", "gate-score", "debug")}
+            return {"status": r.status_code, "ms": round(ms, 1), "body": body,
+                    "server": {k: v for k, v in dbg.items() if v is not None}}
         except httpx.HTTPError as e:
             return {"status": None, "ms": round((time.perf_counter() - t0) * 1000, 1), "body": None, "error": repr(e)}
 
@@ -137,7 +144,7 @@ async def run(args) -> dict:
     for q, res in zip(qs, results):
         body = res.get("body")
         ok, why = schema_ok(body) if res["status"] == 200 else (False, f"HTTP {res['status']}")
-        abst = is_abstain(body) if ok else None
+        abst = is_abstain(body, q["type"]) if ok else None
         exp = set(q["expected_norm"])
         hit = (any(normalize_url(s) in exp for s in body["sources"]) if ok and exp else None)
         should_abstain = must_abstain(q)
@@ -145,7 +152,8 @@ async def run(args) -> dict:
         rows.append({"id": q["id"], "type": q["type"], "must_abstain": should_abstain, "status": res["status"],
                      "ms": res["ms"], "schema_ok": ok, "schema_error": why or None, "abstained": abst,
                      "source_hit": hit, "behaviour_correct": correct,
-                     "sources": body.get("sources") if ok else None, "answer": body.get("answer") if ok else None})
+                     "sources": body.get("sources") if ok else None, "answer": body.get("answer") if ok else None,
+                     "server": res.get("server") or None})
 
     judge_wall = 0.0
     if not args.no_judge:
@@ -176,6 +184,15 @@ async def run(args) -> dict:
     abst_rows = [r for r in rows if r["type"] in ("unanswerable", "out-of-scope")]
     ans_rows = [r for r in rows if r["type"] == "answerable"]
     summary = summarize(rows)
+    reasons: dict[str, int] = {}
+    for r in rows:
+        if r.get("server") and r["server"].get("reason"):
+            reasons[r["server"]["reason"]] = reasons.get(r["server"]["reason"], 0) + 1
+    if reasons:
+        summary["server_reasons"] = reasons
+        summary["rewrite_fired"] = sum(1 for r in rows if (r.get("server") or {}).get("rewrite") == "1")
+    must_answer = [r for r in rows if not r["must_abstain"]]
+    summary["false_abstain_rate_all_must_answer"] = frac([r["abstained"] for r in must_answer])
     summary.update({
         "abstain_recall_unanswerable_out_of_scope": frac([r["abstained"] for r in abst_rows]),
         "false_abstain_rate_answerable": frac([r["abstained"] for r in ans_rows]),

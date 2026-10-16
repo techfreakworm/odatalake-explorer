@@ -100,15 +100,32 @@ class DenseIndex:
 
 
 class Reranker:
-    def __init__(self, model_name: str, threads: int | None = None):
-        from fastembed.rerank.cross_encoder import TextCrossEncoder
+    """fastembed TextCrossEncoder, or FlashRank when the name is 'flashrank:<model>'
+    (e.g. flashrank:ms-marco-TinyBERT-L-2-v2; scores are sigmoid(logit))."""
 
+    def __init__(self, model_name: str, threads: int | None = None, max_length: int = 512):
         t0 = time.perf_counter()
-        self.model = TextCrossEncoder(model_name, cache_dir=str(MODEL_DIR), threads=threads)
-        self.load_s = time.perf_counter() - t0
         self.name = model_name
+        if model_name.startswith("flashrank:"):
+            from flashrank import Ranker
+
+            self.kind = "flashrank"
+            self.model = Ranker(model_name=model_name.split(":", 1)[1], cache_dir=str(MODEL_DIR / "flashrank"),
+                                max_length=max_length, log_level="WARNING")
+        else:
+            from fastembed.rerank.cross_encoder import TextCrossEncoder
+
+            self.kind = "fastembed"
+            self.model = TextCrossEncoder(model_name, cache_dir=str(MODEL_DIR), threads=threads)
+        self.load_s = time.perf_counter() - t0
 
     def rerank(self, query: str, docs: list[str]) -> list[float]:
+        if self.kind == "flashrank":
+            from flashrank import RerankRequest
+
+            res = self.model.rerank(RerankRequest(query=query, passages=[{"id": i, "text": d} for i, d in enumerate(docs)]))
+            by_id = {r["id"]: float(r["score"]) for r in res}
+            return [by_id[i] for i in range(len(docs))]
         return [float(s) for s in self.model.rerank(query, docs, batch_size=32)]
 
 

@@ -12,13 +12,14 @@ CORS: any origin, no credentials; preflight cached for a day.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -44,11 +45,16 @@ class AskOut(BaseModel):
 async def lifespan(app: FastAPI):
     t0 = time.perf_counter()
     gate = os.environ.get("ASK_GATE_THRESHOLD")
+    reranker = os.environ.get("ASK_RERANKER", "Xenova/ms-marco-MiniLM-L-6-v2")
     STATE["pipe"] = AskPipeline(
         target=int(os.environ.get("ASK_CHUNK_TARGET", "300")),
         dense_model=os.environ.get("ASK_DENSE_MODEL", "BAAI/bge-small-en-v1.5"),
-        reranker_model=os.environ.get("ASK_RERANKER", "Xenova/ms-marco-MiniLM-L-6-v2"),
+        reranker_model=None if reranker.lower() in ("", "none") else reranker,
         gate_threshold=float(gate) if gate else None,
+        gate_signal=os.environ.get("ASK_GATE_SIGNAL", "rerank"),  # rerank | dense_max_cos | minilm | tinybert
+        gate_n=int(os.environ.get("ASK_GATE_N", "10")),
+        rewrite=os.environ.get("ASK_REWRITE", "0") == "1",
+        max_passages=int(os.environ.get("ASK_MAX_PASSAGES", "6")),
         prompt_version=os.environ.get("ASK_PROMPT_VERSION", "v1"),
         threads=int(os.environ.get("ASK_ONNX_THREADS", "0")) or None,  # cap onnxruntime threads on small boxes
     )
@@ -75,7 +81,7 @@ async def bad_request(_: Request, exc: RequestValidationError):
 
 
 @app.post("/ask", response_model=AskOut)
-def ask(body: AskIn) -> AskOut:  # sync: runs in the threadpool, the pipeline blocks
+def ask(body: AskIn, response: Response) -> AskOut:  # sync: runs in the threadpool, the pipeline blocks
     try:
         res = STATE["pipe"].ask(body.question.strip())
     except Exception:  # noqa: BLE001  (LLM down, timeout...)
@@ -83,6 +89,11 @@ def ask(body: AskIn) -> AskOut:  # sync: runs in the threadpool, the pipeline bl
         return JSONResponse(status_code=503, content={"answer": "The assistant is temporarily unavailable. "
                                                                 "Please try again shortly.", "sources": []})
     log.info("ask %s reason=%s timings=%s", body.question[:80], res.reason, res.timings_ms)
+    # debug headers: the JSON body stays exactly {answer, sources}
+    response.headers["X-Ask-Reason"] = res.reason
+    response.headers["X-Ask-Rewrite"] = "1" if "rewrite_ms" in res.timings_ms else "0"
+    response.headers["X-Ask-Gate-Score"] = "" if res.top_score is None else f"{res.top_score:.4f}"
+    response.headers["X-Ask-Debug"] = json.dumps({"timings_ms": res.timings_ms, "usage": res.usage})[:3000]
     return AskOut(answer=res.answer, sources=res.sources)
 
 
