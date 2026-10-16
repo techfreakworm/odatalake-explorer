@@ -68,6 +68,43 @@ def main() -> None:
             if label == "seed" and target == "600":
                 add(("Bench process RSS (2 dense + 2 rerankers, after batch-embedding both corpora; not a serving number)",
                      f"{rt['rss_mb']['end']} MB", cmd))
+    r2 = load("retrieval-v2.json")
+    if r2:
+        cmd = "`retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --out results/retrieval-v2.json`"
+        tr = r2["per_target"]["300"]
+        e = tr["embedding"].get("BAAI/bge-small-en-v1.5", {})
+        if "embed_full_corpus_s" in e:
+            add(("[canonical, corpus v2] embed bge-small", f"{tr['chunks']} chunks in {e['embed_full_corpus_s']} s "
+                 f"({e['chunks_per_s']} chunks/s)", cmd))
+        for name, cfg in tr["configs"].items():
+            lat = cfg["latency_ms"].get("rerank_ms") or cfg["latency_ms"].get("total_ms") or {}
+            short = name.replace("BAAI/bge-small-en-v1.5", "bge-small").replace("Xenova/ms-marco-", "").replace("flashrank:ms-marco-", "")
+            add((f"[canonical, corpus v2] @300 {short}",
+                 f"MRR {cfg['mrr@10']}, hit@1 {cfg['hit@1']}, hit@5 {cfg['hit@5']}, hit@6 {cfg['hit@6']}, hit@10 {cfg['hit@10']}; "
+                 f"{'rerank' if 'rerank' in name else 'query'} p50 {lat.get('p50')} ms", cmd))
+        for name, cfg in tr.get("blog_tier", {}).get("configs", {}).items():
+            add((f"[canonical, corpus v2] @300 {name.replace('BAAI/bge-small-en-v1.5', 'bge-small')}",
+                 f"MRR {cfg['mrr@10']}, hit@10 {cfg['hit@10']}; blog chunks in top 6: {cfg['blog_chunks_in_top6_mean']}", cmd))
+    gs = load("gate-signals.json")
+    if gs:
+        cmd = "`retrieval.gate_signals --questions ../docs/eval-questions.md`"
+        for name, a in gs["signals"].items():
+            z = a["zero_false_abstain"]
+            add((f"[canonical] gate signal {name}", f"recall {z['recall']} at 0 false abstains (threshold {z['threshold']}); "
+                 f"AUC {a['auc']}; p50 {a['latency_ms_p50']} ms", cmd))
+    gr = load("gate-rewrite.json")
+    if gr:
+        cmd = "`answer.rewrite_probe --questions ../docs/eval-questions.md`"
+        rc = gr["rewrite_cost"]
+        add(("[canonical] rewrite cost (local qwen3:32b, reasoning off)", f"p50 {rc['latency_ms_p50']} ms, p95 {rc['latency_ms_p95']} ms; "
+             f"{rc['prompt_tokens_mean']} prompt + {rc['completion_tokens_mean']} completion tokens; NONE on "
+             f"{rc['none_outputs']['must_abstain']} must-abstain / {rc['none_outputs']['must_answer']} must-answer rows", cmd))
+        for sig, t in (("dense_max_cos", 0.71), ("tinybert_top@10", 0.3)):
+            x = next((x for x in gr["sweep"][sig] if x["threshold"] == t), None)
+            if x:
+                add((f"[canonical] gate {sig} < {t} → one rewrite → decline",
+                     f"rewrite fires {x['rewrite_fires']}/94; recall {x['abstain_recall']}; false declines {x['false_declines']} "
+                     f"{x['false_decline_ids']}; gate alone: recall {x['gate_only_recall']}, false declines {x['gate_only_false_declines']}", cmd))
     lt = load("latency_threads.json")
     if lt:
         for label, res in lt["by_threads"].items():
@@ -113,6 +150,21 @@ def main() -> None:
              f"{s2['latency_ms']['p50']} / {s2['latency_ms']['p95']} ms", cmd))
         add(("[canonical] full run wall time", f"{s2['total_wall_s']} s ({s2['ask_wall_s']} s asks + "
              f"{s2['judge_wall_s']} s judge)", cmd))
+    cb = load("eval_run-canonical-combined.json")
+    if cb:
+        s3 = cb["summary"]
+        cmd = "API with `ASK_RERANKER=none ASK_GATE_SIGNAL=tinybert ASK_GATE_THRESHOLD=0.3 ASK_REWRITE=1 ASK_MAX_PASSAGES=10 ASK_PROMPT_VERSION=v3` + `eval.score --questions ../docs/eval-questions.md --out results/eval_run-canonical-combined.json`"
+        add(("[canonical] combined policy /ask: schema / behaviour / source hit",
+             f"{s3['schema_valid']} / {s3['behaviour_correct']} / {s3['source_hit']}", cmd))
+        add(("[canonical] combined policy: abstain recall (12) / false abstain answerable / all must-answer",
+             f"{s3['abstain_recall_unanswerable_out_of_scope']} / {s3['false_abstain_rate_answerable']} / "
+             f"{s3.get('false_abstain_rate_all_must_answer')}", cmd))
+        add(("[canonical] combined policy: fact coverage / BEHAVIOR pass / contradictions",
+             f"{s3['fact_coverage_mean']} / {s3['judged_behavior_pass']} / {s3['contradictions']}", cmd))
+        add(("[canonical] combined policy: server reasons; rewrite fired",
+             f"{s3.get('server_reasons')}; {s3.get('rewrite_fired')}", cmd))
+        add(("[canonical] combined policy: latency p50 / p95; wall", f"{s3['latency_ms']['p50']} / {s3['latency_ms']['p95']} ms; "
+             f"{s3['total_wall_s']} s", cmd))
     v2 = load("eval_run-canonical-v2-subset.json")
     if v2 and ec:
         ids = {r["id"] for r in v2["per_question"]}

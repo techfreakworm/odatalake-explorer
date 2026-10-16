@@ -146,12 +146,13 @@ class AskPipeline:
                  reranker_model: str | None = "Xenova/ms-marco-MiniLM-L-6-v2", gate_threshold: float | None = None,
                  max_passages: int = 6, think_mode: str = "reasoning_none", model: str = LLM_MODEL,
                  threads: int | None = None, prompt_version: str = "v1", gate_signal: str = "rerank",
-                 gate_n: int = 10, rewrite: bool = False):
+                 gate_n: int = 10, rewrite: bool = False, max_tokens: int | None = None, llm_timeout: float = 300):
         self.chunks = read_jsonl(INDEX_DIR / f"chunks-{target}.jsonl")
         self.retriever = Retriever(self.chunks, dense_model=dense_model, reranker_model=reranker_model,
                                    threads=threads)
-        self.client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY, timeout=300)
+        self.client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY, timeout=llm_timeout)
         self.model = model
+        self.max_tokens = max_tokens  # cap generation: JSON answers are short; an uncapped run can stall a 1-slot LLM
         self.gate_threshold = gate_threshold
         self.max_passages = max_passages
         self.think_mode = think_mode
@@ -212,6 +213,7 @@ class AskPipeline:
                          {"role": "user", "content": user}],
             "temperature": 0,
             "response_format": {"type": "json_object"},
+            **({"max_tokens": self.max_tokens} if self.max_tokens else {}),
             **extra,
         }
 

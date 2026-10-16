@@ -27,14 +27,19 @@ The judge reads `JUDGE_BASE_URL`, `JUDGE_API_KEY` and `JUDGE_MODEL`.
 | # | What | Command (from `poc/`) | Output |
 |---|---|---|---|
 | 1 | Docs fetch: sitemap → `/docs/` pages → Markdown (anchors, code language, tables, every tab panel). Add `--blog` for blog posts, measured separately; `--offline` re-extracts from cached HTML | `uv run python -I -m ingest.docs --blog` | `$CACHE/corpus/docs.jsonl`, `blog.jsonl` |
-| 1 | Repos: shallow clones + allowlist | `uv run python -I -m ingest.repos` | `$CACHE/corpus/repos.jsonl` |
+| 1 | Repos: shallow clones + allowlist (v2 = Tier A, the default; `--allowlist v1` for the first round) | `uv run python -I -m ingest.repos` | `$CACHE/corpus/repos.jsonl` |
+| 1b | GitHub release notes (last 10 per repo, via `gh`) | `uv run python -I -m ingest.releases` | `$CACHE/corpus/releases.jsonl` |
+| 1c | Docs manifest + diff (freshness baseline) | `uv run python -I -m ingest.manifest --out results/docs-manifest-<date>.json`; `uv run python -I -m ingest.diff_manifest OLD NEW` | `results/docs-manifest-2026-10-16.json` |
 | 2 | Corpus stats | `uv run python -I -m ingest.stats` | `results/corpus.json` |
-| 3 | Chunking at two target sizes | `uv run python -I -m chunking.chunker --target 300 --target 600` | `$CACHE/index/chunks-*.jsonl`, `results/chunks.json` |
+| 3 | Chunking at two target sizes (+ `--blog` writes the blog tier separately) | `uv run python -I -m chunking.chunker --target 300 --target 600 --blog` | `$CACHE/index/chunks-*.jsonl`, `results/chunks.json` |
 | 4 | Retrieval benchmark | `uv run python -I -m retrieval.bench --target 300 --target 600 --dense BAAI/bge-small-en-v1.5 --dense BAAI/bge-base-en-v1.5 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --repeat 2` | `results/retrieval.json` |
 | 4b | Query-time latency at capped onnx threads (2, 4, all) | `uv run python -I -m retrieval.latency --threads 2 --threads 4 --threads 0` | `results/latency_threads.json` |
 | 4c | Retrieval bench on the canonical set (quality only, cached vectors) | `uv run python -I -m retrieval.bench --questions ../docs/eval-questions.md --target 300 --target 600 --dense BAAI/bge-small-en-v1.5 --dense BAAI/bge-base-en-v1.5 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --repeat 0 --reuse-embeddings --out results/retrieval-canonical.json` | `results/retrieval-canonical.json` (+ `retrieval-canonical-bge-reranker.json`) |
+| 4d | Corpus v2 rerank / blog-tier table (canonical) | `uv run python -I -m retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --reuse-embeddings --out results/retrieval-v2.json` | `results/retrieval-v2.json` |
+| 4e | Gate-signal comparison | `uv run python -I -m retrieval.gate_signals --questions ../docs/eval-questions.md` | `results/gate-signals.json` |
 | 5 | Answer + abstain probe (hybrid bge-base + MiniLM rerank, 6 passages, JSON mode) | `uv run python -I -m answer.probe --think-probe --dense BAAI/bge-base-en-v1.5 --reranker Xenova/ms-marco-MiniLM-L-6-v2` | `results/answer.json` |
 | 5b | Gate tuning without the LLM (retrieval + rerank only) | `uv run python -I -m answer.probe --no-generate --questions ../docs/eval-questions.md --dense BAAI/bge-base-en-v1.5 --out results/gate-canonical.json` | `results/gate-canonical.json` |
+| 5c | Gate → one rewrite → decline sweep (no generation) | `uv run python -I -m answer.rewrite_probe --questions ../docs/eval-questions.md` | `results/gate-rewrite.json` |
 | 6 | Scorer for any `/ask` URL (seed) | `uv run python -I -m eval.score --url http://127.0.0.1:8000/ask` | `results/eval_run.json` |
 | 6b | Scorer on the canonical set | `uv run python -I -m eval.score --url http://127.0.0.1:8000/ask --questions ../docs/eval-questions.md --out results/eval_run-canonical.json` (add `--ids A,B,...` for a subset) | `results/eval_run-canonical.json`, `results/eval_run-canonical-v2-subset.json` |
 | 7 | API + widget, served from two origins (env: `ASK_GATE_THRESHOLD`, `ASK_DENSE_MODEL`, `ASK_RERANKER`, `ASK_PROMPT_VERSION=v1\|v2`, `ASK_ONNX_THREADS`, `LLM_*`) | `ASK_GATE_THRESHOLD=-0.891 ASK_DENSE_MODEL=BAAI/bge-base-en-v1.5 uv run uvicorn api.app:app --host 127.0.0.1 --port 8000` and `uv run python -I -m http.server 8081 --bind 127.0.0.1 --directory api/demo` | open `http://127.0.0.1:8081/` (and `/csp.html` for the strict-CSP case); findings in `results/embed_probe.json` |
@@ -44,6 +49,12 @@ The eval harness reads either `eval/seed.jsonl` (the provisional 18 questions) o
 canonical table in `docs/eval-questions.md`; pass `--questions ../docs/eval-questions.md`.
 
 ## Repo allowlist (decided by inspection)
+
+Round 2 default is **v2** (the research "Tier A", 38 files): olake READMEs, `protocol/root.go`,
+`drivers/*/resources/spec.json` + `destination/{iceberg,parquet}/resources/spec.json` as Markdown field
+tables; olake-ui README, `docker-compose-v1.yml`, `server/conf/app.yaml`; olake-helm READMEs,
+UNINSTALL_GUIDE, `values.yaml`, `Chart.yaml`, `templates/NOTES.txt`; olake-fusion README, `CLAUDE.md`
+sections 1–4 and the two Datazip-modified Amoro docs. The table below is **v1** (round 1, 84 files):
 
 | Repo | Kept | Skipped |
 |---|---|---|
@@ -165,6 +176,90 @@ Generated from `results/*.json` by `uv run python -I -m common.results_table`. R
 | GitHub 304 counts against rate limit? | unauthenticated: yes (3 used for 3); token: no | `freshness.probe` |
 | git ls-remote HEAD check | 714-1005 ms per repo, no API quota | `freshness.probe` |
 <!-- results-table:end -->
+
+## Round 2: corpus v2, rerank / gate decision tables, combined abstain policy
+
+**Corpus v2** (`ingest.repos` defaults to allowlist v2; `ingest.releases`; `chunking.chunker --blog`):
+* **Tab-safe chunks.** html2md wraps every tab group in invisible `<!-- tabs:start/end -->`
+  markers, and the chunker keeps a tab stack. No chunk spans two tab panels, and each
+  chunk header carries the full label path, e.g.
+  `REST Catalog › Tab: Nessie › Configuration › Authentication › Tab: Token › Tab: OLake UI`.
+  Without the markers, the nested catalog → auth → UI/CLI groups on the REST page were
+  mislabelled.
+* **Repo allowlist v2** (the research "Tier A", 38 files, 80K tokens):
+  * connector `spec.json` files converted to Markdown field tables (`ingest/spec2md.py`,
+    which handles `oneOf`, `allOf` if/then and `dependencies`; the Iceberg spec gives
+    118 rows);
+  * olake-fusion `CLAUDE.md` sections 1–4 only, with other lines blanked so line anchors
+    stay valid;
+  * helm `NOTES.txt`;
+  * the two Datazip-modified Amoro docs;
+  * the stale root `docker-compose.yml` of olake is dropped.
+* **Release notes:** the last 10 GitHub releases per repo, 34 notes and 8.6K tokens, cited
+  as `releases/tag/<tag>`. olake v0.12.1 is newer than anything in the docs.
+* **Blog:** a separate tier file (`chunks-300-blogtier.jsonl`).
+* **Fusion docs coverage:** 23 pages, 7 stubs under 100 tokens, 28.4K content tokens, of
+  which `getting-started/compaction` alone is 10.3K.
+
+**Rerank** (canonical, 82 rows, hybrid bge-small, 300-token chunks):
+* None: MRR 0.744, hit@10 0.939.
+* FlashRank TinyBERT: top 10 0.749 (14 ms), top 20 0.778 (28 ms, +53 MB RAM).
+* MiniLM-L6: top 10 0.731 (151 ms), top 20 0.742 (340 ms).
+* bge-reranker-base: top 10 0.682 (0.9 s), top 20 0.649 (1.6 s).
+
+Only the 4 MB TinyBERT helps. The gain is inside noise for 82 rows but nearly free.
+
+**Blog tier A/B:**
+* At weight 1.0, MRR falls to 0.630 and hit@10 to 0.866; blog chunks fill 2.3 of the top
+  6 slots.
+* At weight 0.5 it is neutral (0.743).
+* Keep the blog out, or at most a ≤0.5-weight fallback.
+
+**Gate signals** (12 must-abstain vs 82 must-answer rows), recall at 0 false abstains:
+
+| Signal | Recall | AUC | Cost |
+|---|---|---|---|
+| Max dense cosine | 0.58 | 0.861 | free with retrieval |
+| TinyBERT top 10 | 0.42 | 0.883 | 13 ms |
+| MiniLM top 10 | 0.33 | 0.864 | 141 ms |
+| Max BM25 | 0.00 | 0.863 | <1 ms |
+
+Every zero-false-abstain threshold sits exactly on the lowest must-answer score, so none
+has any margin.
+
+**Gate → one rewrite → decline** (`answer.rewrite_probe`; no generation):
+* **Rewrite cost:** p50 1.17 s locally, about 192 prompt and 12 completion tokens.
+* **`NONE` output:** fired on 4 out-of-scope rows and on 0 must-answer rows.
+* **Dense cosine below 0.71:** the rewrite fires on 7/94 rows; recall 0.50 with 0 false
+  declines. The gate alone does slightly better (0.58, 0), because the rewrite also
+  rescues an unanswerable row.
+* **TinyBERT below 0.3:** the rewrite fires on 11/94 rows; recall 0.58 with 1 false
+  decline (ADV-02). The gate alone gets 0.67 recall with 3 false declines; the rewrite
+  rescues SET-07 and SYNC-09.
+* **The rewrite call is itself injectable.** For ADV-01 and ADV-02 it produced the injected
+  claim or a refusal instead of keywords. Only retrieval sees it, but constrain it:
+  keywords only, no sentences, length cap.
+* **Net:** the gate stage reaches about 50–60% recall. The rest of the abstaining must come
+  from the model.
+
+**Runaway generation (production lesson).**
+* With JSON mode and no `max_tokens`, one qwen3 request kept generating past 6,000 tokens
+  at 8 tok/s and held ollama's single slot.
+* At concurrency 4 the queue then cascaded: client timeouts at 180 s and 300 s,
+  abandoned requests still occupying the slot.
+* The pipeline now caps generation (`ASK_MAX_TOKENS`, default 600) and uses a shorter LLM
+  timeout (`ASK_LLM_TIMEOUT`).
+* On the event box, also bound in-flight LLM calls with a semaphore and return
+  503 + `Retry-After` instead of queueing without limit.
+
+**Docs manifest and re-crawl.**
+* `results/docs-manifest-2026-10-16.json` is the baseline, with extractor commit 20b4bac.
+  `ingest.diff_manifest OLD NEW` lists the added, removed and changed pages.
+* Morning re-crawl into a fresh cache (tested: 9.8 s, 0 changes):
+
+```bash
+cd poc && export ASK_OLAKE_CACHE="$HOME/ask-olake-cache-$(date +%Y%m%d-%H%M)" && uv run python -I -m ingest.docs && uv run python -I -m ingest.manifest --out "results/docs-manifest-$(date +%F).json" && uv run python -I -m ingest.diff_manifest results/docs-manifest-2026-10-16.json "results/docs-manifest-$(date +%F).json"
+```
 
 ## Canonical end-to-end run: exact config and abstain breakdown
 

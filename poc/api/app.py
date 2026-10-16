@@ -57,6 +57,8 @@ async def lifespan(app: FastAPI):
         max_passages=int(os.environ.get("ASK_MAX_PASSAGES", "6")),
         prompt_version=os.environ.get("ASK_PROMPT_VERSION", "v1"),
         threads=int(os.environ.get("ASK_ONNX_THREADS", "0")) or None,  # cap onnxruntime threads on small boxes
+        max_tokens=int(os.environ.get("ASK_MAX_TOKENS", "600")),
+        llm_timeout=float(os.environ.get("ASK_LLM_TIMEOUT", "120")),
     )
     STATE["startup_s"] = round(time.perf_counter() - t0, 2)
     yield
