@@ -1,0 +1,706 @@
+{
+ "version": "20261016T2228Z",
+ "built_at": "2026-10-16T22:28:36Z",
+ "embed_model": "BAAI/bge-small-en-v1.5",
+ "embed_query_prefix": "Represent this sentence for searching relevant passages: ",
+ "dim": 384,
+ "chunker": {
+  "target": 300,
+  "hard_max": 450,
+  "tokenizer": "o200k_base"
+ },
+ "counts": {
+  "pages": 108,
+  "chunks": 1647,
+  "by_source_type": {
+   "docs": {
+    "pages": 82,
+    "chunks": 1200
+   },
+   "factcard": {
+    "pages": 1,
+    "chunks": 2
+   },
+   "faq": {
+    "pages": 2,
+    "chunks": 16
+   },
+   "issue": {
+    "pages": 10,
+    "chunks": 10
+   },
+   "release": {
+    "pages": 26,
+    "chunks": 67
+   },
+   "release-gh": {
+    "pages": 34,
+    "chunks": 50
+   },
+   "repo": {
+    "pages": 32,
+    "chunks": 302
+   }
+  }
+ },
+ "docs": {
+  "sitemap": "https://olake.io/sitemap.xml",
+  "sitemap_etag": "W/\"6ad1ef6f-a45b\"",
+  "sitemap_last_modified": "Fri, 16 Oct 2026 09:33:35 GMT",
+  "sitemap_docs_urls": 124,
+  "lastmod_max": "2026-10-15",
+  "pages": {
+   "https://olake.io/docs/": {
+    "lastmod": "2026-10-09",
+    "hash": "decf4896538883799088a473cc7f6b3bebc9599d1dbb6a69149a7a8a23a731fc"
+   },
+   "https://olake.io/docs/api/olake-ui-api/": {
+    "lastmod": "2026-10-06",
+    "hash": "1d75e1d9efbd704e089dc3a79db8037b1a1be49ece8c9ae5d4debb4234b70d1d"
+   },
+   "https://olake.io/docs/benchmarks/ingestion/": {
+    "lastmod": "2026-10-06",
+    "hash": "7e89f07c67d64b38979ef6b9df32678a26167105058ab21e180aeb13da67c4e3"
+   },
+   "https://olake.io/docs/community/channels/": {
+    "lastmod": "2026-10-06",
+    "hash": "2c55ffde6137de00812b5ea2df3e41d46c0bb84239577f6c39f0fac30ec67c3e"
+   },
+   "https://olake.io/docs/community/code-of-conduct/": {
+    "lastmod": "2026-10-06",
+    "hash": "9472d9f2826871991fc11b88a9e2139a513778c320c7a4ffbcd58751b3e54270"
+   },
+   "https://olake.io/docs/community/commands-and-flags/": {
+    "lastmod": "2026-10-15",
+    "hash": "de68d16d96153b5056124ca59e3788d166e877989e433c625699346fa523d6a5"
+   },
+   "https://olake.io/docs/community/contributing/": {
+    "lastmod": "2026-10-06",
+    "hash": "07b4487c50b0c18e2036fae287288947d126b6f7651b5adef60ec98a5f575dfc"
+   },
+   "https://olake.io/docs/community/issues-and-prs/": {
+    "lastmod": "2026-10-06",
+    "hash": "34628e2bac07b7751dc99906df895e530c0108e8c06ca3f0944b5c4a376364fb"
+   },
+   "https://olake.io/docs/community/learning-modules/": {
+    "lastmod": "2026-10-06",
+    "hash": "179120ffea95f2325d1331d5410d70db0abe2de4c511cf8bf41938e642fe1360"
+   },
+   "https://olake.io/docs/community/setting-up-a-dev-env/": {
+    "lastmod": "2026-10-06",
+    "hash": "017243676d44f2b0518f5a741ff1db3a9eb657535f6bd52301fe3819640e3c8e"
+   },
+   "https://olake.io/docs/connectors/db2/": {
+    "lastmod": "2026-10-15",
+    "hash": "dbc8ff7071d26c34aa7127396fdfc5a4644113dabc5b68f72fcdfb32332a1eae"
+   },
+   "https://olake.io/docs/connectors/kafka/": {
+    "lastmod": "2026-10-15",
+    "hash": "3655fcab51da8f88ec5d77e0a7a0f4b5f7b3cb2b81000e7a3366fe9314f2c577"
+   },
+   "https://olake.io/docs/connectors/mongodb/": {
+    "lastmod": "2026-10-15",
+    "hash": "c76dcad6f5ce0b7c74f7cea68b81d8986d34b504e2b6c56ffdde53e476bde8cf"
+   },
+   "https://olake.io/docs/connectors/mongodb/cdc_setup/": {
+    "lastmod": "2026-10-06",
+    "hash": "8306eb84bf0aa5f517aa65287e55446c48a567bc71657f4672df6a040a8be6bc"
+   },
+   "https://olake.io/docs/connectors/mongodb/setup/local/": {
+    "lastmod": "2026-10-06",
+    "hash": "1e3fcb4710a6ca3ecef5f970b97b7a97887f032d754fedd41626acc74b475bd3"
+   },
+   "https://olake.io/docs/connectors/mssql/": {
+    "lastmod": "2026-10-15",
+    "hash": "5124b703341783591b221ab089f501283dff799ae8e9d3fb1a610c4c1b22c7e1"
+   },
+   "https://olake.io/docs/connectors/mysql/": {
+    "lastmod": "2026-10-15",
+    "hash": "9f9b6163cd502cf8aa7e7b8997865262fdd8bca15e51581ebf6ff73ce17471b1"
+   },
+   "https://olake.io/docs/connectors/mysql/setup/aurora/": {
+    "lastmod": "2026-10-15",
+    "hash": "18626cd9c604af35c8c1fea322328e52e918cb2da9fc11036791ff012e217838"
+   },
+   "https://olake.io/docs/connectors/mysql/setup/azure/": {
+    "lastmod": "2026-10-06",
+    "hash": "0b178fb4233cd23bf798d05da823f93ac6d8cd6e70feeac5ccee0cae98e08fe6"
+   },
+   "https://olake.io/docs/connectors/mysql/setup/gcp/": {
+    "lastmod": "2026-10-06",
+    "hash": "6912d48ac66a3a70d47187dff761aa1d4ed3835df66cacbdb6033537a04255cc"
+   },
+   "https://olake.io/docs/connectors/mysql/setup/generic/": {
+    "lastmod": "2026-10-06",
+    "hash": "5250622823f223e99a626cfb72ad1a4d8b1a940488f71e63e37b01dd0440f8bd"
+   },
+   "https://olake.io/docs/connectors/mysql/setup/local/": {
+    "lastmod": "2026-10-15",
+    "hash": "cc808df49d9822cc23df4dfb2363f41e9f8078a4e24b6d9d86a0048cf0913a91"
+   },
+   "https://olake.io/docs/connectors/mysql/setup/rds/": {
+    "lastmod": "2026-10-15",
+    "hash": "26d1ac4acb259b1b0988022d6778eda55340e1fb01985447c7d03b5cf630c6fb"
+   },
+   "https://olake.io/docs/connectors/oracle/": {
+    "lastmod": "2026-10-15",
+    "hash": "e62f6db3f4a18928d9d9034f2df4ae37f1ec1ac2b88ff8fa9d1c678a67a39941"
+   },
+   "https://olake.io/docs/connectors/oracle/setup/generic/": {
+    "lastmod": "2026-10-06",
+    "hash": "3d76245370c78b0c0714a59b966a81e07562befe586b98746049a2f262d551b7"
+   },
+   "https://olake.io/docs/connectors/postgres/": {
+    "lastmod": "2026-10-15",
+    "hash": "2a2ec0a9d2284764d10b1fefdea66bcc22dd7cc41644bce7b83837cca9a4f803"
+   },
+   "https://olake.io/docs/connectors/postgres/setup/aurora/": {
+    "lastmod": "2026-10-06",
+    "hash": "9d4eea0538caff6d679cc96fb781a02571518473901674b42eee25e646086208"
+   },
+   "https://olake.io/docs/connectors/postgres/setup/azure/": {
+    "lastmod": "2026-10-06",
+    "hash": "7043b7b8a2d9facaf922471d4cbe25a75f22c843d92cbccc2893241859b2e3c9"
+   },
+   "https://olake.io/docs/connectors/postgres/setup/gcp/": {
+    "lastmod": "2026-10-06",
+    "hash": "f828393cbe0ff4d3631ef1b93455cfdd57380cad1612df14e1f474b365a69f61"
+   },
+   "https://olake.io/docs/connectors/postgres/setup/generic/": {
+    "lastmod": "2026-10-06",
+    "hash": "f39aba1cc33b1452cf35deec8ed79a146a9c48c6e1379df1de3615bfa8e8661e"
+   },
+   "https://olake.io/docs/connectors/postgres/setup/local/": {
+    "lastmod": "2026-10-15",
+    "hash": "0177032e0182d34c088994e6ac292a1cbb2a67bc032fd7be67e4b658cded57eb"
+   },
+   "https://olake.io/docs/connectors/postgres/setup/rds/": {
+    "lastmod": "2026-10-06",
+    "hash": "42c9416dba381e1a9c33ed36088d21292ae57b969a6106c853f858d815e7c697"
+   },
+   "https://olake.io/docs/connectors/postgres/wal2json_plugin/": {
+    "lastmod": "2026-10-06",
+    "hash": "aa10279c0b4bf561167db9c291f598e559d24a238620263fc9ef3dc12a3d57ab"
+   },
+   "https://olake.io/docs/connectors/s3/": {
+    "lastmod": "2026-10-15",
+    "hash": "d9dab715691e56f212cc0d1cafd2c2138a0b13543c793e090860212fbf32b46b"
+   },
+   "https://olake.io/docs/core/use-cases/": {
+    "lastmod": "2026-10-06",
+    "hash": "fd5c971f64dddd4894687cd24f84f145f7c886db57a73f6230d12fb3f43f4a38"
+   },
+   "https://olake.io/docs/dmsvsolake/": {
+    "lastmod": "2026-10-06",
+    "hash": "fdce34634fcd77423748bf8e153ff46d56c32dbc76d6f49c133103aace1382c9"
+   },
+   "https://olake.io/docs/features/schema/": {
+    "lastmod": "2026-10-06",
+    "hash": "e6fefa4ee646e0f9b6856191fe7898505cc794b32031c4cfd4bb8e3955ee1659"
+   },
+   "https://olake.io/docs/fusion/compaction/configuration/": {
+    "lastmod": "2026-10-06",
+    "hash": "b0ad44623b58a7b2c9fe5acb505ebdb06e79453af4b59eb303c2660fa27a1472"
+   },
+   "https://olake.io/docs/fusion/compaction/types-of-compaction/": {
+    "lastmod": "2026-10-06",
+    "hash": "30bd1fc1ade84243b5dfd73e404262a7b8b66ec6f1c0e350b49e29903a592c79"
+   },
+   "https://olake.io/docs/fusion/core/use-cases/": {
+    "lastmod": "2026-10-06",
+    "hash": "b663d21d807ea0072b0157dd64cc20b5dd0643826a8325c11e3777e03621251d"
+   },
+   "https://olake.io/docs/fusion/getting-started/compaction/": {
+    "lastmod": "2026-10-06",
+    "hash": "cb6fc24ad5f66cbc02c869c6b5e8ebe308b482063e5e419b472e30d2a8d13d51"
+   },
+   "https://olake.io/docs/fusion/getting-started/configure-first-compaction/": {
+    "lastmod": "2026-10-06",
+    "hash": "ddc1c026390c5fc85920bd78a2c8a091c98319aa1e91f719be01328413284ca7"
+   },
+   "https://olake.io/docs/fusion/getting-started/overview/": {
+    "lastmod": "2026-10-06",
+    "hash": "fc30658f6c33b75a2ee37d2233b805ca8c033e03c04a6ec29e2e429e816d345c"
+   },
+   "https://olake.io/docs/fusion/getting-started/quickstart/": {
+    "lastmod": "2026-10-06",
+    "hash": "d016f6b2fa51f4c75b571478585cf285f1adeeb77c642e21eeff7bf8e290609c"
+   },
+   "https://olake.io/docs/fusion/install/kubernetes-compaction/": {
+    "lastmod": "2026-10-06",
+    "hash": "3e595cb7aac2369579bc0d47546b2d64f66be070c2c7a58e6f37e565e1a69a7f"
+   },
+   "https://olake.io/docs/fusion/install/olake-ui/": {
+    "lastmod": "2026-10-06",
+    "hash": "bc64fc3d1423732272678efd7ef49f42567a59bff2f13cb695d7d48c16de72b7"
+   },
+   "https://olake.io/docs/fusion/install/olake-ui/offline-environments-aws/": {
+    "lastmod": "2026-10-06",
+    "hash": "8728cabaa7f97b27b0bd82fcc86d3e83a477c9e9afdf21540e1c138005cc615f"
+   },
+   "https://olake.io/docs/fusion/install/olake-ui/offline-environments-generic/": {
+    "lastmod": "2026-10-06",
+    "hash": "ef4527c9f41ddc756a8ab01dfc71b6c89b1f99afec85f82fc03f8e96f56c5f9f"
+   },
+   "https://olake.io/docs/fusion/maintenance/catalogs/": {
+    "lastmod": "2026-10-06",
+    "hash": "46afa98252ae2af8a735b86e378037cb6406b7136ec639edde8e4e5df44f8bed"
+   },
+   "https://olake.io/docs/fusion/maintenance/metrics/": {
+    "lastmod": "2026-10-06",
+    "hash": "0c9c294ebbaf89e61b2edea25c85b3e62611bbb5dba5ee51d108e7709cb0dbb1"
+   },
+   "https://olake.io/docs/fusion/maintenance/runs-and-logs/": {
+    "lastmod": "2026-10-06",
+    "hash": "3759048abbafb46f413f1d4857a0658f0c1d9d8a793fc50665431634a1bb4123"
+   },
+   "https://olake.io/docs/fusion/release/maintenance/overview/": {
+    "lastmod": "2026-10-06",
+    "hash": "ec24032827be7c71f41451d9a193a2d918ec51f11f8857c88e783ee3b3ca82d8"
+   },
+   "https://olake.io/docs/fusion/release/maintenance/v0.1.0/": {
+    "lastmod": "2026-10-06",
+    "hash": "5428510b950790e55bbeaa18739edf5923d55e518242e4d145d856a3f6e95719"
+   },
+   "https://olake.io/docs/getting-started/alerts-and-notifications/": {
+    "lastmod": "2026-10-06",
+    "hash": "708b903775897bd3437ffc2fdeeb584265413978acb5cc381393493135782074"
+   },
+   "https://olake.io/docs/getting-started/creating-first-pipeline/": {
+    "lastmod": "2026-10-15",
+    "hash": "71c4c056c799009659bb69754d22bac37b9c532abdd5ca150608a0a0a45bc45a"
+   },
+   "https://olake.io/docs/getting-started/job-level-properties/": {
+    "lastmod": "2026-10-06",
+    "hash": "b5bb153abd598f55ac883f568a18a3d20960dad89eb2138b5d045313cdb27faa"
+   },
+   "https://olake.io/docs/getting-started/olake-ui/": {
+    "lastmod": "2026-10-06",
+    "hash": "e6891298da1d86b32d8438896a15c3f9c9cf8921c3894799cb48a36878301d4e"
+   },
+   "https://olake.io/docs/getting-started/playground/": {
+    "lastmod": "2026-10-15",
+    "hash": "2eb279e53bde6b8101d3aede94b4422e99e08a302b58686ee876b0cc47fb7c3e"
+   },
+   "https://olake.io/docs/getting-started/quickstart/": {
+    "lastmod": "2026-10-06",
+    "hash": "b4469953f179ab268405fb33c2037735490e7f815e9afe9d7c2ed05a4538c092"
+   },
+   "https://olake.io/docs/install/docker-cli/": {
+    "lastmod": "2026-10-09",
+    "hash": "1eddb3308f8a1b82ec323fda877016a358a2c8caf8ee6b2a21e5e2f22860ed34"
+   },
+   "https://olake.io/docs/install/kubernetes/": {
+    "lastmod": "2026-10-08",
+    "hash": "626072e1e1d690a324414a948aea6ba294766cef01922b184e18b1a23b5c468e"
+   },
+   "https://olake.io/docs/install/olake-ui/": {
+    "lastmod": "2026-10-08",
+    "hash": "d1605e4fffa5c67c11e0820534e7fa0e2e566387f92d974917b22ea531fe0c3a"
+   },
+   "https://olake.io/docs/install/olake-ui/offline-environments-aws/": {
+    "lastmod": "2026-10-06",
+    "hash": "9515920d70c47b778b66da1270109f06b47cc855204800958fd01ca07c3eb1fe"
+   },
+   "https://olake.io/docs/install/olake-ui/offline-environments-generic/": {
+    "lastmod": "2026-10-06",
+    "hash": "f6c5a51be7c79fa6f76eb0d30dff462225d4c983d17d7298bdec4984da4d820b"
+   },
+   "https://olake.io/docs/monitoring-and-observability/metrics/": {
+    "lastmod": "2026-10-06",
+    "hash": "10dc5fa2c9d9c4744c58f74b83727f901fec006890bed397acc346d8bddfd699"
+   },
+   "https://olake.io/docs/release/ingestion/28-04-2025/": {
+    "lastmod": "2026-10-06",
+    "hash": "7f03393b764d4d6a08a5c8eee8296d0a20a2ae133f1d06130d535de51b085a90"
+   },
+   "https://olake.io/docs/release/ingestion/overview/": {
+    "lastmod": "2026-10-06",
+    "hash": "47389c93e98e66d797aea9a72d99ca60a851c93a114f0d02e91ab728fafdcdb5"
+   },
+   "https://olake.io/docs/release/ingestion/v0.1.0-v0.1.1/": {
+    "lastmod": "2026-10-06",
+    "hash": "5b1f33826e652bf0e0a9a97d8745beee5f6d9789945ef0e07445b9d47440b270"
+   },
+   "https://olake.io/docs/release/ingestion/v0.1.2-v0.1.5/": {
+    "lastmod": "2026-10-06",
+    "hash": "67f923fd586cc62221eb3666e456412cd3b3ff72456ae6460a13f5811157bf63"
+   },
+   "https://olake.io/docs/release/ingestion/v0.1.6-v0.1.8/": {
+    "lastmod": "2026-10-06",
+    "hash": "338c9152668240352eea936a2ea6a2af93b9ba34163c0aacd919265ba8e64d9f"
+   },
+   "https://olake.io/docs/release/ingestion/v0.1.9-v0.1.11/": {
+    "lastmod": "2026-10-06",
+    "hash": "663a7d89c0e30d73174d557c01390f3d3e9bb80d09f7454dabddd3babcc759d7"
+   },
+   "https://olake.io/docs/release/ingestion/v0.10.0/": {
+    "lastmod": "2026-10-06",
+    "hash": "d634453b8a4bf36f3249b566a12247b8a7af7d49069ac47511c38d85e8ec41de"
+   },
+   "https://olake.io/docs/release/ingestion/v0.11.0/": {
+    "lastmod": "2026-10-07",
+    "hash": "c9cea22f10b3e9e69ff6c7c55dfa0308fecfbe0253c15f027de8ae43c415f10a"
+   },
+   "https://olake.io/docs/release/ingestion/v0.12.0/": {
+    "lastmod": "2026-10-12",
+    "hash": "f25d9db8787a6aab9efba383078d0c82d22cee4a7eeb967d17269dbe07d06f01"
+   },
+   "https://olake.io/docs/release/ingestion/v0.2.0-v0.2.1/": {
+    "lastmod": "2026-10-06",
+    "hash": "5d98230032dfe3c90c720a64b5ad085aa447a8c305f94b2dc2b6c25ee6a05525"
+   },
+   "https://olake.io/docs/release/ingestion/v0.2.10/": {
+    "lastmod": "2026-10-06",
+    "hash": "5a29068bc80ef93cdeda665a80c19170eb327a8bc56d50bbd486ecafb365cc15"
+   },
+   "https://olake.io/docs/release/ingestion/v0.2.2-v0.2.4/": {
+    "lastmod": "2026-10-06",
+    "hash": "a16d516fcd26f089ab0fb77f27106b46de259dccb08633b01c86da6d8282e258"
+   },
+   "https://olake.io/docs/release/ingestion/v0.2.5-v0.2.7/": {
+    "lastmod": "2026-10-06",
+    "hash": "c3f2b0c13aea1824cd40dfefb6288443ce229021900216f9546ee3e5ee4053f2"
+   },
+   "https://olake.io/docs/release/ingestion/v0.2.8/": {
+    "lastmod": "2026-10-06",
+    "hash": "2ef3f94d61b11a67dd14f4f00469d3e826da89095d5cc25cbf1818c043c79fcd"
+   },
+   "https://olake.io/docs/release/ingestion/v0.3.14/": {
+    "lastmod": "2026-10-06",
+    "hash": "cf768dbdb57bb151ff34ccd8dd6695d4379e5cfbcf26224810825cbd016e5e41"
+   },
+   "https://olake.io/docs/release/ingestion/v0.3.17/": {
+    "lastmod": "2026-10-06",
+    "hash": "6f78e720889b2f3a0f07d2b9129fafb525625daa368a9bb632e6407b18d0a217"
+   },
+   "https://olake.io/docs/release/ingestion/v0.3.5/": {
+    "lastmod": "2026-10-06",
+    "hash": "e9f27e39697c21f1900c693fc4f591fc3adb61de609c4af2f33e4399d85e4628"
+   },
+   "https://olake.io/docs/release/ingestion/v0.3.9-v0.3.11/": {
+    "lastmod": "2026-10-06",
+    "hash": "febf5e04e7bb90e03ae71107e772a54e7b550234b22c93d4898fad2baf1e76cd"
+   },
+   "https://olake.io/docs/release/ingestion/v0.4.0/": {
+    "lastmod": "2026-10-06",
+    "hash": "c17627dcb9e9805b4b4f31c50ca8b11b5a6991a5eda6c03f0f3397f98639b9de"
+   },
+   "https://olake.io/docs/release/ingestion/v0.5.0/": {
+    "lastmod": "2026-10-06",
+    "hash": "48c02c11fda2ffb3ee059e8c899f378aab254be4eb218039c221f2e394365bf6"
+   },
+   "https://olake.io/docs/release/ingestion/v0.6.0/": {
+    "lastmod": "2026-10-06",
+    "hash": "1aa9a1c3b86cb8295a0aa2c518f83ff3cbdf6162462273faaffd8bab1d58a233"
+   },
+   "https://olake.io/docs/release/ingestion/v0.7.0/": {
+    "lastmod": "2026-10-06",
+    "hash": "3f2af5e705708e8116bb3b42a8f0ec8fbf839609fd0172df1bc921f2c5b81252"
+   },
+   "https://olake.io/docs/release/ingestion/v0.8.0/": {
+    "lastmod": "2026-10-06",
+    "hash": "6312b357fe038f75d4b89542a6b476082977e63c375da7b1412fc16576f9dc40"
+   },
+   "https://olake.io/docs/release/ingestion/v0.9.0/": {
+    "lastmod": "2026-10-06",
+    "hash": "505713aaf13088220bde255f9409114ecd214cbe370e2fbaf1e48027a932ce4c"
+   },
+   "https://olake.io/docs/understanding/compatibility-catalogs/": {
+    "lastmod": "2026-10-06",
+    "hash": "acef01dc1d557f5113eaa2273a01464d5a2611a5e0def8c65bd08eb4d1e50e64"
+   },
+   "https://olake.io/docs/understanding/compatibility-engines/": {
+    "lastmod": "2026-10-06",
+    "hash": "4777a10c47d379b884151a02888658a7a78a898ec02e72c549c576ec35df5d8b"
+   },
+   "https://olake.io/docs/understanding/terminologies/general/": {
+    "lastmod": "2026-10-15",
+    "hash": "3dae6ae91bc957745cd82081faf13ec1e277b7671c27f6ccf44fbd8bb38336a3"
+   },
+   "https://olake.io/docs/understanding/terminologies/olake/": {
+    "lastmod": "2026-10-09",
+    "hash": "fb2c63bd3bc7429cf95db90bff83c3dd8d02b0019fbf0a47c220ed14797ea55a"
+   },
+   "https://olake.io/docs/writers/iceberg/azure/": {
+    "lastmod": "2026-10-06",
+    "hash": "555b9199fbe17839087beacc382ea6e7c0400ba9856f65b66cbea17f957677ce"
+   },
+   "https://olake.io/docs/writers/iceberg/catalog/glue/": {
+    "lastmod": "2026-10-06",
+    "hash": "04eb06e117da8863984a4448bfdc17cfef01cc7dee59f26fac9c304c900dc00b"
+   },
+   "https://olake.io/docs/writers/iceberg/catalog/hive/": {
+    "lastmod": "2026-10-06",
+    "hash": "74fb91cf54dec1ed865cfa390629c76457bd81bcfc8c267a71daa50dc08c93c3"
+   },
+   "https://olake.io/docs/writers/iceberg/catalog/jdbc/": {
+    "lastmod": "2026-10-06",
+    "hash": "10b783f3e570d85bea14e4f2886e43e7dea9a5d563f4eae2a146ef2c4b8c6a71"
+   },
+   "https://olake.io/docs/writers/iceberg/catalog/rest/": {
+    "lastmod": "2026-10-06",
+    "hash": "8348715e3048123f3c8fe17d0152be14fc91f9bf0b617994dc2292faadb33fb8"
+   },
+   "https://olake.io/docs/writers/iceberg/gcp/": {
+    "lastmod": "2026-10-06",
+    "hash": "e7f017ed0a0dbdc09c8eacc4c9f9ecdef6c80f89d0c5d4516e8fb21d9ef9014b"
+   },
+   "https://olake.io/docs/writers/iceberg/partitioning/": {
+    "lastmod": "2026-10-06",
+    "hash": "3f82f72c15fe40b291ca674f6d6de90869e001e8ba32d14469b14b39942fa3ea"
+   },
+   "https://olake.io/docs/writers/iceberg/polaris-iam-setup/": {
+    "lastmod": "2026-10-06",
+    "hash": "0a5457383ec221cc49f3570fdb743abb334b2e89b38d62e33e5f5e80d4602fd7"
+   },
+   "https://olake.io/docs/writers/iceberg/troubleshooting-local/": {
+    "lastmod": "2026-10-06",
+    "hash": "4147445475cbea6383c8bb2f2ca0e5ea3c7acf6f80a1cb10c04d83060cd7a375"
+   },
+   "https://olake.io/docs/writers/parquet/config/": {
+    "lastmod": "2026-10-06",
+    "hash": "ce40032e5be2b457bfa2517de260717968aa3c012330b896a7766c668a97e4ad"
+   },
+   "https://olake.io/docs/writers/parquet/gcs/": {
+    "lastmod": "2026-10-06",
+    "hash": "6291f9825d8554c5505c8904ca5c2ac1afd8edb9dbde84ee4e3bcbfb33ef0aa6"
+   },
+   "https://olake.io/docs/writers/parquet/local/": {
+    "lastmod": "2026-10-06",
+    "hash": "5427e3ec3b3acbb9d7f70417c7535c9203c0ba54b3895c7305c6a01dd1ab0b96"
+   },
+   "https://olake.io/docs/writers/parquet/partitioning/": {
+    "lastmod": "2026-10-06",
+    "hash": "484007448cedc41359da031a4cef81bfcb308a9c64ae0aa599fe8649e87b9e92"
+   },
+   "https://olake.io/docs/writers/parquet/permission/": {
+    "lastmod": "2026-10-06",
+    "hash": "3308e44641c865198c100b0781f8ea9a254dc236060b288dd3f9b403b90ff23a"
+   },
+   "https://olake.io/docs/writers/parquet/troubleshoot/": {
+    "lastmod": "2026-10-06",
+    "hash": "1b1c09d2e8655d5a6af08432e161814f78cbd0cbf5b21bd9c5aac4d581242bff"
+   }
+  },
+  "fetch_errors": []
+ },
+ "repos": {
+  "olake": {
+   "branch": "master",
+   "commit": "d20c68ed98ced12293cd621ac04136a946ba4290",
+   "commit_date": "2026-10-15T18:47:35+05:30"
+  },
+  "olake-ui": {
+   "branch": "master",
+   "commit": "56826cf172a4c10e80a2276d0a2095313ec5b667",
+   "commit_date": "2026-10-15T18:57:16+05:30"
+  },
+  "olake-helm": {
+   "branch": "master",
+   "commit": "c63f10c48cd4dc2cbe3a130c6190ccedf0dafa83",
+   "commit_date": "2026-10-08T17:40:26+05:30"
+  },
+  "olake-fusion": {
+   "branch": "master",
+   "commit": "15ca160b298bf038f78f6639ec7aae67e4d4e33a",
+   "commit_date": "2026-10-13T13:50:37+05:30"
+  }
+ },
+ "releases": {
+  "olake": {
+   "tag": "v0.12.1",
+   "published_at": "2026-10-15T13:27:40Z"
+  },
+  "olake-ui": {
+   "tag": "v0.7.1",
+   "published_at": "2026-10-15T13:27:48Z"
+  },
+  "olake-helm": {
+   "tag": "v0.4.0",
+   "published_at": "2026-10-08T12:18:32Z"
+  },
+  "olake-fusion": {
+   "tag": "v0.1.4",
+   "published_at": "2026-08-24T13:25:38Z"
+  }
+ },
+ "denylist_skipped": [
+  "https://olake.io/docs/archive/kubernetes/",
+  "https://olake.io/docs/connectors/kafka/overview/",
+  "https://olake.io/docs/connectors/overview/",
+  "https://olake.io/docs/core/architecture/",
+  "https://olake.io/docs/core/configs/catalog/",
+  "https://olake.io/docs/core/configs/source/",
+  "https://olake.io/docs/core/configs/state/",
+  "https://olake.io/docs/core/configs/writer/",
+  "https://olake.io/docs/fusion/community/channels/",
+  "https://olake.io/docs/fusion/community/code-of-conduct/",
+  "https://olake.io/docs/fusion/community/contributing/",
+  "https://olake.io/docs/fusion/community/issues-and-prs/",
+  "https://olake.io/docs/fusion/core/architecture/",
+  "https://olake.io/docs/fusion/core/compatibility/query-engines/",
+  "https://olake.io/docs/fusion/core/terminologies/",
+  "https://olake.io/docs/tutorials/enable-oplogs/"
+ ],
+ "sources": {
+  "repo_files": {
+   "olake/README.md": "9fca3f22d3061bd281b441a699fd437084f57e08ac0f9b834eff6b531d3828aa",
+   "olake/destination/iceberg/README.md": "184c2545ffd935eec94570de8b5488d87e5624e9f244dcfe7a1d7fe73fe70712",
+   "olake/destination/iceberg/resources/spec.json": "0b057e73c2ddf77bafc0daf1fab85f0c8b739fa9d46c2fc5ff1359d4ca4c4722",
+   "olake/destination/parquet/resources/spec.json": "bfdda50831e8120f3959a66ad60ae90a1b7f3c6b5cbf2a9a4bf433ece5b2bf03",
+   "olake/drivers/db2/README.md": "e69e096495f56861e7725037e791a70e63896540a5df9e91a7e6b4eb9be8d89b",
+   "olake/drivers/db2/resources/spec.json": "76c5d46e2ecab73d3d5fe7ef8f508bb68f249dc6e35b387563f3aad5f80caf4c",
+   "olake/drivers/kafka/README.md": "9130e4a28bfe7cc1fae347225d9563011533d537f4839b789642689a13e8d136",
+   "olake/drivers/kafka/resources/spec.json": "9a02c8c6ca78800b5f9813d0dfc280ff8503778ebcffa646baac1a21e117f03d",
+   "olake/drivers/mongodb/README.md": "66928e410e450f7c8dbd1025204da68259470b1a5621d70b51debfe00b04ccfc",
+   "olake/drivers/mongodb/resources/spec.json": "3a12f20d2f3e7b5a19c7bc79b636de854355964836dc814e1324c2b0fe3aeba6",
+   "olake/drivers/mssql/README.md": "94f7e9aceac77b8e0262cd3546f7e1c3ec533442dfda29faf0322022d3eec31a",
+   "olake/drivers/mssql/resources/spec.json": "5802b8e176de91bdc20962bc25a95ac0b0f447f352d7075be54ac5c02dbf0726",
+   "olake/drivers/mysql/README.md": "cc5f923fe354b99323ca9a956ce3ea8353266b01d6738fb9551d8f69281a4561",
+   "olake/drivers/mysql/resources/spec.json": "c34d113cf97f582425d2905b07fe5f2c6d5539d3607bc217df70ca12f957cb57",
+   "olake/drivers/oracle/README.md": "a6bbcfc556a548b1caacefef026daf2173b383f1132388b6dd200bf72c5c0a60",
+   "olake/drivers/oracle/resources/spec.json": "eff3bad4dbc5c2a0f217946308b0dcdb1daf671a0df91561c130309dbba1c2ee",
+   "olake/drivers/postgres/README.md": "9be7874f266a2a5c8447251cec3c3877865112cc2de0271ee4e5a42ea14d242a",
+   "olake/drivers/postgres/resources/spec.json": "a64f75494dbb75843a76b7f99c13b25898f6002a358bd36353e27e078b7d31c8",
+   "olake/drivers/s3/README.md": "312c6733d361ee301fab343dfbf7e5b8499a9e328d4e37e76996d268697dc2e4",
+   "olake/drivers/s3/resources/spec.json": "d865a777984acea3f5c6afa244d6e198ee1cc1b5f683a33cb09cdca5ba1b7a1f",
+   "olake/protocol/root.go": "d6d02ed487e466816734b08839b14acc997941dbed50f2a17d7e7b827af3eab8",
+   "olake-ui/README.md": "72d8fbbebc37ef3b2c48aa8afff729f0cd1c1a353e5e9e443989228533993300",
+   "olake-ui/docker-compose-v1.yml": "2703261f48fdd791b49a7a6aab38662b0412c4c7d9febc2f0723eb5cb2f46224",
+   "olake-ui/server/conf/app.yaml": "8e2491d232cbc7a42d3f601f6052a968b6ea60aad633b7926cbf16c4aee7bde5",
+   "olake-helm/README.md": "d7de2c431abe0e0809ad4087595275e5955d317190682cbbbe580e9319eff24b",
+   "olake-helm/helm/olake/Chart.yaml": "e84054cc7194be4ab629726e8278f0f5c5ff76cbacd177d35c78cec9247eb0d1",
+   "olake-helm/helm/olake/README.md": "d81b6522de023284ba0bf4b635c891addc4e45134bca63e13fc37d84970cbd00",
+   "olake-helm/helm/olake/UNINSTALL_GUIDE.md": "867ec80ed10d4e12fbdd2a43edc2c7018080500d439ba47311e8c6c0d6cc735d",
+   "olake-helm/helm/olake/templates/NOTES.txt": "83fca2e456d01ca69f56059e286983a0115de26693baf3f8065f2b34fdd95735",
+   "olake-helm/helm/olake/values.yaml": "88928e2dfa67df129a80db8a8ed002979349ae2d78a7f1c944c5de35f541aea3",
+   "olake-fusion/CLAUDE.md": "98c04fd714a46a872e069f98a548e8dd6c13e95df7146c082677318c47f63be6",
+   "olake-fusion/README.md": "027aa0a18706300d4a3d3bb0dfb9d976bd0a8d5aeafa8c5f94a11eb357272581"
+  },
+  "releases": {
+   "olake@v0.12.1": "f6ffdadece0c1728d3e4ef9e096eb0c505fa9dffa91268a1d2b793bd39c24b55",
+   "olake@v0.12.0": "b86b4fabdac13a65228af916fd731744eb0df8b91ed1e3711ed7b86b59f8e8e4",
+   "olake@v0.11.3": "a4a65abd2b07aed51bec1c7ed6a4128b3eabb1a32fb5f568d944993a313a00a8",
+   "olake@v0.11.2": "98ab08692cbd127c55be1a3b383d6089383bb35f30a24cee0b87ff94e042acc0",
+   "olake@v0.11.1": "86c45d20bc7810bd22ea1bc06b14a969124f128079ea92b764d3a5bcac826544",
+   "olake@v0.11.0": "758b61353007bdcc9a7b498be4bd414522ff1560caca6bbc785fce17047a83b4",
+   "olake@v0.10.1": "bd4addf0a2a819deeef5cf4fe23c2db46024ad66f9df292dcee4e46505ccfbe4",
+   "olake@v0.10.0": "ccf333f6875139c84f58b5b9555db0ec7f634b7f76bc3253bdeaba93042b1c94",
+   "olake@v0.9.5": "7a0357a450dcccab653f50951105f8e09a410ed62e08b1848fcf312b5d1ec5a1",
+   "olake@v0.9.4": "423cc2a8a09959c2e3b31f792e5587d4f9634df0e9a1564819d8f63a52fc1f37",
+   "olake-ui@v0.7.1": "dd4dcd95ab13a2e44271d2a33d0080514685aeee6b099ac4fc4ef4d853de9aa1",
+   "olake-ui@v0.7.0": "5fdf078be69a80e4183ac125b53bee8372a3d0731a56945765be441bef79caaf",
+   "olake-ui@v0.6.1": "3b06c16bf1be59325ca2b820c224e974a3a75fdc88289cb101094e4f81c6c93e",
+   "olake-ui@v0.6.0": "76894c5e7c92250df4581adc3d8e23ccdf7728a76421885e7426cbe6e5197ccc",
+   "olake-ui@v0.5.3": "0e437323f60628a4af2fc84690a7f5845d70db47f14319514cd6baf02a30250f",
+   "olake-ui@v0.5.2": "42652328f9cfdfdbcd06497ee7f0d9ff8c72e814b2574bc6b253d8289e699fcc",
+   "olake-ui@v0.5.1": "55cc039aad2c8032237c299269254c31d31f657954c25bea3356a9d535b35bb5",
+   "olake-ui@v0.5.0": "1645e57bf158cf53d7d595cde0813a5d8a1d007aa1e1daa943e32e739f6913fb",
+   "olake-ui@v0.4.9": "55ce67f789639261c7d9de1fa26b5ff45917727855de34e4f5f6480b6cd9b674",
+   "olake-ui@v0.4.8": "4836563fa1226fc2c4ee5e1ab25ea76468caed93686d8ca395026a07256718aa",
+   "olake-helm@v0.4.0": "ac5e77bc8b9852709c7e1fd776d711c43fe1f76dec9d323bd91ba8e003865c68",
+   "olake-helm@olake-0.0.30": "8b95d856b312960be7733ad89599b7c4d31c3a6fbb945157bca01af545f6a6cb",
+   "olake-helm@olake-0.0.29": "df4a358d4f59d3e4507be6c50a7bb08eff7b3363e5f62c08a963a3dbdd9b7ce3",
+   "olake-helm@v0.3.11": "85bc71d9b014e17de58b25bdcfaa29768f5952071941d744452510004c9e9f36",
+   "olake-helm@olake-0.0.28": "34c7e94da32ce2355250e3ee8463423991ec6a037a82bc8daf4b0ad7aed72465",
+   "olake-helm@olake-0.0.27": "ff096f7603ea741a755b68b94b44fec975c94b9106a8f3be0ad954e5aa5b64db",
+   "olake-helm@olake-0.0.26": "c35900565bf56987f90c8d395da976c07390b9233cc185d746efaf55dbda80db",
+   "olake-helm@olake-0.0.25": "ef318fdc7d62090f3e3b96e5a5c393946df8a7af118a99613427b404e17255a7",
+   "olake-helm@olake-0.0.24": "d93d3d789eedce8b4ec28d630ffd1af8cec9c2dc5d75cd796b1985bc746b6ffa",
+   "olake-helm@v0.3.10": "aca7b4544a22970b4fb39d762c2d18f69379f3052819b1b7fcf4022a4c03df33",
+   "olake-fusion@v0.1.4": "930040ab5437e1c1d56abcfafe6046ead0c9ca52c6110a4316d8b5c017babf5d",
+   "olake-fusion@v0.1.3": "7ed6b9ed2b1f90319e21771e469403703b2f3dada7f1c93db8c3688d6e7a28c0",
+   "olake-fusion@v0.1.2": "8a9e4deb4cae496fe828afa00a4421bc2a8b42acac322469239a6aad64a888d6",
+   "olake-fusion@v0.1.1": "7e5a7dc7f5d58d69add6f584f4edd09e5640f430a5fd05269e6cabfe2ff31c08"
+  },
+  "faq": {
+   "https://olake.io/olake-go/#0": "79a5d6f8aa912ad8cfe857a807346268e84595223ce031a45f3859cc4c9df719",
+   "https://olake.io/olake-go/#1": "1f621e8032e5789eec0363175a70d487a9ccdfdbcb7fbb67b8ef1408fae63057",
+   "https://olake.io/olake-go/#2": "9e5ca5a00f30c8005b7fb80a00949827e14b2b64b0d65cf2930f7ada82649bae",
+   "https://olake.io/olake-go/#3": "b922a6ba89363efb7095ccfb5a2927c1b77a6782ea514947f1495e84158a4ec8",
+   "https://olake.io/olake-go/#4": "d2381656df10a561a84a326fd7617b5f7a67b08b200482a6c82c7fe5e28ff712",
+   "https://olake.io/olake-go/#5": "70ff9cc31540c3c63cb9a2fdfbca3efc25e7d946898a616eda9428c152d9274b",
+   "https://olake.io/olake-fusion/#0": "cd33a8ed9ee6e9807ec491d38cdeea4c1d422e3d8ac0f96b87e855747a5d1625",
+   "https://olake.io/olake-fusion/#1": "453ea693962b3466e0fce16a07ea1a73f0af1e779fd63873724c52fe2ad5c0d8",
+   "https://olake.io/olake-fusion/#2": "0ba5cca770c7f2dfb5c1e2103d648f4d997af070fe36847d279eb55d41e28f80",
+   "https://olake.io/olake-fusion/#3": "843fbd6a5368a439a171d8488050f339bfa21c89c4bc2f44e0cb97bbcbcade2e",
+   "https://olake.io/olake-fusion/#4": "4b6491d8f110b3b55ecc3f29f40da7cc357469c4f8e02305fd5ea5b64a25e439",
+   "https://olake.io/olake-fusion/#5": "c1ac24d97992b7453dffb715084d16a97041eb499a6579160c4c1e540f72e4c3",
+   "https://olake.io/olake-fusion/#6": "7835dd86b5ff2bb904d6140acd1f01e25c2f92e49e920d425a4c19dfbf13a85f",
+   "https://olake.io/olake-fusion/#7": "96700258ca2597d7b71b88099ccec1c5cf8773d97ff01a2efbdc323e6a27f620",
+   "https://olake.io/olake-fusion/#8": "597336fe95dca68f364d59188394aeb574ec9df6b6da2728e39b62903268cb28",
+   "https://olake.io/olake-fusion/#9": "a0fdbee7262ce55b830f4ec53335809efdc0e3285738f2b2b71acae49ea43c14"
+  },
+  "faq_errors": [],
+  "issues": {
+   "https://github.com/datazip-inc/olake/issues/811#issuecomment-3895500238": {
+    "state": "closed",
+    "updated_at": "2026-02-20T22:47:23Z",
+    "note": "olake-811.md"
+   },
+   "https://github.com/datazip-inc/olake/issues/867": {
+    "state": "closed",
+    "updated_at": "2026-04-14T13:18:36Z",
+    "note": "olake-867.md"
+   },
+   "https://github.com/datazip-inc/olake/issues/877": {
+    "state": "closed",
+    "updated_at": "2026-04-13T06:17:14Z",
+    "note": "olake-877.md"
+   },
+   "https://github.com/datazip-inc/olake/issues/955": {
+    "state": "closed",
+    "updated_at": "2026-08-27T12:27:25Z",
+    "note": "olake-955.md"
+   },
+   "https://github.com/datazip-inc/olake/issues/1080": {
+    "state": "closed",
+    "updated_at": "2026-08-21T06:14:36Z",
+    "note": "olake-1080.md"
+   },
+   "https://github.com/datazip-inc/olake/issues/1292": {
+    "state": "closed",
+    "updated_at": "2026-10-16T06:49:28Z",
+    "note": "olake-1292.md"
+   },
+   "https://github.com/datazip-inc/olake-helm/issues/100": {
+    "state": "closed",
+    "updated_at": "2026-03-05T13:00:36Z",
+    "note": "olake-helm-100.md"
+   },
+   "https://github.com/datazip-inc/olake-fusion/issues/23": {
+    "state": "closed",
+    "updated_at": "2026-09-01T06:28:12Z",
+    "note": "olake-fusion-23.md"
+   },
+   "https://github.com/datazip-inc/olake-fusion/issues/29": {
+    "state": "closed",
+    "updated_at": "2026-10-13T20:55:32Z",
+    "note": "olake-fusion-29.md"
+   },
+   "https://github.com/datazip-inc/olake-ui/issues/93": {
+    "state": "closed",
+    "updated_at": "2026-06-18T10:23:52Z",
+    "note": "olake-ui-93.md"
+   }
+  },
+  "outside": {
+   "enabled": false,
+   "pages": {},
+   "skipped": []
+  },
+  "factcards": {
+   "latest-versions": "862044e3c833973c518d5f798106ba4897d7e349126050f7e804257726f88ef2"
+  },
+  "errors": []
+ },
+ "build": {
+  "command": "index.build",
+  "offline": false,
+  "outside": false,
+  "embedded": 1647,
+  "reused_vectors": 0,
+  "previous_version": null
+ }
+}
