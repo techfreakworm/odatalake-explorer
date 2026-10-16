@@ -167,3 +167,24 @@ def test_citation_details_labels():
     assert det[4]["snippet"].startswith("word word")
     assert len(det[4]["snippet"]) <= 241
     assert set(det[0]) == {"n", "url", "label", "title", "source_type", "snippet"}
+
+
+def test_snippets_are_plain_text_without_markdown_syntax():
+    text = ("Alerts | olake > Alerts\n\n<!-- tabs:start -->\n## Alert Message Format\n\n"
+            "When a job fails, OLake sends a **POST** request to your [webhook](https://x.example/) URL:\n\n"
+            "```json\n{\"a\": 1}\n```\n\n| Field | Meaning |\n|---|---|\n| `job_id` | the job |\n\n- one\n> quoted")
+    c = doc(0, "https://olake.io/docs/a/", text=text)
+    snip = citation_details(resolve_citations("x [1].", [Passage(1, c, c["doc_url"])]).cited)[0]["snippet"]
+    assert snip == ('Alert Message Format When a job fails, OLake sends a POST request to your webhook URL: '
+                    '{"a": 1} Field Meaning job_id the job one quoted')
+
+
+def test_docs_label_skips_the_page_title_and_site_suffix():
+    def label(title, path):
+        c = doc(0, "https://olake.io/docs/a/", title=title, section_path=path)
+        return citation_details(resolve_citations("x [1].", [Passage(1, c, c["doc_url"])]).cited)[0]["label"]
+
+    assert label("Alerts and Notifications - Move and Manage Data",
+                 ["Alerts and Notifications", "Alert Message Format"]) == "Alert Message Format"
+    assert label("Alerts and Notifications - Move and Manage Data", ["Alerts and Notifications"]) == ""
+    assert label("REST Catalog | OLake", ["Configuration", "Auth"]) == "Configuration › Auth"

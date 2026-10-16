@@ -418,13 +418,13 @@ def create_app(settings: Settings | None = None, *, llm=None, embedder_factory: 
             if not task.done():
                 task.cancel()
 
-    @app.get("/healthz")
+    @app.api_route("/healthz", methods=["GET", "HEAD"])
     async def healthz():
         snap = rt.holder.current
         return {"status": "ok", "git_sha": settings.git_sha, "index": index_info(snap) if snap else None,
                 "uptime_s": int(time.time() - rt.started_at)}
 
-    @app.get("/readyz")
+    @app.api_route("/readyz", methods=["GET", "HEAD"])
     async def readyz():
         if rt.ready:
             return {"ready": True}
@@ -456,11 +456,11 @@ def create_app(settings: Settings | None = None, *, llm=None, embedder_factory: 
             return error_json(404, "not_found", f"{rel} is not built yet", "")
         return FileResponse(path, media_type=media_type, headers=headers)
 
-    @app.get("/widget.js")
+    @app.api_route("/widget.js", methods=["GET", "HEAD"])
     async def widget_js():
         return web_file("widget.js", "application/javascript", {"Cache-Control": "public, max-age=300"})
 
-    @app.get("/embed")
+    @app.api_route("/embed", methods=["GET", "HEAD"])
     async def embed():
         # frame-ancestors only works as an HTTP header (not in <meta>); no X-Frame-Options, so any site can frame it.
         # A second policy locks the embed's own content to this origin (defence in depth for rendered answers).
@@ -470,7 +470,7 @@ def create_app(settings: Settings | None = None, *, llm=None, embedder_factory: 
             resp.headers.append("Content-Security-Policy", EMBED_CSP)
         return resp
 
-    @app.get("/")
+    @app.api_route("/", methods=["GET", "HEAD"])
     async def demo():
         return web_file("demo/index.html", "text/html", {"Cache-Control": "no-cache"})
 

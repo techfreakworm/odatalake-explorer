@@ -413,3 +413,13 @@ def test_web_assets_load_nothing_from_other_origins():
         assert not re.search(r"(?i)@import|fonts\.googleapis|cdn\.|googletagmanager|analytics", text), f.name
         assert "localStorage" not in text and "document.cookie" not in text, f.name
         assert ".innerHTML" not in text and "insertAdjacentHTML" not in text, f.name
+
+
+def test_head_requests_on_the_embed_routes(make_client):
+    c = make_client()
+    for path, ctype in (("/widget.js", "application/javascript"), ("/embed", "text/html"), ("/", "text/html"),
+                        ("/static/embed.css", "text/css"), ("/healthz", "application/json")):
+        r = c.head(path)
+        assert r.status_code == 200 and r.headers["content-type"].startswith(ctype), path
+        assert r.content == b""
+    assert "frame-ancestors *" in c.head("/embed").headers.get_list("content-security-policy")

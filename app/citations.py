@@ -242,11 +242,29 @@ def _label(ch: Mapping[str, Any], st: str) -> str:
         return "fact card"
     if st == "blog":
         return "blog"
-    path = [str(x) for x in (ch.get("section_path") or []) if x]
-    return " › ".join(path) if path else str(ch.get("title") or "")
+    path = [str(x).strip() for x in (ch.get("section_path") or []) if str(x).strip()]
+    page = re.split(r"\s[-|–]\s", str(ch.get("title") or ""))[0].strip().lower()
+    while path and path[0].lower() == page:  # the card already shows the page title
+        path = path[1:]
+    return " › ".join(path)
+
+
+_FENCE_LINE = re.compile(r"^\s*(```|~~~)")
+_TABLE_RULE = re.compile(r"^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$")
 
 
 def _snippet(text: str, limit: int = 240) -> str:
+    """Plain-text preview of a chunk for a source card: the context header and Markdown syntax removed."""
     body = text.split("\n", 1)[1] if "\n" in text else text
-    body = re.sub(r"\s+", " ", body).strip()
-    return body if len(body) <= limit else body[:limit].rstrip() + "…"
+    body = re.sub(r"<!--.*?-->", " ", body, flags=re.S)
+    lines = []
+    for line in body.splitlines():
+        if _FENCE_LINE.match(line) or _TABLE_RULE.match(line):
+            continue
+        line = re.sub(r"^\s*(#{1,6}\s+|>\s?|[-*+]\s+|\d+[.)]\s+)", "", line)
+        lines.append(line)
+    out = " ".join(lines)
+    out = re.sub(r"!?\[([^\]]*)\]\([^)]*\)", r"\1", out)
+    out = re.sub(r"\*\*|__|`", "", out).replace("|", " ")
+    out = re.sub(r"\s+", " ", out).strip()
+    return out if len(out) <= limit else out[:limit].rstrip() + "…"
