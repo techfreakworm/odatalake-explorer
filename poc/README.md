@@ -166,6 +166,32 @@ Generated from `results/*.json` by `uv run python -I -m common.results_table`. R
 | git ls-remote HEAD check | 714-1005 ms per repo, no API quota | `freshness.probe` |
 <!-- results-table:end -->
 
+## Canonical end-to-end run: exact config and abstain breakdown
+
+`results/eval_run-canonical.json` (94 rows) was produced by this config (also stored in the file under `config`):
+
+| Setting | Value |
+|---|---|
+| Chunks | `chunks-300`: docs + repo allowlist v1, no blog |
+| Retrieval | hybrid RRF k=60 over BM25 top 50 + dense top 50 |
+| Embedder | BAAI/bge-base-en-v1.5 (fastembed int8 ONNX) with the BGE query prefix |
+| Reranker / gate model | Xenova/ms-marco-MiniLM-L-6-v2 over the fused top 20; also the gate signal |
+| Gate | abstain without calling the LLM if top MiniLM score < −0.891 (tuned on the 18-question seed set) |
+| Passages to LLM | k = 6 |
+| LLM | qwen3:32b Q4_K_M, ollama 0.33.3 OpenAI-compatible API, temperature 0, JSON mode, `reasoning_effort="none"`, prompt v1 |
+| Model abstain rules | `answerable=false` → abstain; no valid `[n]` citation → abstain; unparseable JSON → abstain |
+| Scorer | concurrency 4, timeout 180 s; judge qwen3:32b with reasoning off, judge concurrency 2 |
+| Abstain detection | `sources` empty, or the don't-know regex anywhere in the answer |
+
+False abstains on all 82 must-answer rows: **13**.
+* **gate (7):** SET-07, SRC-11, SYNC-09, DEP-06, FP-03, ADV-02, ADV-03.
+* **model `answerable=false` (5):** SRC-08, SRC-09, SYNC-12, FP-02, FP-04.
+* **scorer's abstain regex on a sourced answer (1):** SRC-16.
+* **no valid citation:** 0.
+* **answerable rows only (5 of 69):** SRC-11, SYNC-09 and DEP-06 by the gate; SRC-09 and SYNC-12 by the model.
+
+Missed abstains: **2 of 12**, UNK-04 (top score 0.88) and OOS-03 (0.78). Both passed the gate, and the model answered from loosely related passages.
+
 ## Findings that change the event-day design
 
 Measured in this POC. Numbers are in `results/*.json` and in the table below.

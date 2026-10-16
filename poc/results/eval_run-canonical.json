@@ -2626,5 +2626,144 @@
         "behavior_pass": true
       }
     }
-  ]
+  ],
+  "config": {
+    "api": "poc/api/app.py (uvicorn 127.0.0.1:8000), prompt v1 (answer/pipeline.py SYSTEM_PROMPT)",
+    "chunks": "chunks-300 (target 300 o200k tokens, hard max 450): docs + repo allowlist v1, no blog",
+    "retrieval": "hybrid RRF k=60 over BM25 top 50 + dense top 50",
+    "embedder": "BAAI/bge-base-en-v1.5 (fastembed int8 ONNX), query prefix 'Represent this sentence for searching relevant passages: '",
+    "reranker": "Xenova/ms-marco-MiniLM-L-6-v2 over the fused top 20 (ranking AND gate signal)",
+    "gate": "abstain without calling the LLM if top MiniLM score < -0.891 (threshold tuned on the 18-question seed set)",
+    "k_passages_to_llm": 6,
+    "llm": "qwen3:32b Q4_K_M via ollama 0.33.3 OpenAI-compatible /v1, temperature 0, response_format json_object, reasoning_effort=none, streaming",
+    "model_abstain_rules": "answerable=false -> abstain (model text, sources []); no valid [n] citation -> abstain; unparseable JSON -> abstain",
+    "onnx_threads": "default (all 18 cores)",
+    "scorer": "eval.score, concurrency 4, timeout 180 s; judge qwen3:32b reasoning_effort=none, judge concurrency 2",
+    "abstain_detection": "sources empty OR don't-know regex anywhere in the answer (the documented rule at the time of the run)",
+    "machine_note": "Apple M5 Max; another team's fastembed job ran concurrently (load average > 200), so latencies are inflated"
+  },
+  "abstain_breakdown": {
+    "false_abstains_all_must_answer_rows": {
+      "n": 13,
+      "of": 82,
+      "by_trigger": {
+        "gate": 7,
+        "model_answerable_false": 5,
+        "scorer_abstain_pattern_on_sourced_answer": 1
+      },
+      "rows": [
+        {
+          "id": "SET-07",
+          "type": "negative",
+          "trigger": "gate",
+          "top_minilm_score": -3.6102
+        },
+        {
+          "id": "SRC-08",
+          "type": "negative",
+          "trigger": "model_answerable_false",
+          "top_minilm_score": 2.6682
+        },
+        {
+          "id": "SRC-09",
+          "type": "answerable",
+          "trigger": "model_answerable_false",
+          "top_minilm_score": 5.9777
+        },
+        {
+          "id": "SRC-11",
+          "type": "answerable",
+          "trigger": "gate",
+          "top_minilm_score": -1.8131
+        },
+        {
+          "id": "SRC-16",
+          "type": "negative",
+          "trigger": "scorer_abstain_pattern_on_sourced_answer",
+          "top_minilm_score": 3.6757
+        },
+        {
+          "id": "SYNC-09",
+          "type": "answerable",
+          "trigger": "gate",
+          "top_minilm_score": -2.6731
+        },
+        {
+          "id": "SYNC-12",
+          "type": "answerable",
+          "trigger": "model_answerable_false",
+          "top_minilm_score": 2.6855
+        },
+        {
+          "id": "DEP-06",
+          "type": "answerable",
+          "trigger": "gate",
+          "top_minilm_score": -1.1655
+        },
+        {
+          "id": "FP-02",
+          "type": "false-premise",
+          "trigger": "model_answerable_false",
+          "top_minilm_score": 2.5652
+        },
+        {
+          "id": "FP-03",
+          "type": "false-premise",
+          "trigger": "gate",
+          "top_minilm_score": -1.6089
+        },
+        {
+          "id": "FP-04",
+          "type": "false-premise",
+          "trigger": "model_answerable_false",
+          "top_minilm_score": 3.8445
+        },
+        {
+          "id": "ADV-02",
+          "type": "adversarial",
+          "trigger": "gate",
+          "top_minilm_score": -4.2296
+        },
+        {
+          "id": "ADV-03",
+          "type": "adversarial",
+          "trigger": "gate",
+          "top_minilm_score": -6.3606
+        }
+      ]
+    },
+    "false_abstains_answerable_rows": {
+      "n": 5,
+      "of": 69,
+      "by_trigger": {
+        "model_answerable_false": 2,
+        "gate": 3
+      },
+      "ids": [
+        "SRC-09",
+        "SRC-11",
+        "SYNC-09",
+        "SYNC-12",
+        "DEP-06"
+      ]
+    },
+    "missed_abstains": {
+      "n": 2,
+      "of": 12,
+      "rows": [
+        {
+          "id": "UNK-04",
+          "type": "unanswerable",
+          "trigger": "gate passed and model answered",
+          "top_minilm_score": 0.88
+        },
+        {
+          "id": "OOS-03",
+          "type": "out-of-scope",
+          "trigger": "gate passed and model answered",
+          "top_minilm_score": 0.7775
+        }
+      ]
+    }
+  }
 }

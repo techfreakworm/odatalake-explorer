@@ -1,5 +1,20 @@
 {
-  "source": "log of the first canonical bench run (stopped before writing JSON because bge-reranker-base configs ran for 10+ min per config under machine-wide CPU contention)",
+  "provenance": {
+    "kind": "log transcription, not a JSON written by retrieval.bench",
+    "why": "the first canonical bench run was stopped while bge-reranker-base configs took 10+ min each under machine-wide CPU contention; its JSON is only written at the end, so this config was copied from the run log",
+    "log_line_source": "retrieval.bench stdout, run 2026-10-16 23:33 IST",
+    "settings": {
+      "chunks": "chunks-300 (target 300)",
+      "fuse_n": 50,
+      "rrf_k": 60,
+      "rerank_n": 20,
+      "dense": "BAAI/bge-small-en-v1.5",
+      "reranker": "BAAI/bge-reranker-base",
+      "questions": "docs/eval-questions.md, 82 rows with expected sources",
+      "repeat": 0
+    },
+    "not_available": "per-question first-hit ranks and latency"
+  },
   "questions": "docs/eval-questions.md, 82 rows with expected sources",
   "configs": {
     "@300 hybrid:BAAI/bge-small-en-v1.5+rerank:BAAI/bge-reranker-base": {
