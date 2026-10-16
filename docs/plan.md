@@ -713,6 +713,13 @@ DO NOT
 The secret setup follows the Secret Manager docs: create from stdin [[sm-create]], and grant `roles/secretmanager.secretAccessor` [[sm-access]]. Cloud Run's `--update-secrets` maps an env var to a pinned secret version [[cr-secrets]].
 
 ```text
+GOAL
+A live, warm, contract-exact endpoint on the primary host by 12:00, measured by the eval runner at every checkpoint, plus
+the README with every number traced to an eval/results file. You also run the team: checkpoints, patch loop, freeze.
+
+YOU OWN: Dockerfile, .dockerignore, deploy/, .do/, eval/, README.md, pyproject.toml, uv.lock, .github/, CLAUDE.md, docs/.
+CONTRACTS: I2 (what you deploy and test), I3 (what eval/run.py parses), I4 (what deploy/env.yaml and the secrets hold).
+
 D1 (10:40-11:00) Deploy B's stub to Cloud Run. Write the Dockerfile: FROM python:3.12-slim (linux/amd64), uv sync
    --frozen --no-dev, the fastembed models downloaded at build time, COPY data/index/, a non-root user, and CMD uvicorn
    app.main:app --host 0.0.0.0 --port ${PORT:-8080}. Add .dockerignore (.cache, .env, .git, logs).
@@ -731,9 +738,8 @@ D1 (10:40-11:00) Deploy B's stub to Cloud Run. Write the Dockerfile: FROM python
    Add --no-cpu-throttling when REFRESH_INTERVAL_MIN > 0.
    deploy/env.yaml holds the non-secret I4 variables (gitignored if it holds anything sensitive).
    deploy/deploy.sh fallback: doctl apps create --spec .do/app.yaml the first time, then doctl apps update <app-id>
-   --spec .do/app.yaml. This is the section 1.4 spec with the event repo, sized like Cloud Run (apps-s-1vcpu-1gb, apps-s-1vcpu-2gb
-   or apps-d-1vcpu-4gb), and the
-   keys as envs of type SECRET.
+   --spec .do/app.yaml. This is the section 1.4 spec with the event repo, sized like Cloud Run (apps-s-1vcpu-1gb,
+   apps-s-1vcpu-2gb or apps-d-1vcpu-4gb), with the keys as envs of type SECRET.
    Deploy, then curl /healthz and /ask from a phone.
 D2 (11:00-11:30) eval/run.py, following the "Scoring method" section of eval/questions.md: parse the table, POST each question to
    --base-url with X-Request-ID eval-<ID>, run the deterministic checks, and use the optional --judge LLM judge.
@@ -751,6 +757,18 @@ D5 (12:30-13:30) Load test (--concurrency 8). p50/p95, cost per answer from the 
    README design-choices table and numbers, each number with its eval/results file.
 D6 (13:30-14:15) Run the patch loop (section 7 of docs/plan.md): eval, triage workflow, fixes by owners, deploy.
 D7 (14:15-14:30) Freeze checklist (section 8), tag freeze, submit.
+
+ACCEPTANCE CHECKS
+- curl -s "$URL/healthz" | jq .index shows the deployed index version, and it matches data/index/CURRENT.
+- uv run python -m eval.run --base-url "$URL" exits 0: no contract failures.
+- The day-of checks 4-5 in section 2 pass on $URL: the olake.io-origin preflight, SSE timing, and the 50-request burst
+  with no 429 or 5xx.
+- README: every number names its eval/results file, and the "Built with" and disclosure sections exist.
+
+DO NOT
+- Deploy after 14:20 unless the endpoint is broken. Build or push a large image over venue Wi-Fi (build remotely).
+- Put keys in the repo, the image or deploy/env.yaml (use Secret Manager or SECRET envs).
+- Edit a teammate's paths. Change a contract without the operator.
 ```
 
 ### 4.6 Workflow 1: eval-triage fan-out (paste into the lead session after an eval run)
