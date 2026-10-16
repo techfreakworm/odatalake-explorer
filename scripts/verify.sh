@@ -47,7 +47,9 @@ result() {  # result <PASS|FAIL|SKIP> <step> [detail]
 run_step() {  # run_step <step> <command...>: PASS/FAIL on the exit code, the output tail on failure
   local step=$1; shift
   if "$@" >"$LOGDIR/$step.log" 2>&1; then
-    result PASS "$step" "$(tail -n 1 "$LOGDIR/$step.log")"
+    local summary
+    summary=$(grep -E 'passed|ℹ pass|^valid|Checked|Audited|naming to' "$LOGDIR/$step.log" | tail -n 1)
+    result PASS "$step" "${summary:-$(tail -n 1 "$LOGDIR/$step.log")}"
   else
     result FAIL "$step" "(exit $?) $*"
     tail -n 25 "$LOGDIR/$step.log" | sed 's/^/      | /'
