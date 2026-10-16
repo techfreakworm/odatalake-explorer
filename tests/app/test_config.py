@@ -101,3 +101,11 @@ def test_invalid_values_fail_fast(key, value):
     with pytest.raises(ConfigError) as e:
         Settings.from_env({key: value})
     assert key in str(e.value)
+
+
+def test_non_standard_canary_is_kept_but_warned_about_without_its_value():
+    s = Settings.from_env({"CANARY": "my-own-canary-value-xyz"})
+    assert s.canary == "my-own-canary-value-xyz"
+    assert any("CANARY" in w for w in s.warnings)
+    assert all("my-own-canary-value-xyz" not in w for w in s.warnings)
+    assert Settings.from_env({"CANARY": "00112233aabbccdd"}).warnings == ()

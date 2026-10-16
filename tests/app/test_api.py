@@ -453,3 +453,17 @@ def test_malformed_primary_stream_fails_over_over_http(index_dir):
                                    headers={"Cache-Control": "no-cache"}).text)
         assert [n for n, _ in events][0] == "meta" and events[-1][0] == "done"
         assert events[-1][1]["answer"] == "From the fallback [1]."
+
+
+def test_rate_limit_key_is_the_right_most_forwarded_hop(make_client):
+    c = make_client(rate_limit_burst=1, rate_limit_per_min=0.001)
+
+    def ask_as(xff):
+        headers = {"X-Forwarded-For": xff, "Cache-Control": "no-cache"}
+        return c.post("/ask", json={"question": ON_TOPIC}, headers=headers)
+
+    assert ask_as("1.1.1.1, 203.0.113.9").headers["x-ask-reason"] == "answered"
+    # rotating the client-controlled first hop does not get a fresh bucket
+    r = ask_as("2.2.2.2, 203.0.113.9")
+    assert r.status_code == 200 and r.headers["x-ask-reason"] == "rate_limited" and r.json()["sources"]
+    assert ask_as("1.1.1.1, 198.51.100.7").headers["x-ask-reason"] == "answered"

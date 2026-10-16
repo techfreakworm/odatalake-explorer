@@ -136,3 +136,12 @@ def test_stream_sanitizer_stops_on_prompt_line():
 def test_remove_markers_keeps_code_indentation():
     text = "Set it [1]:\n\n```yaml\nx-envs:\n  shared: &sharedEnvs\n    TELEMETRY_DISABLED: \"true\"\n```\n\nDone [1]."
     assert remove_markers(text) == text
+
+
+def test_hold_back_covers_a_canary_longer_than_16_characters():
+    long_canary = "0123456789abcdef01234567"  # 24 characters
+    s = StreamSanitizer(LeakGuard(long_canary, PROMPT))
+    deltas = ["Some text first "] + list(long_canary) + [" then more text"]  # one character at a time
+    out = feed_all(s, deltas)
+    assert s.leak
+    assert all(long_canary[i:i + 4] not in out for i in range(len(long_canary) - 3))

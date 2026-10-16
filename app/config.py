@@ -7,6 +7,7 @@ when its base URL, key and model are all set. Empty strings count as unset, so a
 from __future__ import annotations
 
 import os
+import re
 import secrets
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -83,6 +84,9 @@ class Settings:
         if canary and len(canary) < 8:
             warnings.append("CANARY shorter than 8 characters was replaced by a random one")
             canary = ""
+        elif canary and not re.fullmatch(r"[0-9a-fA-F]{16}", canary):
+            # never echo the value; the stream holds back max(16, len(CANARY)) characters either way
+            warnings.append("CANARY is not 16 hex characters (openssl rand -hex 8); it is used as given")
 
         return cls(
             providers=tuple(providers),

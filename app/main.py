@@ -196,9 +196,13 @@ class Runtime:
 
 
 def client_key(request: Request) -> str:
-    xff = request.headers.get("x-forwarded-for", "")
-    if xff.strip():
-        return xff.split(",")[0].strip()[:64]
+    """The token-bucket key. The right-most X-Forwarded-For hop is the one the platform's proxy appended (on Cloud
+    Run, the client IP); earlier hops are client-controlled, so rotating them does not buy a fresh bucket. Behind a
+    chain of proxies the right-most hop can be a proxy's own IP and several clients then share one bucket: still safe,
+    because the burst stays above the test-set size and an empty bucket gives the degraded 200, never a 429."""
+    hops = [h.strip() for h in request.headers.get("x-forwarded-for", "").split(",") if h.strip()]
+    if hops:
+        return hops[-1][:64]
     return request.client.host if request.client else "unknown"
 
 

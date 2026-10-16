@@ -176,7 +176,7 @@ class StreamSanitizer:
 
     def __init__(self, guard: LeakGuard, holdback: int = HOLDBACK_CHARS):
         self.guard = guard
-        self.hold = holdback
+        self.hold = max(holdback, len(guard.canary))  # a longer CANARY needs a longer hold-back
         self.text = ""
         self.emitted = 0
         self.started = False
