@@ -6,22 +6,22 @@ Every question is generated (even when the gate would abstain) so that both
 abstain policies are evaluated on the same outputs:
   (a) gate:  abstain if top reranker score < threshold (tuned here on the set)
   (b) model: abstain if answerable=false or no valid citation
-Should-abstain types: out-of-scope, unanswerable, adversarial. False-premise
-rows are reported separately (correcting the premise with a citation is fine).
+Behaviour rules follow docs/eval-questions.md: unanswerable, out-of-scope and
+adversarial rows without sources must abstain; every other row must answer
+(false-premise rows answer by correcting the premise).
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import statistics
 import time
 from pathlib import Path
 
 from answer.pipeline import AskPipeline
 from common.config import LLM_MODEL, POC_DIR, RESULTS_DIR, write_json
-from eval.questions import ABSTAIN_TYPES, load_questions, normalize_url
-
-ANSWER_TYPES = {"answerable", "negative"}
+from eval.questions import load_questions, must_abstain, normalize_url
 
 
 def pct(xs, p):
@@ -30,22 +30,25 @@ def pct(xs, p):
 
 
 def abstain_metrics(rows: list[dict], decide) -> dict:
-    should = [r for r in rows if r["type"] in ABSTAIN_TYPES]
-    answer = [r for r in rows if r["type"] in ANSWER_TYPES]
-    abst = [r for r in rows if r["type"] in ABSTAIN_TYPES | ANSWER_TYPES and decide(r)]
-    tp = sum(1 for r in abst if r["type"] in ABSTAIN_TYPES)
+    should = [r for r in rows if r["must_abstain"]]
+    answer = [r for r in rows if not r["must_abstain"]]
+    answerable = [r for r in rows if r["type"] == "answerable"]
+    abst = [r for r in rows if decide(r)]
+    tp = sum(1 for r in abst if r["must_abstain"])
     return {
         "abstained": len(abst),
         "precision": round(tp / len(abst), 3) if abst else None,
         "recall": round(tp / len(should), 3) if should else None,
         "false_abstain_rate": round(sum(1 for r in answer if decide(r)) / len(answer), 3) if answer else None,
+        "false_abstain_rate_answerable": (round(sum(1 for r in answerable if decide(r)) / len(answerable), 3)
+                                          if answerable else None),
         "n_should_abstain": len(should),
         "n_should_answer": len(answer),
     }
 
 
 def tune_gate(rows: list[dict]) -> dict:
-    scored = [r for r in rows if r["top_score"] is not None and r["type"] in ABSTAIN_TYPES | ANSWER_TYPES]
+    scored = [r for r in rows if r["top_score"] is not None]
     cands = sorted({r["top_score"] for r in scored})
     thresholds = [cands[0] - 1] + [(a + b) / 2 for a, b in zip(cands, cands[1:])] + [cands[-1] + 1]
     best = None
@@ -58,6 +61,10 @@ def tune_gate(rows: list[dict]) -> dict:
         if best is None or key > best[0]:
             best = (key, t, m)
     return {"threshold": round(best[1], 4), "balanced_accuracy": best[0][0], **best[2]}
+
+
+def q_has_sources(row: dict, qs: list[dict]) -> bool:
+    return any(q["id"] == row["id"] and q["expected_norm"] for q in qs)
 
 
 def think_probe(pipe: AskPipeline, question: str) -> dict:
@@ -87,6 +94,8 @@ def main() -> None:
     ap.add_argument("--think-mode", default="reasoning_none",
                     help="default | no_think_tag (/no_think) | think_false (extra_body think=false) | reasoning_none")
     ap.add_argument("--think-probe", action="store_true")
+    ap.add_argument("--no-generate", action="store_true",
+                    help="retrieval + rerank only: tune the gate on top scores without calling the LLM")
     ap.add_argument("--out", default=str(RESULTS_DIR / "answer.json"))
     args = ap.parse_args()
 
@@ -100,22 +109,53 @@ def main() -> None:
                       "max_passages": args.max_passages},
         "questions": {"file": Path(args.questions).name, "n": len(qs)},
     }
-    t0 = time.perf_counter()  # load the model into memory so the first measured call is warm
-    pipe.client.chat.completions.create(model=pipe.model, max_tokens=5,
-                                        messages=[{"role": "user", "content": "Reply OK. /no_think"}])
-    report["llm"]["warmup_load_s"] = round(time.perf_counter() - t0, 1)
+    if not args.no_generate:
+        t0 = time.perf_counter()  # load the model into memory so the first measured call is warm
+        pipe.client.chat.completions.create(model=pipe.model, max_tokens=5, reasoning_effort="none",
+                                            messages=[{"role": "user", "content": "Reply OK."}])
+        report["llm"]["warmup_load_s"] = round(time.perf_counter() - t0, 1)
     if args.think_probe:
         report["think_probe"] = think_probe(pipe, qs[0]["question"])
         pipe.think_mode = args.think_mode
 
     rows = []
     t_run = time.perf_counter()
+    if args.no_generate:
+        for q in qs:
+            hits, rt = pipe.retriever.search(q["question"], k=10)
+            exp = set(q["expected_norm"])
+            rows.append({
+                "id": q["id"], "type": q["type"], "must_abstain": must_abstain(q),
+                "top_score": round(hits[0]["score"], 4) if hits and hits[0]["rerank"] else None,
+                "context_hit": any(normalize_url(h["url"]) in exp for h in hits[: pipe.max_passages]) if exp else None,
+                "rerank_ms": round(rt.get("rerank_ms", 0), 1),
+            })
+        report["run_wall_s"] = round(time.perf_counter() - t_run, 1)
+        gate = tune_gate(rows)
+        report["policy_a_gate"] = gate
+        for r in rows:
+            r["policy_a_abstain"] = (r["top_score"] if r["top_score"] is not None else -99) < gate["threshold"]
+        ctx = [r["context_hit"] for r in rows if r["context_hit"] is not None]
+        report["context_hit_rate_top_passages"] = round(sum(ctx) / len(ctx), 3) if ctx else None
+        by_type: dict[str, dict] = {}
+        for r in rows:
+            bt = by_type.setdefault(r["type"], {"n": 0, "gate_abstained": 0, "top_score_min": None, "top_score_max": None})
+            bt["n"] += 1
+            bt["gate_abstained"] += r["policy_a_abstain"]
+            if r["top_score"] is not None:
+                bt["top_score_min"] = min(r["top_score"], bt["top_score_min"] if bt["top_score_min"] is not None else 99)
+                bt["top_score_max"] = max(r["top_score"], bt["top_score_max"] if bt["top_score_max"] is not None else -99)
+        report["by_type"] = by_type
+        report["per_question"] = rows
+        write_json(Path(args.out), report)
+        print(json.dumps({k: report[k] for k in ("policy_a_gate", "context_hit_rate_top_passages", "by_type")}, indent=1))
+        return
     for q in qs:
         res = pipe.ask(q["question"], force_generate=True)
         exp = set(q["expected_norm"])
         src_hit = any(normalize_url(u) in exp for u in res.sources) if exp else None
         row = {
-            "id": q["id"], "type": q["type"], "question": q["question"],
+            "id": q["id"], "type": q["type"], "must_abstain": must_abstain(q), "question": q["question"],
             "top_score": None if res.top_score is None else round(res.top_score, 4),
             "model_answerable": res.model_answerable, "policy_b_abstain": res.abstained, "reason": res.reason,
             "sources": res.sources, "source_hit": src_hit, "answer": res.answer,
@@ -140,7 +180,7 @@ def main() -> None:
         bt["policy_b_abstained"] += r["policy_b_abstain"]
         bt["source_hit"] += bool(r["source_hit"])
     report["by_type"] = by_type
-    ans = [r for r in rows if r["type"] in ANSWER_TYPES]
+    ans = [r for r in rows if not r["must_abstain"] and q_has_sources(r, qs)]
     report["answered_source_hit_rate"] = round(sum(bool(r["source_hit"]) for r in ans) / len(ans), 3) if ans else None
     gen = [r for r in rows if r["timings_ms"].get("llm_total_ms")]
     report["latency_ms"] = {

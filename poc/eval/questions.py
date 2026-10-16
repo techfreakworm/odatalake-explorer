@@ -5,8 +5,9 @@ Two input formats:
     expected_sources [list], must_mention [list]
   * the canonical Markdown table in docs/eval-questions.md:
     | ID | Category | Type | Question | Expected sources | Must mention |
-    expected sources separated by <br>, must-mention facts by ';',
-    '—' (or '-' / empty) meaning none.
+    expected sources and must-mention items both separated by <br> (a fact may
+    contain ';'), '—' (or '-' / empty) meaning none. Must-mention items that
+    start with "BEHAVIOR:" are behaviour checks for the judge, not facts.
 """
 
 from __future__ import annotations
@@ -17,7 +18,13 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 TYPES = {"answerable", "negative", "out-of-scope", "unanswerable", "false-premise", "adversarial"}
-ABSTAIN_TYPES = {"out-of-scope", "unanswerable", "adversarial"}  # correct behaviour: say "I don't know"/decline
+ABSTAIN_TYPES = {"out-of-scope", "unanswerable", "adversarial"}  # abstain/decline (adversarial only without sources)
+
+
+def must_abstain(q: dict) -> bool:
+    """Unanswerable and out-of-scope rows, and adversarial rows WITHOUT expected sources, must abstain.
+    Answerable, negative, false-premise and adversarial rows that wrap a real question must answer."""
+    return q["type"] in ("out-of-scope", "unanswerable") or (q["type"] == "adversarial" and not q["expected_sources"])
 NONE_MARKS = {"", "—", "–", "-", "n/a", "none"}
 
 
@@ -60,11 +67,12 @@ def _split_sources(cell: str) -> list[str]:
     return out
 
 
-def _split_facts(cell: str) -> list[str]:
+def _split_items(cell: str) -> list[str]:
     cell = cell.strip()
     if cell.lower() in NONE_MARKS:
         return []
-    return [f.strip() for f in cell.split(";") if f.strip() and f.strip().lower() not in NONE_MARKS]
+    parts = re.split(r"<br\s*/?>", cell, flags=re.I)
+    return [f.strip() for f in parts if f.strip() and f.strip().lower() not in NONE_MARKS]
 
 
 def parse_markdown_table(text: str) -> list[dict]:
@@ -85,13 +93,15 @@ def parse_markdown_table(text: str) -> list[dict]:
             continue
         qid, cat, typ, question, sources, facts = cells[:6]
         typ = typ.lower().strip()
+        items = _split_items(facts)
         rows.append({
             "id": qid,
             "category": cat,
             "type": typ,
             "question": question,
             "expected_sources": _split_sources(sources),
-            "must_mention": _split_facts(facts),
+            "must_mention": [f for f in items if not f.upper().startswith("BEHAVIOR:")],
+            "behavior": [f for f in items if f.upper().startswith("BEHAVIOR:")],
         })
     return rows
 
@@ -103,6 +113,7 @@ def load_questions(path: str | Path) -> list[dict]:
     else:
         rows = parse_markdown_table(path.read_text())
     for r in rows:
+        r.setdefault("behavior", [])
         if r["type"] not in TYPES:
             raise ValueError(f"{r['id']}: unknown type {r['type']!r}")
         r["expected_norm"] = sorted({normalize_url(u) for u in r["expected_sources"]})
