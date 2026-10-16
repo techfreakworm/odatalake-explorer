@@ -24,8 +24,9 @@ def main() -> None:
         f = c["docs_fetch"]
         cmd = "`ingest.docs --blog`, `ingest.repos`, `ingest.stats`"
         add(("Docs pages fetched / errors", f"{d['pages']} / {len(f['errors'])}", cmd))
-        add(("Docs fetch wall time (4 concurrent)", f"{f['fetch_wall_s_by_section']['docs']} s fetch + extraction "
-             f"(all {f['requested']} pages incl. blog: {f['total_wall_s']} s)", cmd))
+        add(("Docs fetch wall time (4 concurrent)", f"{f['fetch_wall_s_by_section']['docs']} s for {d['pages']} pages; "
+             f"extraction {f['extract_wall_s']} s for all {f['requested']} pages; whole run incl. blog "
+             f"{f['total_wall_s']} s", cmd))
         add(("Docs HTML → Markdown", f"{d['html_bytes'] / 1e6:.1f} MB → {d['md_bytes'] / 1e6:.2f} MB", cmd))
         add(("Docs tokens (o200k)", f"{d['tokens']:,} (p50 {d['tokens_per_page_p50']:,}/page, max {d['tokens_per_page_max']:,})", cmd))
         add(("Docs code blocks / tables / tab groups / admonitions",
@@ -59,7 +60,8 @@ def main() -> None:
                 add((f"@{target} {name}",
                      f"hit@1 {cfg['hit@1']}, hit@5 {cfg['hit@5']}, hit@10 {cfg['hit@10']}, MRR {cfg['mrr@10']}; "
                      f"latency p50 {lat.get('p50')} ms / p95 {lat.get('p95')} ms", cmd))
-        add(("Retrieval process RSS (all models loaded)", f"{rt['rss_mb']['end']} MB", cmd))
+        add(("Bench process RSS (2 dense + 2 rerankers, after batch-embedding both corpora; not a serving number)",
+             f"{rt['rss_mb']['end']} MB", cmd))
     lt = load("latency_threads.json")
     if lt:
         for label, res in lt["by_threads"].items():
@@ -88,6 +90,16 @@ def main() -> None:
         add(("Scorer: judge fact coverage (mean)", str(s["fact_coverage_mean"]), cmd))
         add(("Scorer: /ask latency p50 / p95", f"{s['latency_ms']['p50']} / {s['latency_ms']['p95']} ms", cmd))
         add(("Scorer: full run wall time", f"{s['total_wall_s']} s ({s['ask_wall_s']} s asks + {s['judge_wall_s']} s judge)", cmd))
+    ep = load("embed_probe.json")
+    if ep:
+        cmd = "`api.app` + `http.server` on a second origin, driven in Chrome"
+        b = ep["browser_cross_origin"]
+        add(("Cross-origin widget: gated answer / LLM answer", f"{b['gated_out_of_scope_question_ms']} ms / "
+             f"{b['llm_answer_question_ms']} ms (preflight then POST; preflight cached afterwards)", cmd))
+        add(("Strict host CSP (connect-src 'self')", "widget renders, /ask blocked: connect-src violation", cmd))
+        r = ep["api_rss_mb"]
+        add(("API RSS (bge-base + MiniLM + BM25)", f"{r['after_one_query']} MB after 1 query, "
+             f"{r['after_scorer_run_concurrency_4']} MB after concurrency-4 run; startup {ep['api_startup_s']} s", cmd))
     fr = load("freshness.json")
     if fr:
         cmd = "`freshness.probe`"

@@ -31,9 +31,10 @@ The judge reads `JUDGE_BASE_URL`, `JUDGE_API_KEY` and `JUDGE_MODEL`.
 | 2 | Corpus stats | `uv run python -I -m ingest.stats` | `results/corpus.json` |
 | 3 | Chunking at two target sizes | `uv run python -I -m chunking.chunker --target 300 --target 600` | `$CACHE/index/chunks-*.jsonl`, `results/chunks.json` |
 | 4 | Retrieval benchmark | `uv run python -I -m retrieval.bench --target 300 --target 600 --dense BAAI/bge-small-en-v1.5 --dense BAAI/bge-base-en-v1.5 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --repeat 2` | `results/retrieval.json` |
-| 5 | Answer + abstain probe | `uv run python -I -m answer.probe --think-probe` | `results/answer.json` |
+| 4b | Query-time latency at capped onnx threads (2, 4, all) | `uv run python -I -m retrieval.latency --threads 2 --threads 4 --threads 0` | `results/latency_threads.json` |
+| 5 | Answer + abstain probe (hybrid bge-base + MiniLM rerank, 6 passages, JSON mode) | `uv run python -I -m answer.probe --think-probe --dense BAAI/bge-base-en-v1.5 --reranker Xenova/ms-marco-MiniLM-L-6-v2` | `results/answer.json` |
 | 6 | Scorer for any `/ask` URL | `uv run python -I -m eval.score --url http://127.0.0.1:8000/ask` | `results/eval_run.json` |
-| 7 | API + widget, served from two origins | `uv run uvicorn api.app:app --host 127.0.0.1 --port 8000` and `uv run python -I -m http.server 8081 --bind 127.0.0.1 --directory api/demo` | open `http://127.0.0.1:8081/` |
+| 7 | API + widget, served from two origins | `ASK_GATE_THRESHOLD=-0.891 ASK_DENSE_MODEL=BAAI/bge-base-en-v1.5 uv run uvicorn api.app:app --host 127.0.0.1 --port 8000` and `uv run python -I -m http.server 8081 --bind 127.0.0.1 --directory api/demo` | open `http://127.0.0.1:8081/` (and `/csp.html` for the strict-CSP case); findings in `results/embed_probe.json` |
 | 8 | Freshness probe | `uv run python -I -m freshness.probe` | `results/freshness.json` |
 
 The eval harness reads either `eval/seed.jsonl` (the provisional 18 questions) or the
@@ -59,6 +60,78 @@ Result: 84 files.
 * Eval matching normalises both sides: no scheme, `#fragment`, `?query` or trailing slash, and
   `github.com/<org>/<repo>/blob/<ref>/<path>` becomes `github.com/<org>/<repo>/<path>`.
 
+## Results
+
+Generated from `results/*.json` by `uv run python -I -m common.results_table`. Quality numbers use the provisional seed set (`eval/seed.jsonl`: 18 questions, 14 with expected sources), so treat differences under about 0.15 as noise. Hardware: Apple M5 Max (18 cores, 128 GB); the LLM is local ollama qwen3:32b Q4_K_M, so LLM latency is not representative of a hosted provider.
+
+<!-- results-table:start -->
+| Metric | Value | Command |
+|---|---|---|
+| Docs pages fetched / errors | 124 / 0 | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
+| Docs fetch wall time (4 concurrent) | 7.52 s for 124 pages; extraction 3.49 s for all 209 pages; whole run incl. blog 16.64 s | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
+| Docs HTML → Markdown | 11.2 MB → 1.11 MB | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
+| Docs tokens (o200k) | 263,614 (p50 1,152/page, max 30,229) | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
+| Docs code blocks / tables / tab groups / admonitions | 830 / 182 / 80 / 342 | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
+| Docs stub pages (<100 tokens) | 13 | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
+| Repo files kept (allowlist) / tokens | 84 / 143,596 | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
+| Repo shallow clones wall time | 3.36 s (4 in parallel) | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
+| Blog posts / tokens (optional, separate) | 85 / 446,137 | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
+| Chunks @ target 300 (hard max 450) | 1861 chunks; tokens p50 235, p95 420, max 501; 4 over hard max | `chunking.chunker --target 300` |
+| Chunks @ target 600 (hard max 900) | 951 chunks; tokens p50 470, p95 815, max 881; 0 over hard max | `chunking.chunker --target 600` |
+| BM25 index build @ 300 | 0.097 s for 1861 chunks | `retrieval.bench` (see Steps) |
+| Embed bge-small-en-v1.5 @ 300 | 50 chunks 1.56 s; full 69.09 s (26.9 chunks/s); 79 chunks > 512 WordPiece tokens | `retrieval.bench` (see Steps) |
+| Embed bge-base-en-v1.5 @ 300 | 50 chunks 4.36 s; full 229.79 s (8.1 chunks/s); 79 chunks > 512 WordPiece tokens | `retrieval.bench` (see Steps) |
+| @300 bm25 | hit@1 0.286, hit@5 0.714, hit@10 0.857, MRR 0.451; latency p50 0.24 ms / p95 0.37 ms | `retrieval.bench` (see Steps) |
+| @300 dense:BAAI/bge-small-en-v1.5 | hit@1 0.214, hit@5 0.714, hit@10 0.857, MRR 0.463; latency p50 5.12 ms / p95 6.45 ms | `retrieval.bench` (see Steps) |
+| @300 dense:BAAI/bge-base-en-v1.5 | hit@1 0.357, hit@5 0.786, hit@10 0.929, MRR 0.567; latency p50 12.16 ms / p95 15.89 ms | `retrieval.bench` (see Steps) |
+| @300 hybrid:BAAI/bge-small-en-v1.5 | hit@1 0.357, hit@5 0.714, hit@10 0.929, MRR 0.511; latency p50 5.79 ms / p95 7.75 ms | `retrieval.bench` (see Steps) |
+| @300 hybrid:BAAI/bge-base-en-v1.5 | hit@1 0.429, hit@5 0.786, hit@10 0.857, MRR 0.581; latency p50 13.53 ms / p95 17.21 ms | `retrieval.bench` (see Steps) |
+| @300 hybrid:BAAI/bge-small-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2 | hit@1 0.357, hit@5 0.786, hit@10 0.857, MRR 0.545; latency p50 494.76 ms / p95 627.93 ms | `retrieval.bench` (see Steps) |
+| @300 hybrid:BAAI/bge-small-en-v1.5+rerank:BAAI/bge-reranker-base | hit@1 0.429, hit@5 0.857, hit@10 0.857, MRR 0.61; latency p50 1945.55 ms / p95 2279.44 ms | `retrieval.bench` (see Steps) |
+| @300 hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2 | hit@1 0.429, hit@5 0.786, hit@10 0.929, MRR 0.59; latency p50 431.29 ms / p95 468.5 ms | `retrieval.bench` (see Steps) |
+| @300 hybrid:BAAI/bge-base-en-v1.5+rerank:BAAI/bge-reranker-base | hit@1 0.429, hit@5 0.929, hit@10 0.929, MRR 0.645; latency p50 1786.92 ms / p95 2013.15 ms | `retrieval.bench` (see Steps) |
+| @300 bm25+rerank:Xenova/ms-marco-MiniLM-L-6-v2 | hit@1 0.429, hit@5 0.786, hit@10 0.786, MRR 0.574; latency p50 382.1 ms / p95 497.28 ms | `retrieval.bench` (see Steps) |
+| @300 bm25+rerank:BAAI/bge-reranker-base | hit@1 0.357, hit@5 0.857, hit@10 0.857, MRR 0.55; latency p50 1624.89 ms / p95 1841.39 ms | `retrieval.bench` (see Steps) |
+| BM25 index build @ 600 | 0.123 s for 951 chunks | `retrieval.bench` (see Steps) |
+| Embed bge-small-en-v1.5 @ 600 | 50 chunks 3.15 s; full 44.05 s (21.6 chunks/s); 556 chunks > 512 WordPiece tokens | `retrieval.bench` (see Steps) |
+| Embed bge-base-en-v1.5 @ 600 | 50 chunks 10.79 s; full 140.43 s (6.8 chunks/s); 556 chunks > 512 WordPiece tokens | `retrieval.bench` (see Steps) |
+| @600 bm25 | hit@1 0.5, hit@5 0.857, hit@10 0.857, MRR 0.61; latency p50 0.25 ms / p95 0.33 ms | `retrieval.bench` (see Steps) |
+| @600 dense:BAAI/bge-small-en-v1.5 | hit@1 0.286, hit@5 0.714, hit@10 0.857, MRR 0.485; latency p50 4.86 ms / p95 6.29 ms | `retrieval.bench` (see Steps) |
+| @600 dense:BAAI/bge-base-en-v1.5 | hit@1 0.429, hit@5 0.714, hit@10 0.857, MRR 0.562; latency p50 11.76 ms / p95 15.52 ms | `retrieval.bench` (see Steps) |
+| @600 hybrid:BAAI/bge-small-en-v1.5 | hit@1 0.357, hit@5 0.857, hit@10 0.857, MRR 0.54; latency p50 5.51 ms / p95 7.15 ms | `retrieval.bench` (see Steps) |
+| @600 hybrid:BAAI/bge-base-en-v1.5 | hit@1 0.5, hit@5 0.786, hit@10 0.857, MRR 0.605; latency p50 12.15 ms / p95 15.84 ms | `retrieval.bench` (see Steps) |
+| @600 hybrid:BAAI/bge-small-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2 | hit@1 0.357, hit@5 0.714, hit@10 0.786, MRR 0.481; latency p50 407.02 ms / p95 427.94 ms | `retrieval.bench` (see Steps) |
+| @600 hybrid:BAAI/bge-small-en-v1.5+rerank:BAAI/bge-reranker-base | hit@1 0.571, hit@5 0.714, hit@10 0.857, MRR 0.644; latency p50 1661.21 ms / p95 1778.08 ms | `retrieval.bench` (see Steps) |
+| @600 hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2 | hit@1 0.357, hit@5 0.643, hit@10 0.786, MRR 0.478; latency p50 432.7 ms / p95 476.34 ms | `retrieval.bench` (see Steps) |
+| @600 hybrid:BAAI/bge-base-en-v1.5+rerank:BAAI/bge-reranker-base | hit@1 0.571, hit@5 0.714, hit@10 0.857, MRR 0.644; latency p50 1680.1 ms / p95 1950.47 ms | `retrieval.bench` (see Steps) |
+| @600 bm25+rerank:Xenova/ms-marco-MiniLM-L-6-v2 | hit@1 0.357, hit@5 0.643, hit@10 0.786, MRR 0.478; latency p50 402.27 ms / p95 407.45 ms | `retrieval.bench` (see Steps) |
+| @600 bm25+rerank:BAAI/bge-reranker-base | hit@1 0.571, hit@5 0.714, hit@10 0.857, MRR 0.643; latency p50 1829.71 ms / p95 2014.23 ms | `retrieval.bench` (see Steps) |
+| Bench process RSS (2 dense + 2 rerankers, after batch-embedding both corpora; not a serving number) | 8911.9 MB | `retrieval.bench` (see Steps) |
+| Query-time latency, onnx threads=2 | query_embed_bge_small p50 5.4; query_embed_bge_base p50 15.8; rerank_ms-marco-MiniLM-L-6-v2_top10 p50 205.9; rerank_ms-marco-MiniLM-L-6-v2_top20 p50 546.4; rerank_ms-marco-MiniLM-L-6-v2_top20_trunc1000chars p50 358.2; rerank_bge-reranker-base_top10 p50 922.3; rerank_bge-reranker-base_top20 p50 2119.7 | `retrieval.latency` |
+| Query-time latency, onnx threads=4 | query_embed_bge_small p50 3.9; query_embed_bge_base p50 10.3; rerank_ms-marco-MiniLM-L-6-v2_top10 p50 122.4; rerank_ms-marco-MiniLM-L-6-v2_top20 p50 331.2; rerank_ms-marco-MiniLM-L-6-v2_top20_trunc1000chars p50 207.3; rerank_bge-reranker-base_top10 p50 547.3; rerank_bge-reranker-base_top20 p50 1356.1 | `retrieval.latency` |
+| Query-time latency, onnx threads=default(all cores) | query_embed_bge_small p50 3.8; query_embed_bge_base p50 9.6; rerank_ms-marco-MiniLM-L-6-v2_top10 p50 117.0; rerank_ms-marco-MiniLM-L-6-v2_top20 p50 287.2; rerank_ms-marco-MiniLM-L-6-v2_top20_trunc1000chars p50 186.0; rerank_bge-reranker-base_top10 p50 568.4; rerank_bge-reranker-base_top20 p50 1475.2 | `retrieval.latency` |
+| Abstain policy_a_gate (threshold -0.891) | precision 1.0, recall 1.0, false-abstain 0.0 | `answer.probe` |
+| Abstain policy_b_model | precision 0.75, recall 1.0, false-abstain 0.071 | `answer.probe` |
+| Abstain policy_a_or_b | precision 0.75, recall 1.0, false-abstain 0.071 | `answer.probe` |
+| Answer latency retrieval_ms | p50 13.7 / p95 21.6 ms | `answer.probe` |
+| Answer latency rerank_ms | p50 331.9 / p95 523.5 ms | `answer.probe` |
+| Answer latency llm_ttft_ms | p50 8391.9 / p95 10530.1 ms | `answer.probe` |
+| Answer latency llm_total_ms | p50 16974.2 / p95 24014.9 ms | `answer.probe` |
+| Answer latency total_ms | p50 17375.0 / p95 24365.4 ms | `answer.probe` |
+| Tokens per answer (prompt / completion, mean) | 1858.1 / 71.8 | `answer.probe` |
+| Answered questions citing an expected source | 0.714 | `answer.probe` |
+| Scorer: schema valid / source hit / behaviour correct | 1.0 / 0.714 / 0.944 | `eval.score` |
+| Scorer: judge fact coverage (mean) | 0.817 | `eval.score` |
+| Scorer: /ask latency p50 / p95 | 34902.0 / 54839.8 ms | `eval.score` |
+| Scorer: full run wall time | 195.9 s (156.8 s asks + 39.1 s judge) | `eval.score` |
+| Cross-origin widget: gated answer / LLM answer | 911 ms / 10304 ms (preflight then POST; preflight cached afterwards) | `api.app` + `http.server` on a second origin, driven in Chrome |
+| Strict host CSP (connect-src 'self') | widget renders, /ask blocked: connect-src violation | `api.app` + `http.server` on a second origin, driven in Chrome |
+| API RSS (bge-base + MiniLM + BM25) | 1419 MB after 1 query, 2609 MB after concurrency-4 run; startup 0.4 s | `api.app` + `http.server` on a second origin, driven in Chrome |
+| olake.io conditional GET | If-None-Match → 304 in 12.0 ms; ETag = deploy mtime + size | `freshness.probe` |
+| GitHub 304 counts against rate limit? | unauthenticated: yes (3 used for 3); token: no | `freshness.probe` |
+| git ls-remote HEAD check | 714-1005 ms per repo, no API quota | `freshness.probe` |
+<!-- results-table:end -->
+
 ## Findings that change the event-day design
 
 Measured in this POC. Numbers are in `results/*.json` and in the table below.
@@ -83,3 +156,81 @@ Measured in this POC. Numbers are in `results/*.json` and in the table below.
 4. **Corpus shape.** 13 of the 124 docs pages are stubs under 100 tokens (most of
    `/docs/fusion/*`). The single page `writers/iceberg/catalog/rest` is 30K tokens.
    olake-fusion is an Apache Amoro fork whose `docs/` folder is upstream Amoro text.
+5. **CPU cost lives in embedding and reranking, not in BM25 or vector search.** All
+   numbers are fastembed int8 ONNX on an M5 Max (CoreML was no faster).
+   * Indexing throughput: bge-small 27 chunks/s and bge-base 8 chunks/s. The 1,861-chunk
+     corpus takes 69 s and 230 s. A small cloud VM will be several times slower, so embed
+     offline and ship the vectors.
+   * Rerank at 2 threads: MiniLM-L6 takes 206 ms for the top 10 and 546 ms for the top 20.
+     bge-reranker-base takes 0.9 s and 2.1 s.
+   * Query embedding takes 4–16 ms, BM25 under 1 ms, and BM25 index build 0.1 s.
+6. **Chunk size vs the 512-token embedder limit.** At target 600, 58% of chunks exceed
+   bge's 512 WordPiece tokens and are silently truncated. At target 300 it is 4%.
+   WordPiece counts run about 1.17x o200k at the median (275 vs 235 at target 300,
+   554 vs 470 at 600). Keep chunks around 300 o200k tokens for BERT-family embedders and
+   rerankers.
+7. **Retrieval quality on the 14 answerable seed questions (noisy).** Hybrid RRF beats
+   either side alone. bge-base beats bge-small. bge-reranker-base gives the best MRR
+   (0.645) but costs about 2 s per query. MiniLM-L6 adds little at 300 tokens and hurts at
+   600, because its 512-token truncation drops most of each chunk. Identifier questions
+   (CLI flags, config keys defined only in Go) are where dense retrieval fails and BM25 or
+   a rerank rescues them. Consider an exact-match boost for `--flags` and `snake_case`
+   keys found in the question.
+8. **LLM control (ollama 0.33.3, qwen3:32b, OpenAI-compatible API).** Only
+   `reasoning_effort="none"` disables thinking. `/no_think` in the prompt and
+   `extra_body={"think": false}` are ignored and cost 2–4x latency. JSON mode
+   (`response_format: json_object`) parsed on 18/18 questions. Locally the model runs at
+   about 220 tok/s prefill and 10 tok/s decode, so local latency (about 17 s per answer)
+   says nothing about the event provider. Per-answer tokens are what carry over: about
+   1.86K prompt and 72 completion tokens.
+9. **Abstaining.** Top-reranker-score gating separates out-of-scope, unanswerable and
+   adversarial questions from answerable ones on the seed set (threshold -0.89 on
+   MiniLM logits). It also saves the LLM call: 0.3 s. It cannot catch false premises: the
+   "Cassandra connector" question retrieves connector pages that score 7.4. So keep the
+   model's `answerable` flag as a second layer, and prompt it to name what OLake does
+   support instead of only saying "not covered". The model-flag policy's one false
+   abstain came from a retrieval miss, which is the honest failure mode.
+10. **Citations.** The model's `[n]` refers to passage numbers. The `/ask` contract
+    returns deduplicated `sources`, so the markers must be renumbered to positions in
+    `sources` or the widget's links point at the wrong URL. When several sections are
+    packed into one chunk, the chunk's anchor is its first section, which is sometimes not
+    the cited sentence. The OLake docs repeat content (install, getting-started and
+    fusion/install), so eval rows need several acceptable sources.
+11. **Embedding.** One script tag plus a shadow DOM widget works cross-origin: preflight,
+    then POST; the preflight is cached afterwards. Chromium documents a 2 h cap on that
+    cache whatever `max-age` says; I didn't measure it. Host styles do not leak in. A strict host CSP (`connect-src 'self'`)
+    lets the widget render but blocks `/ask`, and `fetch` reports CSP and CORS failures
+    identically. Document the `connect-src` and `script-src` additions, and offer an
+    iframe embed as the fallback. FastAPI rejects `text/plain` bodies, so a
+    preflight-free simple request is not available without relaxing that check. The
+    contract keeps `{answer, sources}` even on 422 and 503. RSS grows with concurrent
+    reranks (1.4 GB to 2.6 GB at concurrency 4).
+
+## Event-day pipeline these numbers point to
+
+* **Ingest.** Sitemap → `/docs/` pages → Markdown with this extractor's rules: nested
+  tabs, anchors, code language. Add the 84-file repo allowlist pinned to SHAs. Leave the
+  blog out of the default index: it is 446K tokens, more than docs and repos together.
+  At most, use it as a down-weighted fallback.
+* **Chunks.** About 300 o200k tokens with a `title › section` header, YAML/JSON split by
+  keys, Go split by declarations. Citations go to page#anchor and to GitHub permalinks
+  with `?plain=1#Lx-Ly`.
+* **Index.** BM25 plus bge-base (or bge-small if CPU-bound), fused with RRF, with vectors
+  embedded offline on the laptop and shipped with the deploy (1,861 × 768 float32 is
+  5.5 MB). If the provider offers a hosted embedding API, that removes the embedder from
+  the box entirely.
+* **Rerank.** Leave it off, or MiniLM-L6 on the top 10 only (about 0.2 s at 2 threads).
+  bge-reranker-base is the most accurate here but costs 1–2 s per query on CPU.
+* **Gate, then generate.** Abstain without calling the LLM when the top reranker score is
+  below a threshold tuned on the canonical set. Otherwise call the provider with
+  reasoning off, JSON mode, 6 passages (about 1.9K prompt tokens, about 70 output
+  tokens). Keep the model's `answerable` flag and the "no valid citation → abstain" rule
+  as a second layer for false premises.
+* **Contract.** Always `{answer, sources}`, including on 4xx and 5xx. Renumber `[n]` to
+  positions in `sources`.
+* **Freshness.** Conditional GET on `sitemap.xml` every few minutes. On change, re-fetch
+  all docs (about 8 s) and diff sha256 per page. Run `git ls-remote` for the repos.
+  Re-chunk and re-embed only changed documents.
+* **Eval.** `eval.score` against the deployed URL: about 3 minutes for 18 questions with a
+  local 32B model, which will be much faster on the provider. Use the strongest model
+  available as judge; the judge flipped 2 of 14 verdicts between thinking on and off.

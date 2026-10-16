@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- A strict docs-site CSP: the widget script is allowed, but connect-src does not list the API. -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' http://127.0.0.1:8000; style-src 'self' 'unsafe-inline'; connect-src 'self'">
+  <title>Demo docs site with strict CSP</title>
+</head>
+<body>
+  <h1>Strict CSP page</h1>
+  <p>Expected: the widget renders, but asking fails with a network/CORS error because the host page's
+     <code>connect-src</code> does not allow <code>http://127.0.0.1:8000</code>. Embedding sites must add the API
+     origin to <code>connect-src</code> (and the widget origin to <code>script-src</code>), or use an iframe
+     embed and allow it in <code>frame-src</code>.</p>
+  <script src="http://127.0.0.1:8000/widget.js" data-api="http://127.0.0.1:8000" defer></script>
+</body>
+</html>

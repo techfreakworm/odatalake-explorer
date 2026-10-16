@@ -1,0 +1,468 @@
+{
+  "endpoint": "http://127.0.0.1:8000/ask",
+  "questions": {
+    "file": "seed.jsonl",
+    "n": 18
+  },
+  "concurrency": 4,
+  "summary": {
+    "schema_valid": 1.0,
+    "source_hit_rate": 0.714,
+    "behaviour_correct": 0.944,
+    "fact_coverage_mean": 0.817,
+    "latency_ms": {
+      "p50": 34902.0,
+      "p95": 54839.8,
+      "max": 59230.1
+    },
+    "ask_wall_s": 156.8,
+    "judge_wall_s": 39.1,
+    "total_wall_s": 195.9
+  },
+  "by_type": {
+    "adversarial": {
+      "n": 1,
+      "behaviour_correct": 1.0,
+      "source_hit": null,
+      "fact_coverage_mean": null
+    },
+    "answerable": {
+      "n": 13,
+      "behaviour_correct": 0.923,
+      "source_hit": 0.769,
+      "fact_coverage_mean": 0.827
+    },
+    "false-premise": {
+      "n": 1,
+      "behaviour_correct": 1.0,
+      "source_hit": null,
+      "fact_coverage_mean": 1.0
+    },
+    "negative": {
+      "n": 1,
+      "behaviour_correct": 1.0,
+      "source_hit": 0.0,
+      "fact_coverage_mean": 0.5
+    },
+    "out-of-scope": {
+      "n": 1,
+      "behaviour_correct": 1.0,
+      "source_hit": null,
+      "fact_coverage_mean": null
+    },
+    "unanswerable": {
+      "n": 1,
+      "behaviour_correct": 1.0,
+      "source_hit": null,
+      "fact_coverage_mean": null
+    }
+  },
+  "per_question": [
+    {
+      "id": "S01",
+      "type": "answerable",
+      "status": 200,
+      "ms": 6186.3,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "abstain_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/postgres/"
+      ],
+      "answer": "The OLake Postgres source requires a PostgreSQL server version 10 or above [1].",
+      "judge": {
+        "covered": [
+          true
+        ],
+        "coverage": 1.0,
+        "contradiction": false,
+        "judge_ms": 3470
+      }
+    },
+    {
+      "id": "S02",
+      "type": "answerable",
+      "status": 200,
+      "ms": 21356.0,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "abstain_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/postgres/"
+      ],
+      "answer": "For Postgres CDC with OLake, you should use the native `pgoutput` plugin. The `wal2json`-based CDC method has been deprecated by OLake Go [1].",
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "coverage": 1.0,
+        "contradiction": false,
+        "judge_ms": 1862
+      }
+    },
+    {
+      "id": "S03",
+      "type": "answerable",
+      "status": 200,
+      "ms": 15895.3,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "abstain_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/mysql/#3-test-connection",
+        "https://olake.io/docs/connectors/mysql/#cdc-prerequisite"
+      ],
+      "answer": "To run CDC on MySQL with OLake, the following binlog settings are required:\n\n- `log_bin=ON`\n- `binlog_format=ROW`\n- `binlog_row_image=FULL`\n- `binlog_row_metadata=FULL`\n\nAdditionally, optional settings to enable microsecond precision for the `_cdc_timestamp` column include:\n\n- `enforce_gtid_consistency=ON` (must be set before `gtid_mode`)\n- `gtid_mode=ON`\n\nThese settings are required for reliable CDC operation [1][2].",
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "coverage": 1.0,
+        "contradiction": false,
+        "judge_ms": 4089
+      }
+    },
+    {
+      "id": "S04",
+      "type": "answerable",
+      "status": 200,
+      "ms": 29268.0,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "abstain_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/mongodb/#cdc-prerequisites"
+      ],
+      "answer": "For OLake change data capture (CDC) to work with MongoDB, MongoDB must be running in **replica set mode** (`--replSet rs0`) and the **oplog** must be enabled, which is automatic in replica sets [1]. Additionally, the MongoDB user must have read access to the tables [1].",
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "coverage": 1.0,
+        "contradiction": false,
+        "judge_ms": 4547
+      }
+    },
+    {
+      "id": "S05",
+      "type": "answerable",
+      "status": 200,
+      "ms": 32620.2,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": false,
+      "abstain_correct": true,
+      "sources": [
+        "https://olake.io/docs/fusion/install/olake-ui/#access-the-application",
+        "https://olake.io/docs/getting-started/olake-ui/#access-the-application",
+        "https://github.com/datazip-inc/olake-ui/blob/56826cf172a4c10e80a2276d0a2095313ec5b667/README.md?plain=1#L30-L57"
+      ],
+      "answer": "The default login credentials for OLake UI after installing it with Docker Compose are:\n- **Username**: `admin`\n- **Password**: `password` [1][2][3]",
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "coverage": 1.0,
+        "contradiction": false,
+        "judge_ms": 4031
+      }
+    },
+    {
+      "id": "S06",
+      "type": "answerable",
+      "status": 200,
+      "ms": 34902.0,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "abstain_correct": true,
+      "sources": [
+        "https://olake.io/docs/install/olake-ui/#one-command-setup",
+        "https://olake.io/docs/getting-started/quickstart/#one-command-setup",
+        "https://olake.io/docs/getting-started/olake-ui/"
+      ],
+      "answer": "The one-command way to start OLake UI locally with Docker Compose is:\n\n```bash\ncurl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d\n```\n\nThe OLake UI uses port 8000, and it can be accessed at http://localhost:8000 [1][2][3].",
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "coverage": 1.0,
+        "contradiction": false,
+        "judge_ms": 4178
+      }
+    },
+    {
+      "id": "S07",
+      "type": "answerable",
+      "status": 200,
+      "ms": 38889.4,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "abstain_correct": true,
+      "sources": [
+        "https://olake.io/docs/fusion/install/kubernetes-compaction/#2-install-the-chart"
+      ],
+      "answer": "To install OLake on Kubernetes with Helm and the Fusion maintenance component enabled, use the following command:\n\n```bash\nhelm install olake olake/olake --set fusion.enabled=true\n```\n\nThis installs both the ingestion and Fusion maintenance components [1].",
+      "judge": {
+        "covered": [
+          false,
+          true
+        ],
+        "coverage": 0.5,
+        "contradiction": false,
+        "judge_ms": 4347
+      }
+    },
+    {
+      "id": "S08",
+      "type": "answerable",
+      "status": 200,
+      "ms": 42652.6,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "abstain_correct": true,
+      "sources": [
+        "https://olake.io/docs/install/docker-cli/#discover-command",
+        "https://olake.io/docs/community/commands-and-flags/#10-timeout"
+      ],
+      "answer": "The `--max-discover-threads` flag in the OLake CLI sets the maximum number of parallel threads used for discovering table schemas in the database during the `discover` command. The value must be an integer greater than 0, and the default is 50 if the flag is not provided [1][2].",
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "coverage": 1.0,
+        "contradiction": false,
+        "judge_ms": 5418
+      }
+    },
+    {
+      "id": "S09",
+      "type": "answerable",
+      "status": 200,
+      "ms": 40597.2,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": false,
+      "abstain_correct": false,
+      "sources": [],
+      "answer": "The provided context passages do not mention a `--destination-buffer-size` flag in the OLake CLI.",
+      "judge": {
+        "covered": [
+          false
+        ],
+        "coverage": 0.0,
+        "contradiction": false,
+        "judge_ms": 5832
+      }
+    },
+    {
+      "id": "S10",
+      "type": "answerable",
+      "status": 200,
+      "ms": 43629.5,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": false,
+      "abstain_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/iceberg/catalog/jdbc/",
+        "https://olake.io/docs/writers/iceberg/catalog/hive/",
+        "https://olake.io/docs/writers/iceberg/catalog/glue/#configuration"
+      ],
+      "answer": "OLake can write to the following Iceberg catalogs:\n\n- **JDBC/SQL catalogs** (e.g., PostgreSQL, MySQL) [1]\n- **Hive Catalog** (managed or self-hosted) [2]\n- **AWS Glue Catalog** [3]\n\nThese catalogs are used to manage Iceberg metadata, while data is stored in object storage systems like S3, MinIO, or GCS.",
+      "judge": {
+        "covered": [
+          true,
+          false,
+          true,
+          true
+        ],
+        "coverage": 0.75,
+        "contradiction": false,
+        "judge_ms": 7015
+      }
+    },
+    {
+      "id": "S11",
+      "type": "answerable",
+      "status": 200,
+      "ms": 49989.4,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "abstain_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/iceberg/partitioning/#how-to-add-a-partition-in-olake-go",
+        "https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/destination/iceberg/README.md?plain=1#L279-L304"
+      ],
+      "answer": "To partition an OLake Iceberg table by day and hour of an event timestamp, you can use the following format in your configuration:\n\n```text\n/{event_date, day}/{event_hour, hour}\n```\n\n- This partitions data by day and hour for efficient time-range queries [1].\n- You can specify this in your `streams.json` configuration file using the `partition_regex` key [2].",
+      "judge": {
+        "covered": [
+          true,
+          false
+        ],
+        "coverage": 0.5,
+        "contradiction": false,
+        "judge_ms": 7457
+      }
+    },
+    {
+      "id": "S12",
+      "type": "answerable",
+      "status": 200,
+      "ms": 51933.1,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "abstain_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/s3/#key-features"
+      ],
+      "answer": "The OLake S3 source can read the following file formats: CSV (`.csv`, `.csv.gz`), JSON (`.json`, `.jsonl`, `.json.gz`), XML (`.xml`, `.xml.gz`), and Parquet [1].",
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "coverage": 1.0,
+        "contradiction": false,
+        "judge_ms": 7074
+      }
+    },
+    {
+      "id": "S13",
+      "type": "answerable",
+      "status": 200,
+      "ms": 59230.1,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "abstain_correct": true,
+      "sources": [
+        "https://github.com/datazip-inc/olake-helm/blob/c63f10c48cd4dc2cbe3a130c6190ccedf0dafa83/helm/olake/values.yaml#L14-L35"
+      ],
+      "answer": "To set the storage class used by all OLake persistent volumes in the Helm chart, configure the `global.storageClass` parameter in the `values.yaml` file. This parameter applies to all persistent volumes provisioned by the chart. Set it to the name of your desired storage class, or leave it as an empty string to use the default storage class [1].",
+      "judge": {
+        "covered": [
+          true
+        ],
+        "coverage": 1.0,
+        "contradiction": false,
+        "judge_ms": 6233
+      }
+    },
+    {
+      "id": "S14",
+      "type": "negative",
+      "status": 200,
+      "ms": 54839.8,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": false,
+      "abstain_correct": true,
+      "sources": [
+        "https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/drivers/s3/README.md?plain=1#L155-L160"
+      ],
+      "answer": "No, the OLake S3 source cannot run in CDC mode. The documentation explicitly states that S3 exposes no CDC, and related subtests are skipped [1].",
+      "judge": {
+        "covered": [
+          true,
+          false
+        ],
+        "coverage": 0.5,
+        "contradiction": false,
+        "judge_ms": 5022
+      }
+    },
+    {
+      "id": "S15",
+      "type": "out-of-scope",
+      "status": 200,
+      "ms": 301.5,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "abstain_correct": true,
+      "sources": [],
+      "answer": "I don't know: the OLake documentation and repositories I can search don't cover this. Try rephrasing, or ask in the OLake Slack community."
+    },
+    {
+      "id": "S16",
+      "type": "unanswerable",
+      "status": 200,
+      "ms": 351.9,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "abstain_correct": true,
+      "sources": [],
+      "answer": "I don't know: the OLake documentation and repositories I can search don't cover this. Try rephrasing, or ask in the OLake Slack community."
+    },
+    {
+      "id": "S17",
+      "type": "false-premise",
+      "status": 200,
+      "ms": 45848.3,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "abstain_correct": true,
+      "sources": [],
+      "answer": "The provided documentation does not cover the configuration of the OLake Cassandra source connector.",
+      "judge": {
+        "covered": [
+          true
+        ],
+        "coverage": 1.0,
+        "contradiction": false,
+        "judge_ms": 5235
+      }
+    },
+    {
+      "id": "S18",
+      "type": "adversarial",
+      "status": 200,
+      "ms": 333.8,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "abstain_correct": true,
+      "sources": [],
+      "answer": "I don't know: the OLake documentation and repositories I can search don't cover this. Try rephrasing, or ask in the OLake Slack community."
+    }
+  ]
+}

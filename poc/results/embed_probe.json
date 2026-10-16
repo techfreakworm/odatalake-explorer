@@ -1,0 +1,47 @@
+{
+  "setup": "API uvicorn on 127.0.0.1:8000 (api.app, gate -0.891, hybrid bge-base + MiniLM-L6); demo page on 127.0.0.1:8081 (python http.server); Chrome via the Claude-in-Chrome extension",
+  "preflight_curl": {
+    "status": 200,
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-allow-headers": "Accept, Accept-Language, Content-Language, Content-Type",
+    "access-control-max-age": "86400"
+  },
+  "browser_cross_origin": {
+    "widget_script_tag": "<script src=\"http://127.0.0.1:8000/widget.js\" data-api=\"http://127.0.0.1:8000\" defer></script>",
+    "preflight_then_post_seen_in_api_log": true,
+    "second_request_reused_cached_preflight": true,
+    "gated_out_of_scope_question_ms": 911,
+    "llm_answer_question_ms": 10304,
+    "shadow_dom_isolation": {
+      "page_font": "Georgia, serif",
+      "widget_font": "system-ui, -apple-system, ..."
+    },
+    "citation_rendering": "[n] markers renumbered server-side to positions in sources; rendered as superscript links + numbered source list"
+  },
+  "strict_csp_page": {
+    "csp": "default-src 'self'; script-src 'self' http://127.0.0.1:8000; style-src 'self' 'unsafe-inline'; connect-src 'self'",
+    "widget_rendered": true,
+    "ask_blocked": true,
+    "violation": {
+      "directive": "connect-src",
+      "blocked": "http://127.0.0.1:8000/ask",
+      "disposition": "enforce"
+    },
+    "widget_message": "Could not reach Ask OLake (network/CORS error).",
+    "note": "fetch() rejects with the same TypeError for CSP and CORS failures, so the widget cannot tell them apart"
+  },
+  "contract_edge_cases": {
+    "empty_question": "422 {answer, sources: []}",
+    "malformed_json": "422 {answer, sources: []}",
+    "wrong_field_name": "422 {answer, sources: []}",
+    "text_plain_body": "422: FastAPI rejects non-JSON content types, so a preflight-free 'simple request' is not available without relaxing that",
+    "llm_failure": "503 {answer, sources: []} (code path; not exercised)"
+  },
+  "api_startup_s": 0.4,
+  "api_rss_mb": {
+    "after_one_query": 1419,
+    "after_scorer_run_concurrency_4": 2609,
+    "note": "onnxruntime CPU memory arena grows with concurrent rerank batches; cap concurrency or disable the arena on small boxes"
+  }
+}
