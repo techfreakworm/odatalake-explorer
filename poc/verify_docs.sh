@@ -729,6 +729,19 @@ num $D "false abstains on answerable rows" -c 'answerable' '.[0].abstain_breakdo
 num $D "weakest types" -c 'false-premise|negative|adversarial' '.[0].by_type | (."false-premise", .negative, .adversarial) | (.behaviour_correct * .n | round), .n' $EC
 num $D "prompt v2 subset" -c 'v2|behaviour|35' '([.[1].per_question[] | .id]) as $ids | ([.[0].per_question[] | select(.id as $i | $ids | index($i)) | select(.behaviour_correct == true)] | length), ([.[1].per_question[] | select(.behaviour_correct == true)] | length), (.[1].per_question | length), ([.[0].per_question[] | select(.id as $i | $ids | index($i)) | .judge.coverage // empty] | add / length), ([.[1].per_question[] | .judge.coverage // empty] | add / length)' $EC $E2
 
+# eval_run-canonical-combined.json (round-2 end-to-end run: prompt v3, k=10, TinyBERT gate with one rewrite)
+EC3=$RES/eval_run-canonical-combined.json
+if [ -s "$EC3" ]; then
+  num $D "round-2 summary" '.[0].summary | .behaviour_correct, .source_hit, .fact_coverage_mean, .judged_behavior_pass, .abstain_recall_unanswerable_out_of_scope, .false_abstain_rate_answerable, .false_abstain_rate_all_must_answer' $EC3
+  num $D "round-2 latency (s)" -c 'p50|p95|latency' '.[0].summary.latency_ms | .p50 / 1000, .p95 / 1000' $EC3
+  num $D "round-2 tokens (rows that called the LLM)" 'def p50: sort | if length % 2 == 1 then .[length / 2 | floor] else (.[length / 2 - 1] + .[length / 2]) / 2 end; [.[0].per_question[] | .server.debug | select(. != null) | fromjson | .usage | select(. != null and .prompt_tokens > 0)] as $u | ($u | map(.prompt_tokens)) as $p | ($u | map(.completion_tokens)) as $c | ($u | length), ($p | add / length), ($p | p50), ($p | max), ($c | add / length), ($c | p50), ($c | max)' $EC3
+  num $D "round-2 behaviour by type" -c 'type|answerable|adversarial|unanswerable' '.[0].by_type | .answerable.behaviour_correct, .adversarial.behaviour_correct, .unanswerable.behaviour_correct' $EC3
+  num $D "round-2 abstain sources" -c 'rewrite|model|unparseable|abstain' '.[0].summary.server_reasons | .gate_after_rewrite, .model_unanswerable, .unparseable' $EC3
+  num $D "round-2 false and missed abstains" -c 'abstain|must-answer|answerable' '.[0].abstain_breakdown | .false_abstains_all_must_answer_rows.n, .false_abstains_all_must_answer_rows.of, .missed_abstains.n, .missed_abstains.of' $EC3
+  num $D "round-2 rewrites" -c 'rewrite' '.[0].summary.rewrite_fired' $EC3
+  num $PLAN "plan: round-2 numbers" '.[0] | .by_type.answerable.source_hit, .summary.false_abstain_rate_answerable, .summary.abstain_recall_unanswerable_out_of_scope' $EC3
+fi
+
 # freshness.json
 num $D "freshness probes" -c 'ms|per hour' '.[0] | .docs_page.if_none_match.ms, ([.git_ls_remote[].ms] | min), ([.git_ls_remote[].ms] | max), .github_unauthenticated.rate_before.limit, .github_authenticated.rate_before.limit' $F
 num $D "lastmod redesign commit" -c 'redesign' '.[0].observations | .docs_pages_by_sitemap_lastmod["2026-10-06"], (.docs_pages_by_http_last_modified | add)' $F
