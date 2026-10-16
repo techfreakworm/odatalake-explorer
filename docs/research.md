@@ -8,11 +8,13 @@ The runbook that carries out these decisions is [plan.md](plan.md). Open items a
 
 1. **Deliverable**: a public `POST /ask` (`{"question"}` in, `{"answer", "sources"}` out), an embeddable chat UI, and a repo
    with a README on architecture and design choices ([challenges page][ch]).
-2. **Corpus**: all 124 `/docs/` pages from the rendered HTML, including release notes; the 4 datazip-inc repos through a file
-   allowlist; blog posts and upstream Amoro docs (olake-fusion `docs/`) as lower tiers (decisions D4, D11); no issues or
-   discussions in v1 (§3).
-3. **Citations**: `sources` holds canonical sitemap URLs (trailing slash, no anchor) and branch-form GitHub blob URLs.
-   Deep links with anchors or line ranges appear only in the UI (§3.4).
+2. **Corpus** (§3): tier 1 is the 124 `/docs/` pages from the rendered HTML minus a denylist of stub pages, plus GitHub
+   release notes, the two product FAQs and fact cards generated at the event. Tier 2 is a Tier A repo allowlist and 10
+   curated issues. Tier 3 is the blog, decided by an A/B run at the event (D4). Tier 4 is about 23 curated outside pages,
+   labelled. Not indexed: upstream Amoro docs (D11), bulk issues, discussions.
+3. **Citations** (§3.5): `sources` holds canonical sitemap URLs (trailing slash, no anchor), capped at 5. For repo files,
+   `SOURCE_URL_STYLE` switches between branch-form and SHA-permalink GitHub URLs (K3). Anchors and line ranges appear in
+   the UI.
 4. **Architecture**: hybrid retrieval (BM25 plus local dense embeddings, RRF k=60), a local cross-encoder rerank, then one
    grounded LLM call with `[n]` citations, behind two gates and three logged abstain triggers. The fallback is BM25-only
    with the same chunks and prompt, behind a config flag (§4).
@@ -20,8 +22,9 @@ The runbook that carries out these decisions is [plan.md](plan.md). Open items a
    embeddings and reranking, bm25s, and numpy brute-force vectors. One container. PENDING(stack report: host, model, prices) (§5).
 6. **Widget**: a small `widget.js` loader that injects a launcher and an iframe served from our origin (`/embed`), plus a plain
    iframe snippet and a Docusaurus `scripts` snippet (§5.6).
-7. **Freshness**: incremental rebuilds keyed on sitemap `lastmod` plus content hash and `git ls-remote` SHAs. HTTP
-   ETags on olake.io change on every site deploy, so they cannot detect per-page changes (§3.5).
+7. **Freshness** (§3.6): poll the sitemap with `If-None-Match`. On a deploy, re-fetch all docs (about 2 s), hash and re-embed
+   only changed chunks. For repos, `git ls-remote` plus the compare API. olake.io's ETags, Last-Modified and `lastmod`
+   are not content signals.
 8. **Evaluation**: a 6-column Markdown question table scored by deterministic checks plus an LLM judge, run against the
    deployed URL at every checkpoint (§6).
 9. **Biggest risks**: credits or the endpoint failing during post-freeze scoring, a source-matching rule that differs from
@@ -53,84 +56,167 @@ the live endpoint. So the service must stay up, warm and rate-limit-tolerant in 
 
 ## 3. Corpus
 
+Sources for this section: the doc-writer's own checks, the POC results (`poc/results/*.json`), and three research runs from
+2026-10-16 that the lead condensed into the corpus decisions. They are the **docs-site report**, the **repos report** and
+the **olake-domain report**. A number from a report names the report and its method. Where a report gives an evidence
+URL, it is cited directly.
+
 ### 3.1 Docs site
 
 | Measurement | Value | Source |
 |---|---|---|
-| Sitemap URLs | 275 in total: 124 under `/docs/`, 86 under `/blog/` (85 posts plus the `/blog/` index), 65 others (community, company pages). 231 carry `lastmod`. All 275 end with `/` | The doc-writer fetched [the sitemap][sitemap] at 2026-10-16T17:14Z and counted `<loc>` by path prefix. It matches `poc/results/corpus.json` (`sitemap_urls`: 275) |
-| Release notes | 24 pages under `/docs/release/` plus 2 under `/docs/fusion/release/` | Same sitemap count. `poc/results/corpus.json` (`by_section`) |
-| Docs size | 124 pages, 263,614 tokens (o200k_base), 830 code blocks, 182 tables, 80 tab groups, 342 admonitions. The median page has 1,152 tokens, the largest 30,229 (`/docs/writers/iceberg/catalog/rest/`). 13 pages have under 100 tokens, 7 of them among the 23 `/docs/fusion/` pages, so the Fusion docs are thin | `poc/results/corpus.json` (`pages_under_100_tokens`, `by_section`) |
-| Blog size | 85 posts, 446,137 tokens. The median post has 4,175 tokens | `poc/results/corpus.json` |
-| Fetch cost | The 124 docs pages took 7.52 s at concurrency 4. All 209 pages (docs plus blog) took 12.77 s, with a per-page p50 of 0.243 s. HTML-to-Markdown extraction took 3.49 s | `poc/results/corpus.json` |
-| Hosting | GitHub Pages behind a Varnish CDN cache: `server: GitHub.com`, `via: 1.1 varnish`, `x-served-by: cache-maa…`, `x-cache: HIT`, `cache-control: max-age=600`, and both `ETag` and `Last-Modified` are set | Response headers of the sitemap, checked by the doc-writer 2026-10-16; `poc/results/freshness.json` |
+| Platform | Docusaurus v3.10.2 on GitHub Pages behind a CDN (`server: GitHub.com`, `via: 1.1 varnish`, `x-served-by: cache-maa…`, `cache-control: max-age=600`). One docs plugin instance with two sidebars (OLake Go and Fusion); no versioning, no i18n, no CSP header | docs-site and olake-domain reports (curl -I, generator meta); headers re-checked by the doc-writer |
+| Site search | Algolia DocSearch. No AI assistant is configured (DocSearch "Ask AI" is in the bundle but off), so the judges' everyday baseline is keyword search | docs-site report |
+| Sitemap | 275 URLs: 124 under `/docs/` (101 OLake Go, 23 Fusion), 86 under `/blog/` (85 posts and the index), 65 others. 231 carry `lastmod`. All 275 end with `/` | The doc-writer counted `<loc>` entries in [the sitemap][sitemap] at 2026-10-16T17:14Z; the Go/Fusion split is from the docs-site report |
+| Release notes | 24 pages under `/docs/release/` and 2 under `/docs/fusion/release/` | Sitemap count; `poc/results/corpus.json` |
+| Docs size | 238,135 o200k tokens from article text (docs-site report, `measure_corpus.py`), or 263,614 from the POC's Markdown, which keeps code and table syntax (`poc/results/corpus.json`). 830 code blocks, 182 tables, 80 tab groups with 202 panels (122 hidden at load), 342 admonitions. The largest page is [the REST catalog page][rest] | docs-site report; `poc/results/corpus.json` |
+| Thin pages | 13 pages under 100 tokens (7 of them among the 23 Fusion pages), per the POC. The docs-site report counts about 15 stub or stale pages, and the olake-domain report counts 18 pages under 1,300 characters | `poc/results/corpus.json`; both reports |
+| Fetch cost | All 124 pages in 3.9 s (11.17 MB uncompressed), or 2.2 s and 2.07 MB with gzip, 4 at a time (docs-site report). The POC took 7.52 s at concurrency 4 | docs-site report; `poc/results/corpus.json` |
+| Blog | 85 posts: 428,473 o200k tokens from article text (docs-site report), or 446,137 from the POC's Markdown | docs-site report; `poc/results/corpus.json` |
 
-Decision: ingest the **rendered HTML** of every `/docs/` page and extract the article to Markdown, keeping heading anchors,
-code fences, tables and tabs. Reasons: (1) the sitemap URL is the canonical citation URL as is, so no path-to-slug
-mapping is needed; (2) MDX imports, partials and components can hide content from a raw-source reader;
-(3) the whole fetch is cheap (12.77 s above). PENDING(docs-site report: the article selector, whether `llms.txt` or
-`llms-full.txt` exists and how complete it is, and any page that renders client-side only).
+**Decision: rendered HTML, not raw MDX.** Raw MDX misses content on 22 of the 124 docs pages: every connector main page,
+every catalog page, the Parquet writer pages, docker-cli and commands-and-flags. That content comes from 92 globally
+registered MDX partials, 12 JSX config-table components, `FlagDetail.tsx` (CLI flags) and `DateTimeHandling.tsx`, all
+registered in the site's [MDX component map][mdx-map]. For example, the Postgres `jsonb` to Iceberg `string` mapping exists
+only in a partial and in the rendered HTML. The rendered HTML is complete: all 202 tab panels are server-rendered
+(docs-site report). Extraction selectors: `.theme-doc-markdown` for docs and `#__blog-post-container` for posts.
+
+**No shortcuts.** [llms.txt][llms] is a hand-written link index with no page bodies (22,607 bytes, 152 lines). The
+site's `/llms-full.txt`, `.md` page URLs and `search-index.json` all return 404 (docs-site report; the doc-writer
+re-checked `/llms-full.txt` on 2026-10-16).
+
+**Traps the index has to handle.**
+- **Stale or stub pages.** About 15-18 of them. Two contradict live pages: `/docs/connectors/overview/` and
+  `/docs/connectors/kafka/overview/` still call Kafka "WIP" or "coming soon", while [the Kafka connector page][kafka] is
+  live. Decision: a denylist, excluded from the index and logged (plan Appendix A).
+- **Twin pages.** OLake Go and Fusion pages are 0.95-1.00 similar, with identical titles. One example pair:
+  [Go offline AWS install][go-aws] and [Fusion offline AWS install][fus-aws]. Ten pages share the H1 "Overview". Decision:
+  every chunk carries `product`, and the context header reads "title | product > breadcrumbs > heading path [tab label]"
+  (docs-site report).
+- **Naming.** "OLake Go" has been the ingestion product's name since the 2026-06-14 docs restructure (olake-docs commit
+  5978892, docs-site report). OLake, OLake Go and OLake ingestion are synonyms.
+- **The docs lag GitHub.** The docs release notes stop at [v0.12.0][rel-0120], while [GitHub releases][olake-rel] show olake
+  v0.12.1 and olake-ui v0.7.1 (2026-10-15). Docs release-note pages appear 3-9 days after the GitHub release: v0.8.0 after 5
+  days, v0.9.0 6, v0.10.0 9, v0.11.0 3, v0.12.0 5 (olake-domain report).
+- **First-party contradictions.** The olake-domain report lists 10 and the eval-ops report 9. The clearest is Fusion's
+  default compaction schedule: 1h/8h/never on [configure first compaction][fus-first], 24h each on
+  [compaction configuration][fus-conf], and 20m/40m (benchmark values) in the [Fusion product FAQ][fus-faq]. Others: the
+  [MySQL page][mysql] example uses `initial_wait_time` 10 while the driver enforces a 120 s minimum, and
+  `binlog_row_metadata=FULL` is listed as required although it has been optional since [v0.10.0][rel-0100] (eval-ingestion
+  report). Decision: when OLake pages disagree, the answer cites both and says so.
 
 ### 3.2 Repositories
 
-| Repo | Branch (as cloned) | Tracked files | Allowlisted files | Tokens | Source |
-|---|---|---|---|---|---|
-| olake | master | 450 | 58 | 82,666 | `poc/results/corpus.json` |
-| olake-ui | master | 519 | 11 | 22,682 | `poc/results/corpus.json` |
-| olake-helm | master | 123 | 6 | 19,090 | `poc/results/corpus.json` |
-| olake-fusion | master | 2,315 | 9 | 19,158 | `poc/results/corpus.json` |
-| **Total** | | | **84** | **143,596** | `poc/results/corpus.json` |
+| Repo | HEAD (2026-10-16 snapshot) | Files at HEAD | Releases in the last 6 months / latest | License |
+|---|---|---|---|---|
+| olake | d20c68e (2026-10-15) | 450 | 27 / v0.12.1 (2026-10-15) | Apache-2.0 |
+| olake-ui | 56826cf (2026-10-15) | 519 | 16 / v0.7.1 (2026-10-15) | Apache-2.0 |
+| olake-helm | c63f10c (2026-10-08) | 123 | 23 / worker v0.4.0 and chart olake-0.0.30 (2026-10-08) | Apache-2.0 |
+| olake-fusion | 15ca160 (2026-10-13) | 2,315 | 4 / v0.1.4 (2026-08-24) | Apache-2.0 |
 
-Decision: an allowlist only (READMEs and other Markdown, Helm `values.yaml` and `Chart.yaml`, docker-compose files, example
-configs, CLI flag definitions and driver config structs). Docs plus allowlisted repo files total 208 documents and
-407,210 tokens (`poc/results/corpus.json`). PENDING(repos report: the exact globs, default branches, licenses, release cadence).
-GitHub issues and discussions stay out of v1 (decision D5). PENDING(repos report: their volume and noise).
+Sources: the repos report (tree and releases APIs); `poc/results/corpus.json` (SHAs and branch `master`); licenses and the
+`fork` flag from the GitHub API (checked by the doc-writer).
 
-All five datazip-inc repos (the four above plus olake-docs) are Apache-2.0 with `master` as the default branch, and none
-is marked as a fork (GitHub API `repos/datazip-inc/<repo>`, fields `license.spdx_id`, `default_branch`, `fork`, checked
-2026-10-16). Even so, the olake-fusion codebase is Apache Amoro's: its top-level modules are named `amoro-*`, and its Helm chart is
-`charts/amoro` ([olake-fusion repo][fusion-repo]; [Apache Amoro][amoro]). Its `docs/` folder holds upstream Amoro docs that
-do not mention OLake (`poc/README.md`). The OLake Fusion pages on the docs site are thin (7 of 23 under 100 tokens, §3.1). So the
-plan adds an optional, down-weighted `fusion-upstream` tier for that folder (decision D11). The final call waits on the POC's
-Fusion retrieval numbers. PENDING(POC).
+**Decision: Tier A allowlist only** (about 94K tokens, 377,136 bytes, against about 24 MB for a naive crawl of every text
+file; repos report). The exact list is in plan Appendix A. The highest-value files:
+- `drivers/*/resources/spec.json` and the Iceberg and Parquet writer specs. These JSON Schemas drive the UI forms, and
+  converting them to Markdown field tables cuts 118,870 bytes to 39,612.
+- [`protocol/root.go`][rootgo]: 5 commands and 16 persistent CLI flags.
+- [helm `values.yaml`][values]: 65% of its non-blank lines are comments.
+- The olake-ui `docker-compose-v1.yml` quickstart.
+- olake-fusion's [`CLAUDE.md`][fus-claude]: Lite/Medium/Full map to minor/major/full; it also gives the default schedules,
+  the 512 MB target file size and the Iceberg-only scope.
 
-### 3.3 Outside sources
+The POC used a broader allowlist (84 files, 143,596 tokens, `poc/results/corpus.json`), with more Go config structs.
+The event uses the reports' Tier A list.
 
-Allowed by the challenge "when the docs fall short" ([challenges page][ch]). Plan: a small curated allowlist (Apache
-Iceberg maintenance and spec, catalog docs, PostgreSQL logical replication, MySQL binlog, MongoDB replica sets and oplog).
-They are retrieved and cited only when no OLake source covers the point, and the answer labels them "outside source".
-Precedence: OLake docs, then OLake repos, then outside sources. PENDING(olake-domain report: the exact URLs). Confirm
-which domains count with K7.
+**[olake-fusion][fusion-repo] is a modified hard fork of [Apache Amoro][amoro].** The evidence: its [NOTICE][fus-notice] and DISCLAIMER, the pom
+parent `org.apache.amoro:amoro-parent:0.9-SNAPSHOT`, 119 files headed "Modified by Datazip", and 1,851 imported upstream
+commits (repos report). GitHub does not flag it as a fork. Its `docs/` and `site/` folders are upstream Amoro and are not
+indexed, because their defaults contradict Fusion's. Snapshot expiry (`table-expire.enabled`) is off in Fusion but on
+upstream, and the target file size is 512 MB in Fusion against 128 MB in [Amoro's configuration docs][amoro-conf]
+(repos and olake-domain reports). Amoro concepts enter only through labelled outside pages (§3.4).
 
-### 3.4 Citation URL policy
+**Issues and discussions: curated, not bulk.** About a third of the olake issues are bot TODOs (99 of 321). The docs team
+copies fixes into the docs, and Discussions has 7 threads with one unanswered Q&A (repos report). The index takes 10
+troubleshooting answers that were checked absent from the docs (list in plan Appendix A), each cited as "known issue #N".
 
-- `sources` lists canonical page URLs exactly as the sitemap writes them (all 275 sitemap URLs end with `/`), with no
-  `#anchor`, deduped, in the order the answer first cites them. Reason: it is the likeliest form to match a test set's
-  expected pages. Anchors are for the UI.
-- Repo files appear in `sources` as `https://github.com/datazip-inc/<repo>/blob/<default-branch>/<path>`. The UI links to the
-  commit permalink with `#L<a>-L<b>`, adding `?plain=1` for Markdown so that GitHub honours line anchors (the POC
-  chunker builds both forms, `poc/chunking/chunker.py`). Reason: the branch form always resolves and is the likeliest to match.
-- In `answer`, the `[n]` markers are renumbered so that `[1]` is `sources[0]`.
-- The POC scorer matches URLs leniently. It drops the scheme, fragment, query and trailing slash, and ignores the git ref in
-  GitHub URLs (`poc/eval/questions.py`). The organizers' rule is unknown (K3).
+**Default credentials** appear in the olake-ui README and compose file, and in the helm values (`initUser`,
+`postgresql.auth`, `minio.auth`). They are redacted in chunks, and the bot states only what the docs state (repos report).
 
-### 3.5 Freshness
+### 3.3 Other first-party sources
+
+- **GitHub release notes**: the last ~10 per repo, cited as `releases/tag/<tag>`. They are newer than the docs (§3.1). About
+  31.5K tokens in total (repos report).
+- **Product FAQs**: FAQPage JSON-LD on [/olake-go/][go-faq] (enterprise plans via hello@olake.io, Apache-2.0 licensing,
+  integrations) and on [/olake-fusion/][fus-faq] (standalone use, compaction cadence, licensing, target size). Both
+  answer pre-sales questions the docs do not (olake-domain report).
+- **Fact cards**: short documents generated at the event from the fetched docs, each citing the canonical pages it came
+  from: a source × sync-mode matrix with explicit negatives (Oracle and DB2: no CDC; Kafka: `strict_cdc` only; S3: full
+  refresh and incremental, append-only), destination × catalog × minimum version, feature → minimum component versions,
+  latest versions, unsupported or undocumented items, and known contradictions. Why: in the olake-domain report's BM25
+  test on 35 answerable seed questions, capability questions such as "Oracle CDC?" retrieved old release notes, because the
+  Oracle page never says "no CDC". Page-level hit@1/3/5 was 18/26/29 and chunk-level 22/26/30. Chunk-level plus three
+  rules gave 27/28/32: demote old release notes x0.3, boost the named connector page x1.6, and a synonym map.
+
+### 3.4 Outside sources
+
+Allowed by the challenge "when the docs fall short" ([challenges page][ch]). The olake-domain report opened and
+classified about 23 pages: Iceberg maintenance, procedures and spec; Amoro self-optimizing and configurations; PostgreSQL
+replication, logical decoding and `ALTER TABLE`; the MySQL binlog options; the MongoDB oplog and change streams; SQL Server
+CDC; Kafka consumer configs and operations; S3 Tables, Databricks Unity, Athena, Lakekeeper, Polaris, Nessie, BigLake,
+Snowflake Horizon; and Temporal. The exact URLs are in plan Appendix A. Rule: OLake docs decide what OLake requires, and
+vendor docs explain how their own system behaves, labelled "outside OLake docs". Amoro is the riskiest source because its
+defaults differ from Fusion's. It is used for concepts only and labelled "upstream; Fusion may differ".
+
+**Precedence when sources disagree:** the current OLake docs page, then GitHub release notes for anything newer (with
+version and date), then READMEs, product FAQs and blog posts (dated), then vendor docs (only for that system, labelled),
+then Amoro (concepts only, labelled), then issues (only as "known issue #N") (olake-domain report).
+
+### 3.5 Citation URL policy
+
+- **Docs `sources`**: the canonical sitemap URL. Use https, the apex host, a trailing slash, the original case (paths are
+  case-sensitive, and one sitemap URL has capital letters), and no query or fragment. Canonical tags match the sitemap form
+  on 267 of 267 pages. Slashless, http and www forms all 301 to it. Cite only URLs in the current sitemap. Never cite a legacy
+  path: 305 of them return HTTP 200 with a meta-refresh rather than a 3xx. Never cite a stub. Dedupe and cap at 5
+  (docs-site report).
+- **UI deep links**: add `#anchor` only if that id exists on the page. Ids follow github-slugger: 163/163 slugs matched,
+  and 296/296 internal anchors resolve. 191 of 1,274 anchors (15%) sit inside hidden tabs. For those, use the site's own
+  `?<param>=<value>#<id>` form, for example [Postgres CLI configuration][pg-tab]. 55 of 55 page-level tab labels map to
+  their query values; tab groups inside shared partials need a second pass (docs-site report).
+- **Repo `sources`**: the `SOURCE_URL_STYLE` switch. The default `branch` gives
+  `https://github.com/datazip-inc/<repo>/blob/master/<path>`. `sha` gives a full-SHA permalink with `#La-Lb`, or
+  `?plain=1#La-Lb` for Markdown, which [GitHub requires for Markdown line links][gh-snippet]. The branch default is a guess
+  at how graders match: it is the likelier string match, and it always shows current content. The repos report argues for
+  SHA links: they never change, and [GitHub documents][gh-perma] that branch links move. Kickoff question K3 decides.
+  Either way, the UI card shows the SHA permalink labelled `repo@sha7 · path Lx-Ly`.
+- **Releases** use `.../releases/tag/<tag>`. **Issues** use the issue or comment permalink. Never cite raw.githubusercontent.com.
+- In `answer`, `[n]` markers are renumbered so that `[1]` is `sources[0]`.
+- The POC scorer matches URLs leniently. It drops the scheme, fragment, query and trailing slash, and ignores the git ref
+  (`poc/eval/questions.py`). The organizers' rule is unknown (K3).
+
+### 3.6 Freshness
 
 | Measurement | Value | Source |
 |---|---|---|
-| Docs `lastmod` spread | 100 of 124 docs pages on 2026-10-06, 16 on 2026-10-15, the rest spread between 2025-06-23 and 2026-10-12 | `poc/results/freshness.json` (`observations`) |
-| HTTP validators | All 124 docs pages carry the same `Last-Modified` (the site deploy time), and the ETag encodes deploy mtime plus size. A conditional GET returns 304 in about 12 ms, but every page looks changed after every deploy | `poc/results/freshness.json` |
-| GitHub REST API | Unauthenticated: 60 requests per hour, and each conditional request still costs 1. Authenticated: 5,000 per hour, and a 304 costs 0 | `poc/results/freshness.json` |
-| `git ls-remote` | One repo's HEAD check takes 714-1005 ms and uses no API quota | `poc/results/freshness.json` |
+| What `lastmod` means | It is the UTC date of the last commit to the page's own file (124/124 checked). 100 of the 124 dates come from one site-wide redesign commit on 2026-10-06, which touched 213 docs files. Edits inside shared partials never move it | docs-site and olake-domain reports (git log on the olake-docs history) |
+| Docs deploys | 6 successful deploys in about 26 h. Each takes 1m14s-2m40s, so commit-to-live is about 2 min. Every deploy changes `ETag` and `Last-Modified` on every page | docs-site report (Actions runs API, header counts) |
+| Docs churn | 25 commits touched `docs/` in the last 30 days and 44 in the last 60 | olake-domain report |
+| Conditional GET | 304 in about 12 ms on a page and on the sitemap | `poc/results/freshness.json` |
+| GitHub REST | Unauthenticated: 60 requests per hour, and each 304 still costs one. Authenticated: 5,000 per hour, and a 304 costs nothing | `poc/results/freshness.json`; repos report |
+| `git ls-remote` | 0.69-1.0 s per repo, no API quota | repos report; `poc/results/freshness.json` |
+| Compare API | v0.12.0...v0.12.1: 16 commits and 111 files, 14 of them on the allowlist | repos report |
+| Scheduling limits | Webhooks are impossible with pull-only access. [Scheduled Actions][gh-events] run at most every 5 minutes and can be delayed | repos report |
 
-`lastmod` is date-only, and most pages share one bulk date, so it is a weak per-page signal. The POC therefore recommends
-using a conditional GET on `sitemap.xml` as the cheap trigger: a 304 means no site deploy since the last check. After a
-deploy, re-fetch all docs pages (the 124 pages took 7.52 s, `poc/results/corpus.json`), diff the sha256 of each page's extracted Markdown, and
-re-embed only the chunks that changed (`poc/README.md`, Findings 2).
-
-Decision: incremental refresh keyed on a content hash per page, triggered by the sitemap's conditional GET and using `lastmod`
-as a hint, plus `git ls-remote` HEAD SHAs per repo. A new index version is built and swapped in atomically. The manifest (build time, docs `lastmod` max, repo SHAs)
-appears in `/healthz` and the UI footer. PENDING(eval-ops report: in-app refresher vs a scheduled GitHub Action, and
-host CPU behaviour for background work).
+**Decision.** Docs: poll `sitemap.xml` every 5-10 minutes with `If-None-Match`; a 304 means no deploy. On a 200, re-fetch
+all 124 pages (about 2 MB and 2 s with gzip), hash the extracted text per page and per chunk, re-embed only the changed
+chunks, and tombstone removed URLs. ETag, Last-Modified and `lastmod` are not content signals. Repos: `git ls-remote` HEAD;
+on a new SHA, call the compare API, filter the changed files by the allowlist, fetch them at the new SHA, then re-chunk and
+re-embed. Releases: the releases API. The manifest (build time, docs `lastmod` max, repo SHAs, latest tags) is shown in
+`/healthz` and the UI footer. Version-sensitive answers say "Docs as of <date>; latest GitHub release <tag>". Re-crawl on
+the morning of 2026-10-18. Open PRs could change correct answers around the event: streams v2 ([#1145][pr1145]), Azure
+ADLS for Iceberg, and MySQL switchover CDC (olake-domain report). PENDING(eval-ops report: in-app poller vs scheduled
+Action, and host CPU for background work).
 
 ## 4. Architecture
 
@@ -188,8 +274,17 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   configs exactly. Fixed `NO_ANSWER` and `OUT_OF_SCOPE` markers. Prompt injection is treated as data.
 - **Abstain.** Three triggers, each logged: (1) the top rerank score is below the threshold after one rewrite; (2) the
   model emits the don't-know marker; (3) no valid citation is left after parsing. **Targets**: abstain recall ≥ 90% on
-  unanswerable plus out-of-scope rows, and false-abstain ≤ 5% on answerable rows. PENDING(POC step 5: the tuned threshold
-  and its curve).
+  unanswerable plus out-of-scope rows, and false-abstain ≤ 5% on answerable rows. POC on the 18 seed questions
+  (`poc/results/answer.json`; hybrid bge-base, MiniLM-L6 rerank, 6 passages, a local qwen3:32b): a gate on the top rerank
+  score at -0.891 abstained on all 3 should-abstain questions and on none of the 14 should-answer ones (precision 1.0,
+  recall 1.0). The model's own "answerable" flag added one false abstain (precision 0.75, false-abstain 0.071), on a
+  false-premise question whose retrieval missed. The top MiniLM-L6 rerank score ranged 2.16 to 8.73 on answerable
+  questions and -11.24 to -3.95 on the out-of-scope, unanswerable and adversarial ones (`poc/results/retrieval.json`).
+  Too few rows to tune on. PENDING(re-tune on the curated set).
+- **Honesty specifics** (decided): "not supported" or "not documented" with a fact-card citation is an answer, not an
+  abstain. For pricing, SLA and enterprise questions, give no specifics and point to hello@olake.io or
+  [the contact page][contact], as [/olake-go/][go-faq] does. Default credentials are stated only as the docs state them,
+  with "change them for production". Issues are cited only as "known issue #N (open/closed; fixed in vX)".
 - **Caching.** An exact-match LRU keyed on the normalized question plus the index version. No semantic cache, because a
   near-duplicate question can need a different answer. A stable system-prompt prefix lets providers cache the prompt.
 - **Streaming.** `POST /ask/stream` sends SSE (`meta`, `token`, `done`, `error`) for the UI only. The browser reads it with
@@ -207,8 +302,10 @@ Gemini API ([challenges page][ch]). The Gemini API has an OpenAI-compatible base
 described as beta [[gemini-openai]]. PENDING(stack report: models, prices, rate limits, Gemma 4 availability).
 
 ### 5.2 Cost per answer
-About 4k input plus 400 output tokens per answer (memo estimate). Cache hits cost 0. PENDING(stack report prices; POC logged
-token counts).
+Measured in the POC with 6 passages of about 300 tokens each: a mean of 1,858 prompt tokens (max 2,169) and 71.8
+completion tokens (max 145) per answer, counted by the local model's tokenizer (`poc/results/answer.json`). The memo's
+estimate was about 4k input and 400 output. Cache hits cost 0. Cost per answer = tokens × the provider's price.
+PENDING(stack report prices).
 
 ### 5.3 Embeddings and reranker
 Local fastembed (ONNX on CPU), baked into the image. It does not depend on the provider, adds no marginal cost or rate limits,
@@ -277,8 +374,26 @@ Method: [eval-questions.md](eval-questions.md). The POC scorer (`poc/eval/score.
 (exactly `answer` and `sources`), the source hit with normalized URLs, behaviour by question type (abstain or decline
 where expected), latency p50 and p95, and must-mention fact coverage judged by an LLM.
 
-PENDING(POC results: retrieval recall@k per method, end-to-end accuracy, abstain confusion matrix, threshold curve,
-latency and cost per answer).
+**Question sources.** Two research runs wrote grounded question sets on 2026-10-16, and the lead curates the final set
+from them (PENDING(lead), [eval-questions.md](eval-questions.md)):
+- eval-ingestion report: 40 questions (setup 7, sources 14, sync 11, destinations 8). 36 answerable and 4 negative, 20 easy /
+  14 medium / 6 hard. 152 evidence quotes were checked against the fetched pages. 6 questions cite repo files, and 4 of
+  those cannot be answered from the docs alone. A stdlib BM25 probe over 1,039 chunks put the best expected page at
+  rank 1 for 31 of 40, in the top 3 for 36 and in the top 5 for 38.
+- eval-ops report: 50 questions (catalogs 7, Fusion 8, deployment 7, troubleshooting 8, out-of-scope 6, unanswerable 6,
+  false-premise 4, adversarial 4), 25 easy / 18 medium / 7 hard. 62 olake.io pages were fetched live, and 283 must-mention
+  phrases were checked against their sources with none missing. For each unanswerable item, the answer was confirmed
+  absent by searching the GitHub code, issues and releases and grepping the docs, blog and site source.
+
+**POC results so far** (seed set, 18 questions, of which 14 have expected sources; small and noisy):
+- Retrieval: the table in §4.3 (`poc/results/retrieval.json`).
+- Answering (`poc/results/answer.json`, local qwen3:32b, so its latency says nothing about a hosted model): the answered
+  questions hit an expected source 71.4% of the time. The abstain gate result is in §4.3. Retrieval took 13.7 ms p50 and the
+  rerank 331.9 ms p50. On the local model's OpenAI-compatible API, only `reasoning_effort=none` turned thinking off: time to
+  first token fell from 32,961 ms to 13,920 ms in the think probe. So set the hosted provider's lowest reasoning
+  setting, and measure it at the 12:15 load test.
+- PENDING: end-to-end accuracy with the event's model on the curated set, the threshold curve, latency and cost per answer
+  with a hosted model.
 
 ## 7. Prior art and what judges probe
 
@@ -307,6 +422,10 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Over-abstaining or under-abstaining | Accuracy or honesty points lost | Three logged triggers and a threshold tuned on the eval set (§4.3) |
 | Venue Wi-Fi | Slow builds and deploys | Pre-cached wheels, models, repos and base image; remote builds; phone hotspot (plan section 11) |
 | A teammate edits another track's files | Lost work | One owner per path (plan section 0.3) |
+| Stale stub pages contradict live pages (e.g. "Kafka is WIP") | Confidently wrong answers | Denylist the stubs; fact cards with explicit negatives (§3.1, §3.3) |
+| The docs lag the GitHub releases | Wrong "latest version" answers | A GitHub release-notes tier and the "Docs as of <date>; latest GitHub release <tag>" line (§3.6) |
+| Upstream Amoro defaults differ from Fusion's | Confidently wrong Fusion answers | Do not index Amoro docs; use Amoro concepts only, labelled (§3.2, §3.4) |
+| Default credentials sit in repo files | Leaked defaults or unsafe advice | Redact chunks; state only what the docs state, with "change them for production" (§3.2) |
 | Pre-existing code | Disqualification. MLH's standard rules forbid re-using code or project materials and put all work inside the event ([MLH rules][mlh]) | Build fresh from the briefs; `poc/` is a reference for numbers only; disclose the preparation and the AI tools in the README (K6, D2) |
 
 ## 9. Appendix: measurement table
@@ -332,7 +451,23 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Rerank p50 at 2 threads, top 10 | MiniLM-L6 205.9 ms; bge-reranker-base 922.3 ms | `poc/results/latency_threads.json` |
 | Query embedding p50 at 2 threads | bge-small 5.4 ms; bge-base 15.8 ms | `poc/results/latency_threads.json` |
 | Full-corpus embedding (1,861 chunks) | bge-small 69.09 s; bge-base 229.79 s | `poc/results/retrieval.json` |
-| End-to-end accuracy, abstain, latency, cost | PENDING | POC steps 5-6 |
+| Abstain gate on the top rerank score (18 seed questions) | threshold -0.891: precision 1.0, recall 1.0, false-abstain 0.0 (3 should abstain, 14 should answer) | `poc/results/answer.json` |
+| Abstain on the model's own flag | precision 0.75, recall 1.0, false-abstain 0.071 | `poc/results/answer.json` |
+| Answered questions that hit an expected source | 0.714 | `poc/results/answer.json` |
+| Tokens per answer (6 passages) | prompt mean 1,858 (max 2,169); completion mean 71.8 (max 145) | `poc/results/answer.json` |
+| Docs tokens from article text | 238,135 (o200k) | docs-site report, `measure_corpus.py` |
+| Full docs fetch with gzip, 4 at a time | 2.07 MB in 2.2 s | docs-site report |
+| Pages whose content raw MDX misses | 22 of 124 | docs-site report, `hidden_content.py` |
+| Anchors inside hidden tabs | 191 of 1,274 (15%) | docs-site report, `hidden_tab_headings.py` |
+| Legacy paths answering 200 with a meta-refresh | 305 | docs-site report (redirect config in `main.js`) |
+| Docs deploys | 6 in about 26 h | docs-site report (Actions runs API) |
+| Docs release notes behind GitHub releases | 3-9 days (v0.8.0 to v0.12.0) | olake-domain report |
+| BM25 hit@1/3/5 on 35 answerable seed questions | page level 18/26/29; chunk level 22/26/30; chunk level plus 3 rules 27/28/32 | olake-domain report, `bm25_poc.py`, `bm25_rules.py` |
+| Repo Tier A size | 377,136 bytes (about 94K tokens) | repos report |
+| spec.json converted to Markdown | 118,870 bytes to 39,612 bytes | repos report, `spec_to_md.py` |
+| olake issues that are bot TODOs | 99 of 321 | repos report |
+| Grounded eval questions written | 40 (ingestion) + 50 (ops) | eval-ingestion and eval-ops reports |
+| End-to-end accuracy, latency and cost with the event's model | PENDING | Curated eval set at the event |
 
 ## Sources
 
@@ -352,6 +487,31 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 [frame-src]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-src
 [connect-src]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/connect-src
 [mlh]: https://github.com/MLH/mlh-policies/blob/main/standard-hackathon-rules.md
+[rest]: https://olake.io/docs/writers/iceberg/catalog/rest/
+[mdx-map]: https://raw.githubusercontent.com/datazip-inc/olake-docs/d06007140994ecbd239a52a9c0acf81fab4ed530/src/theme/MDXComponents/Index.js
+[llms]: https://olake.io/llms.txt
+[kafka]: https://olake.io/docs/connectors/kafka/
+[go-aws]: https://olake.io/docs/install/olake-ui/offline-environments-aws/
+[fus-aws]: https://olake.io/docs/fusion/install/olake-ui/offline-environments-aws/
+[rel-0120]: https://olake.io/docs/release/ingestion/v0.12.0/
+[rel-0100]: https://olake.io/docs/release/ingestion/v0.10.0/
+[olake-rel]: https://github.com/datazip-inc/olake/releases
+[fus-first]: https://olake.io/docs/fusion/getting-started/configure-first-compaction/
+[fus-conf]: https://olake.io/docs/fusion/compaction/configuration/
+[fus-faq]: https://olake.io/olake-fusion/
+[go-faq]: https://olake.io/olake-go/
+[mysql]: https://olake.io/docs/connectors/mysql/
+[rootgo]: https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/protocol/root.go
+[values]: https://github.com/datazip-inc/olake-helm/blob/c63f10c48cd4dc2cbe3a130c6190ccedf0dafa83/helm/olake/values.yaml
+[fus-claude]: https://github.com/datazip-inc/olake-fusion/blob/15ca160b298bf038f78f6639ec7aae67e4d4e33a/CLAUDE.md
+[fus-notice]: https://github.com/datazip-inc/olake-fusion/blob/15ca160b298bf038f78f6639ec7aae67e4d4e33a/NOTICE
+[amoro-conf]: https://amoro.apache.org/docs/latest/configurations/
+[pg-tab]: https://olake.io/docs/connectors/postgres/?config-type=olake-cli#1-create-configuration-file
+[gh-snippet]: https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-a-permanent-link-to-a-code-snippet
+[gh-perma]: https://docs.github.com/en/repositories/working-with-files/using-files/getting-permanent-links-to-files
+[gh-events]: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+[pr1145]: https://github.com/datazip-inc/olake/pull/1145
+[contact]: https://olake.io/contact/
 [mlh-guide]: https://guide.mlh.com/general-information/judging-and-submissions/rules-for-your-hackathon
 [fusion-repo]: https://github.com/datazip-inc/olake-fusion
 [amoro]: https://amoro.apache.org/
