@@ -423,3 +423,33 @@ def test_head_requests_on_the_embed_routes(make_client):
         assert r.status_code == 200 and r.headers["content-type"].startswith(ctype), path
         assert r.content == b""
     assert "frame-ancestors *" in c.head("/embed").headers.get_list("content-security-policy")
+
+
+def test_malformed_primary_stream_fails_over_over_http(index_dir):
+    """Verifier repro: primary returns 200 'data: {not json', fallback is valid -> answered by the fallback."""
+    import httpx2
+
+    from app.config import ProviderConfig
+    from app.llm import ProviderChain
+
+    async def handler(request):
+        if request.url.host == "primary":
+            return httpx2.Response(200, headers={"content-type": "text/event-stream"}, content=b"data: {not json\n\n")
+        body = ('data: {"id":"c","object":"chat.completion.chunk","created":1,"model":"m","choices":[{"index":0,'
+                '"delta":{"content":"From the fallback [1]."},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n')
+        return httpx2.Response(200, headers={"content-type": "text/event-stream"}, content=body.encode())
+
+    provs = [ProviderConfig("primary", "http://primary/v1", "k1", "m1"),
+             ProviderConfig("fallback", "http://fallback/v1", "k2", "m2")]
+    llm = ProviderChain(provs, timeout_s=5, max_tokens=600, transport=httpx2.MockTransport(handler))
+    app = create_app(Settings(index_dir=index_dir, abstain_threshold=0.18, canary=CANARY, providers=tuple(provs)),
+                     llm=llm, embedder_factory=hash_factory, web_dir=WEB)
+    with TestClient(app) as c:
+        wait_ready(c)
+        r = c.post("/ask", json={"question": ON_TOPIC})
+        assert r.status_code == 200 and r.json()["answer"] == "From the fallback [1]."
+        assert r.headers["x-ask-reason"] == "answered"
+        events = sse_events(c.post("/ask/stream", json={"question": ON_TOPIC},
+                                   headers={"Cache-Control": "no-cache"}).text)
+        assert [n for n, _ in events][0] == "meta" and events[-1][0] == "done"
+        assert events[-1][1]["answer"] == "From the fallback [1]."

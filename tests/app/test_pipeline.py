@@ -316,3 +316,15 @@ def test_cited_fact_card_puts_its_cite_urls_into_sources(index_dir):
     assert out.reason == "answered"
     assert out.sources[0] == "https://olake.io/docs/connectors/oracle/" and len(out.sources) == 2
     assert out.answer == "No, Oracle CDC is not supported [1][2]."
+
+
+def test_any_exception_from_the_llm_degrades_to_200_pages(index_dir):
+    out = ask(service(index_dir, FakeLLM(lambda _u: RuntimeError("provider exploded"))), ON_TOPIC)
+    assert out.degraded and out.reason == "llm_failed" and out.sources
+    assert out.answer.startswith(prompts.DEGRADED_INTRO)
+
+
+def test_an_exception_during_the_retry_keeps_the_first_attempt(index_dir):
+    replies = iter([("Cut off answer [1]. More", "length"), RuntimeError("retry exploded")])
+    out = ask(service(index_dir, FakeLLM(lambda _u: next(replies))), ON_TOPIC)
+    assert out.reason == "answered" and out.answer == "Cut off answer [1]." and out.truncated

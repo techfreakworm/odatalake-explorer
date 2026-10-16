@@ -188,7 +188,10 @@ class ProviderChain:
                             st.ended = True
                             break
                         st.consume(ev)
-            except (openai.APIError, httpx2.HTTPError, TimeoutError) as e:
+            except _FailOver:
+                raise
+            except Exception as e:  # noqa: BLE001 - anything before the first byte (malformed stream, SDK bug,
+                # transport error) moves on to the next provider; CancelledError is a BaseException and propagates
                 raise _FailOver(_reason(e)) from None
             st.ttft_ms = (loop.time() - t0) * 1000 if st.visible_started else None
             # phase 2: the rest of the stream, bounded by the overall deadline; no failover any more
@@ -197,7 +200,7 @@ class ProviderChain:
                     async with asyncio.timeout_at(deadline):
                         async for ev in it:
                             st.consume(ev)
-                except (openai.APIError, httpx2.HTTPError, TimeoutError) as e:
+                except Exception as e:  # noqa: BLE001 - after the first byte: no failover, keep what arrived
                     st.finish()
                     raise LLMStreamError(_reason(e), st.result(p, messages)) from None
             st.finish()

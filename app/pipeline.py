@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import logging
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -29,6 +30,7 @@ from app.guard import LeakGuard, StreamSanitizer, detect_marker, remove_markers,
 from app.index_store import IndexHolder
 from app.limits import AnswerCache, DailyTokenBudget, TokenBucket, cache_key
 from app.llm import LLMResult, LLMStreamError, LLMUnavailable
+from app.logs import log_event, redact
 from app.models import Passage
 from app.retrieval import RetrievalConfig, RetrievalResult, retrieve
 
@@ -226,7 +228,9 @@ class AskService:
         t = loop.time()
         try:
             res, broken = await self._call(messages, deadline, on_delta if emit is not None else None, run)
-        except LLMUnavailable:
+        except Exception as e:  # noqa: BLE001 - every provider failed, or the client broke: the degraded 200
+            if not isinstance(e, LLMUnavailable):
+                log_event("llm_error", logging.ERROR, error=redact(f"{type(e).__name__}: {e}"))
             run.timings["llm"] = round((loop.time() - t) * 1000, 2)
             return self._degraded("llm_failed", run)
         if res.ttft_ms is not None:
@@ -245,8 +249,9 @@ class AskService:
                 if not _unparseable(res2.text) and (not truncated2 or truncated):
                     text, truncated = res2.text, truncated2
                     leak = self.guard.contains_leak(text)
-            except (LLMUnavailable, TimeoutError):
-                pass  # keep the first attempt and salvage it
+            except Exception as e:  # noqa: BLE001 - the retry failed or ran out of time: keep the first attempt
+                if not isinstance(e, (LLMUnavailable, TimeoutError)):
+                    log_event("llm_error", logging.ERROR, error=redact(f"{type(e).__name__}: {e}"))
         elif sanitizer is not None:
             tail = sanitizer.finish()
             if tail:

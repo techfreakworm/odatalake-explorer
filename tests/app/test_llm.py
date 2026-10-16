@@ -223,3 +223,50 @@ def test_empty_chain_is_unavailable():
     assert not ch.configured
     with pytest.raises(LLMUnavailable):
         asyncio.run(call(ch))
+
+
+def garbage_stream(body_bytes):
+    async def h(body):
+        return httpx2.Response(200, headers={"content-type": "text/event-stream"}, content=body_bytes)
+    return h
+
+
+def test_failover_on_a_malformed_stream_before_the_first_byte():
+    # verifier repro: the primary answers 200 with "data: {not json"; the fallback must answer
+    r = Router(primary=garbage_stream(b"data: {not json\n\n"), fallback=ok(["From fallback [1]."]))
+    res, streamed = asyncio.run(call(chain(r, "primary", "fallback")))
+    assert res.provider == "fallback" and streamed == "From fallback [1]."
+    assert r.hosts() == ["primary", "fallback"]
+    assert res.failovers and res.failovers[0].startswith("primary: ")
+
+
+def test_malformed_stream_after_the_first_byte_is_a_stream_error_not_a_failover():
+    first = chunk({"role": "assistant", "content": "Partial answer [1]."}).encode()
+    r = Router(primary=garbage_stream(first + b"data: {not json\n\n"), fallback=ok(["unused"]))
+    with pytest.raises(LLMStreamError) as e:
+        asyncio.run(call(chain(r, "primary", "fallback")))
+    assert e.value.partial.text == "Partial answer [1]."
+    assert r.hosts() == ["primary"]
+
+
+def test_any_exception_from_a_provider_fails_over():
+    async def boom(body):
+        raise RuntimeError("weird provider failure")
+
+    r = Router(primary=boom, fallback=ok(["ok [1]."]))
+    res, _ = asyncio.run(call(chain(r, "primary", "fallback")))
+    assert res.provider == "fallback"
+
+
+def test_cancellation_is_never_turned_into_a_failover():
+    r = Router(primary=hang(10), fallback=ok(["unused"]))
+
+    async def go():
+        task = asyncio.create_task(call(chain(r, "primary", "fallback", timeout_s=5)))
+        await asyncio.sleep(0.2)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(go())
+    assert r.hosts() == ["primary"]
