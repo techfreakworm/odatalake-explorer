@@ -1,0 +1,44 @@
+[project]
+name = "ask-olake"
+version = "0.1.0"
+description = "Ask OLake: a cited docs assistant for OLake (POST /ask, an embeddable widget, an index builder)"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.135",
+    "uvicorn[standard]",
+    "httpx",
+    "openai",
+    "beautifulsoup4",
+    "lxml",
+    "tiktoken",
+    "bm25s",
+    "PyStemmer",
+    "fastembed",
+    "numpy",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+# Optional: RERANK=tinybert only (decision R'). With RERANK=off the app never imports it.
+rerank = ["flashrank"]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# poc/ is its own uv project (measurement code, not the product): never packaged here.
+packages = ["ingest", "index", "app", "eval"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["poc", "docs", "data", ".cache", ".claude"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["e2e: needs the built index and local ollama"]
