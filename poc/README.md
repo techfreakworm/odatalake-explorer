@@ -405,38 +405,38 @@ Measured in this POC. Numbers are in `results/*.json` and in the table below.
 ## Event-day pipeline these numbers point to
 
 * **Ingest.** Sitemap → `/docs/` pages → Markdown with this extractor's rules: nested
-  tabs, anchors, code language. Add the 84-file repo allowlist pinned to SHAs. Leave the
-  blog out of the default index: it is 446K tokens, more than docs and repos together.
-  At most, use it as a down-weighted fallback.
-* **Chunks.** About 300 o200k tokens with a `title › section` header, YAML/JSON split by
-  keys, Go split by declarations. Citations go to page#anchor and to GitHub permalinks
-  with `?plain=1#Lx-Ly`.
-* **Index.** BM25 plus bge-small, fused with RRF (k=60). Embed the vectors offline on
-  the laptop and ship them with the deploy (1,861 × 384 float32 is 2.7 MB). bge-base
-  adds only +0.009 MRR. If the provider offers a hosted embedding API, that removes the
-  embedder from the box entirely.
-* **Rerank.** None. On the canonical set it is neutral or negative, and it costs
-  0.2–2 s and 0.5–1.5 GB of RAM.
-* **Gate, then generate.** Short-circuit only clearly off-topic questions, either with a
-  low reranker-score gate (−4) or with a cheap classifier. Otherwise call the provider
-  with reasoning off, JSON mode and 6 passages (about 1.9K prompt tokens, about 70
-  output tokens). The model's `answerable` flag plus "no valid citation → abstain" do
-  the real abstaining. Use a prompt that corrects false premises with citations rather
-  than abstaining (v2).
+  tabs with group markers, anchors, code language. Add allowlist v2 (Tier A) pinned to
+  SHAs, plus the last 10 GitHub release notes per repo. Keep the blog out of the index:
+  at weight 1.0 it costs 0.11 MRR. At most add it as a ≤0.5-weight fallback.
+* **Chunks.** About 300 o200k tokens with a `Page › Section › Tab` header. Never span two
+  tabs. YAML/JSON split by keys, Go by declarations, spec.json as field tables.
+  Citations go to page#anchor and to GitHub permalinks with `?plain=1#Lx-Ly`.
+* **Index.** BM25 plus bge-small, fused with RRF (k=60): canonical MRR 0.744, hit@10
+  0.939. Embed offline on the laptop (42 chunks/s) and ship the 2.6 MB of vectors with the
+  deploy.
+* **Rerank.** None in the ranking path is the lead's decision. FlashRank TinyBERT@20 is
+  the one candidate worth revisiting: +0.034 MRR for 28 ms and about 53 MB. MiniLM and
+  bge-reranker-base lose quality here.
+* **Off-topic gate.** Max dense cosine is free and reaches 0.58 recall at 0 false
+  abstains. TinyBERT top-10 has the best AUC (0.883) for 13 ms. The threshold has no
+  margin, so pair it with the one-rewrite safety net:
+  * use the hardened rewrite (v2): keywords only, plus the sanitizer;
+  * decline only if the gate still fires after the rewrite;
+  * expect the gate stage to catch only about 50–60% of must-abstain rows.
+* **Generate.** Use the provider with reasoning off, JSON mode and k=10 passages (about
+  3.5–4K prompt tokens). Always cap `max_tokens`. Bound in-flight LLM calls with a
+  semaphore and return 503 + `Retry-After` beyond it. Keep the LLM timeout below the
+  client timeout. The model's `answerable` flag plus "no valid citation → abstain" do the
+  rest of the abstaining. Prompt v3 corrects false premises and answers support questions
+  with the supported list.
 * **Contract.** Always `{answer, sources}`, including on 4xx and 5xx. Renumber `[n]` to
-  positions in `sources`.
-* **Freshness.** Conditional GET on `sitemap.xml` every few minutes. On change, re-fetch
-  all docs (about 8 s) and diff sha256 per page. Run `git ls-remote` for the repos.
-  Re-chunk and re-embed only changed documents.
-* **Eval.** `eval.score` against the deployed URL. With the local 32B model a run took
-  196 s for 18 questions and 44 min for all 94 (under heavy machine contention). The
-  harness itself adds nothing: the 5-minute target depends entirely on provider speed.
-  Retrieval-only checks (`retrieval.bench --repeat 0 --reuse-embeddings`) take under
-  4 minutes for 94 questions and 13 configs, and are the fast loop for retrieval changes.
-  Use the strongest available model as judge: the local judge flipped 2 of 14 verdicts
-  between thinking on and off.
-* **Serving box.** Cap onnxruntime threads (`ASK_ONNX_THREADS`). By default every session
-  sizes its pool to all cores. The load average went past 200 while this POC and another
-  onnxruntime-heavy job shared the machine. Latencies measured in that window are
-  inflated: the canonical scorer's /ask p50 was 105 s, against 35 s for the seed run. I
-  did not isolate the cause.
+  positions in `sources`. Debug detail goes in response headers (`X-Ask-*`), never in the
+  body.
+* **Freshness.** Run the 07:30 re-crawl one-liner above, then `ingest.diff_manifest`.
+  Re-chunk and re-embed only changed pages. Use `git ls-remote` for the repos and
+  `gh api .../releases` for release notes.
+* **Eval.** Retrieval-only checks take minutes (`retrieval.bench --repeat 0
+  --reuse-embeddings`). End-to-end runs need the provider: with a local single-slot 32B
+  model, 94 rows take 45+ minutes. Use the strongest model available as judge.
+* **Serving box.** Cap onnxruntime threads (`ASK_ONNX_THREADS`). Serving RSS is about
+  0.25 GB for BM25 + bge-small; TinyBERT adds about 53 MB.
