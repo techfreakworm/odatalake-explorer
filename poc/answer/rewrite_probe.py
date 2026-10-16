@@ -28,9 +28,14 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--questions", required=True)
     ap.add_argument("--out", default=str(RESULTS_DIR / "gate-rewrite.json"))
+    ap.add_argument("--rewrite-version", default="v1", choices=["v1", "v2"])
+    ap.add_argument("--ids", default="", help="comma-separated subset of question ids")
     args = ap.parse_args()
     qs = load_questions(args.questions)
-    pipe = AskPipeline(target=300, dense_model="BAAI/bge-small-en-v1.5", reranker_model=None, gate_signal="dense_max_cos")
+    if args.ids:
+        qs = [q for q in qs if q["id"] in set(args.ids.split(","))]
+    pipe = AskPipeline(target=300, dense_model="BAAI/bge-small-en-v1.5", reranker_model=None, gate_signal="dense_max_cos",
+                       rewrite_version=args.rewrite_version)
     tiny = Reranker("flashrank:ms-marco-TinyBERT-L-2-v2")
 
     def scores(query: str) -> dict:
