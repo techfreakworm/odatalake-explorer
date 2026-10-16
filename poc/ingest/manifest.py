@@ -49,10 +49,12 @@ def main() -> None:
             "sha256": r["sha256"],
         })
     pages.sort(key=lambda p: p["url"])
-    corpus_mtime = dt.datetime.fromtimestamp((CORPUS_DIR / "docs.jsonl").stat().st_mtime, tz=dt.timezone.utc)
+    # crawl time = when the online fetch wrote fetch_docs.json (an --offline re-extract does not touch it)
+    src = CORPUS_DIR / "fetch_docs.json" if (CORPUS_DIR / "fetch_docs.json").exists() else CORPUS_DIR / "docs.jsonl"
+    corpus_mtime = dt.datetime.fromtimestamp(src.stat().st_mtime, tz=dt.timezone.utc)
     manifest = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
-        "crawled_at": corpus_mtime.isoformat(timespec="seconds"),  # when docs.jsonl was written
+        "crawled_at": corpus_mtime.isoformat(timespec="seconds"),
         "extractor": "poc/ingest/html2md.py",
         "extractor_commit": extractor_commit(),
         "tokenizer": "tiktoken o200k_base",

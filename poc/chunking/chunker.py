@@ -2,6 +2,9 @@
 
     uv run python -I -m chunking.chunker --target 300 --target 600 [--blog]
 
+Writes chunks-<t>.jsonl (docs + repo files + release notes) and, with --blog,
+chunks-<t>-blogtier.jsonl (blog posts as a separate, down-weightable tier).
+
 Markdown (docs pages, repo *.md):
   * blocks = paragraphs/lists, fenced code, tables, headings; fenced code and
     tables are atomic. A block larger than the hard max is the only thing ever
@@ -32,6 +35,7 @@ from dataclasses import dataclass, field
 import tiktoken
 
 from common.config import CORPUS_DIR, INDEX_DIR, RESULTS_DIR, read_jsonl, write_json, write_jsonl
+from ingest.html2md import TABS_END, TABS_START
 
 ENC = tiktoken.get_encoding("o200k_base")
 SEP = " › "
@@ -65,6 +69,10 @@ def parse_markdown(md: str) -> list[Block]:
     while i < n:
         line = lines[i]
         if not line.strip():
+            i += 1
+            continue
+        if line.strip() in (TABS_START, TABS_END):  # structural tab-group markers from html2md
+            out.append(Block("tabstart" if line.strip() == TABS_START else "tabend", "", i + 1, i + 1))
             i += 1
             continue
         if line.lstrip().startswith("<!--"):  # HTML comments (license headers) are dropped
@@ -157,27 +165,49 @@ class Section:
 
 
 def sections_of(blocks: list[Block]) -> list[Section]:
-    stack: list[tuple[float, str, str | None]] = []  # (level, title, anchor)
+    """Split blocks into sections. The stack holds headings and tab labels; tab-group markers
+    (tabstart/tabend) record where a group began, so a sibling tab replaces the previous tab and
+    everything under it, and headings inside a panel never pop the panel's tab label."""
+    stack: list[tuple[str, float, str, str | None]] = []  # (kind, level, title, anchor)
+    groups: list[int] = []  # stack depth at each open tab group
     secs = [Section([], None)]
+
+    def nearest_anchor() -> str | None:
+        return next((a for _, _, _, a in reversed(stack) if a), None)
+
     for b in blocks:
-        if b.kind in ("heading", "tab"):
-            if b.kind == "tab":
-                # a tab label sits just below the heading it appears under
-                while stack and stack[-1][1].startswith("Tab: "):
+        if b.kind == "tabstart":
+            groups.append(len(stack))
+            continue
+        if b.kind == "tabend":
+            if groups:
+                del stack[groups.pop():]
+            continue
+        if b.kind == "tab":
+            if groups:
+                del stack[groups[-1]:]
+            else:  # unmatched marker (older extractor output): replace a trailing tab label
+                while stack and stack[-1][0] == "tab":
                     stack.pop()
-                level = (stack[-1][0] if stack else 0) + 0.5
-                anchor = stack[-1][2] if stack else None
-            else:
-                level, anchor = b.level, b.anchor
-            while stack and stack[-1][0] >= level:
+            anchor = nearest_anchor()
+            stack.append(("tab", stack[-1][1] if stack else 0, b.title, anchor))
+            secs.append(Section([t for _, _, t, _ in stack], anchor, [b]))
+            continue
+        if b.kind == "heading":
+            floor = groups[-1] + 1 if groups else 0  # never pop the open panel's tab label
+            while len(stack) > floor and stack[-1][0] == "heading" and stack[-1][1] >= b.level:
                 stack.pop()
-            if anchor is None and stack:
-                anchor = next((a for _, _, a in reversed(stack) if a), None)
-            stack.append((level, b.title, anchor))
-            secs.append(Section([t for _, t, _ in stack], anchor, [b]))
-        else:
-            secs[-1].blocks.append(b)
+            anchor = b.anchor or nearest_anchor()
+            stack.append(("heading", b.level, b.title, anchor))
+            secs.append(Section([t for _, _, t, _ in stack], anchor, [b]))
+            continue
+        secs[-1].blocks.append(b)
     return [s for s in secs if s.blocks]
+
+
+def tab_ctx(path: list[str]) -> tuple[str, ...]:
+    """The tab panels a section sits in; chunks never mix two different tab contexts."""
+    return tuple(p for p in path if p.startswith("Tab: "))
 
 
 def pack_markdown(blocks: list[Block], target: int, hard_max: int, title: str = "") -> list[dict]:
@@ -193,9 +223,11 @@ def pack_markdown(blocks: list[Block], target: int, hard_max: int, title: str = 
         cur = None
 
     for sec in sections_of(blocks):
-        parent_path = sec.path[:-1] if sec.blocks[0].kind in ("heading", "tab") else sec.path
+        # a heading section's header is its parent path (the heading line opens the body); a tab
+        # section keeps the tab label in the header: Page › Section › Tab: X
+        parent_path = sec.path[:-1] if sec.blocks[0].kind == "heading" else sec.path
         limit = target - head_tok(sec.path)
-        if cur and cur["tokens"] + sec.tokens + 2 <= limit:
+        if cur and cur["tokens"] + sec.tokens + 2 <= limit and cur["tabctx"] == tab_ctx(sec.path):
             cur["blocks"] += sec.blocks
             cur["tokens"] += sec.tokens + 2
             cur["anchors"].append(sec.anchor)
@@ -208,7 +240,8 @@ def pack_markdown(blocks: list[Block], target: int, hard_max: int, title: str = 
             cur["path"] = common
             continue
         flush()
-        cur = {"path": parent_path, "anchor": sec.anchor, "anchors": [sec.anchor], "blocks": [], "tokens": 0}
+        cur = {"path": parent_path, "anchor": sec.anchor, "anchors": [sec.anchor], "blocks": [], "tokens": 0,
+               "tabctx": tab_ctx(sec.path)}
         body_max = hard_max - head_tok(sec.path)
         for b in sec.blocks:
             parts = split_oversize(b, body_max) if b.tokens > body_max else [b]
@@ -216,7 +249,7 @@ def pack_markdown(blocks: list[Block], target: int, hard_max: int, title: str = 
                 if cur["blocks"] and cur["tokens"] + p.tokens + 2 > limit:
                     flush()
                     cur = {"path": sec.path, "anchor": sec.anchor, "anchors": [sec.anchor], "blocks": [],
-                           "tokens": 0, "continued": True}
+                           "tokens": 0, "continued": True, "tabctx": tab_ctx(sec.path)}
                 cur["blocks"].append(p)
                 cur["tokens"] += p.tokens + 2
     flush()
@@ -224,7 +257,7 @@ def pack_markdown(blocks: list[Block], target: int, hard_max: int, title: str = 
     merged: list[dict] = []
     for p in out:
         prev = merged[-1] if merged else None
-        if prev and (prev["tokens"] < target / 5 or p["tokens"] < target / 5) \
+        if prev and (prev["tokens"] < target / 5 or p["tokens"] < target / 5) and prev["tabctx"] == p["tabctx"] \
                 and prev["tokens"] + p["tokens"] + 2 <= hard_max - head_tok(prev["path"]):
             prev["blocks"] += p["blocks"]
             prev["tokens"] += p["tokens"] + 2
@@ -372,13 +405,15 @@ def chunk_repo_file(f: dict, target: int, hard_max: int) -> list[dict]:
     title = f"{f['repo']}: {f['path']}"
     lines = f["text"].split("\n")
     out = []
-    if f["kind"] == "markdown":
+    if f["kind"] in ("markdown", "spec"):
         blocks = parse_markdown(f["text"])
         for n, p in enumerate(pack_markdown(blocks, target, hard_max, title)):
             a, b = p["blocks"][0].start, p["blocks"][-1].end
             body = "\n\n".join(bl.text for bl in p["blocks"])
-            out.append(make_chunk(f"{f['repo']}/{f['path']}#{n}", "repo", base, f"{base}{plain}#L{a}-L{b}",
-                                  title, p["path"], body, lines=[a, b], repo=f["repo"], kind=f["kind"]))
+            # converted spec tables no longer match the JSON's line numbers: cite the file
+            url = base if f["kind"] == "spec" else f"{base}{plain}#L{a}-L{b}"
+            out.append(make_chunk(f"{f['repo']}/{f['path']}#{n}", "repo", base, url, title, p["path"], body,
+                                  lines=None if f["kind"] == "spec" else [a, b], repo=f["repo"], kind=f["kind"]))
         return out
     kind = f["kind"] if f["kind"] in ("yaml", "json", "go") else "text"
     if kind == "text":
@@ -402,16 +437,31 @@ def chunk_repo_file(f: dict, target: int, hard_max: int) -> list[dict]:
     return out
 
 
-def build(target: int, hard_max: int, include_blog: bool) -> list[dict]:
+def chunk_release(rel: dict, target: int, hard_max: int) -> list[dict]:
+    blocks = parse_markdown(rel["markdown"])
+    out = []
+    for n, p in enumerate(pack_markdown(blocks, target, hard_max, rel["title"])):
+        body = "\n\n".join(b.text for b in p["blocks"])
+        out.append(make_chunk(f"release/{rel['repo']}/{rel['tag']}#{n}", "release", rel["url"], rel["url"],
+                              rel["title"], p["path"], body, repo=rel["repo"], tag=rel["tag"]))
+    return out
+
+
+def build(target: int, hard_max: int, include_blog: bool) -> tuple[list[dict], list[dict]]:
+    """(core chunks: docs + repo files + release notes, blog-tier chunks)."""
     chunks = []
     for page in read_jsonl(CORPUS_DIR / "docs.jsonl"):
         chunks += chunk_page(page, "docs", target, hard_max)
     for f in read_jsonl(CORPUS_DIR / "repos.jsonl"):
         chunks += chunk_repo_file(f, target, hard_max)
+    if (CORPUS_DIR / "releases.jsonl").exists():
+        for rel in read_jsonl(CORPUS_DIR / "releases.jsonl"):
+            chunks += chunk_release(rel, target, hard_max)
+    blog = []
     if include_blog and (CORPUS_DIR / "blog.jsonl").exists():
         for page in read_jsonl(CORPUS_DIR / "blog.jsonl"):
-            chunks += chunk_page(page, "blog", target, hard_max)
-    return chunks
+            blog += chunk_page(page, "blog", target, hard_max)
+    return chunks, blog
 
 
 def describe(chunks: list[dict], target: int, hard_max: int) -> dict:
@@ -438,6 +488,8 @@ def describe(chunks: list[dict], target: int, hard_max: int) -> dict:
         "under_50_tokens": sum(c["tokens"] < 50 for c in chunks),
         "continued_section_pieces": sum(bool(c.get("continued")) for c in chunks),
         "unbalanced_fences": sum(c["text"].count("```") % 2 for c in chunks),
+        "chunks_mixing_two_tabs": sum(1 for c in chunks if len(set(re.findall(r"^\*\*Tab: (.+)\*\*$", c["text"], re.M))) > 1),
+        "chunks_with_tab_in_header": sum(1 for c in chunks if "Tab: " in c["text"].split("\n", 1)[0]),
     }
 
 
@@ -451,15 +503,15 @@ def main() -> None:
     report = {"tokenizer": "tiktoken o200k_base", "header_format": "title › section › subsection", "configs": []}
     for t in targets:
         hard = int(t * args.max_ratio)
-        chunks = build(t, hard, args.blog)
-        suffix = f"{t}" + ("-blog" if args.blog else "")
-        write_jsonl(INDEX_DIR / f"chunks-{suffix}.jsonl", chunks)
+        chunks, blog = build(t, hard, args.blog)
+        write_jsonl(INDEX_DIR / f"chunks-{t}.jsonl", chunks)
         d = describe(chunks, t, hard)
-        d["include_blog"] = args.blog
+        if blog:  # separate, down-weightable tier
+            write_jsonl(INDEX_DIR / f"chunks-{t}-blogtier.jsonl", blog)
+            d["blog_tier"] = describe(blog, t, hard)
         report["configs"].append(d)
-        print(d)
-    out = RESULTS_DIR / ("chunks-blog.json" if args.blog else "chunks.json")
-    write_json(out, report)
+        print({k: v for k, v in d.items() if k != "blog_tier"})
+    write_json(RESULTS_DIR / "chunks.json", report)
 
 
 if __name__ == "__main__":

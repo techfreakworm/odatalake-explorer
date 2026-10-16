@@ -24,15 +24,15 @@
     "total": {
       "pages": 124,
       "html_bytes": 11169120,
-      "md_bytes": 1107030,
-      "tokens": 263614,
+      "md_bytes": 1110242,
+      "tokens": 264265,
       "code_blocks": 830,
       "tables": 182,
       "tabs": 80,
       "admonitions": 342,
       "headings": 1453,
       "tokens_per_page_p50": 1152,
-      "tokens_per_page_max": 30229,
+      "tokens_per_page_max": 30421,
       "pages_under_100_tokens": [
         "https://olake.io/docs/connectors/overview/",
         "https://olake.io/docs/core/configs/state/",
@@ -52,22 +52,22 @@
     "by_section": {
       "connectors": {
         "pages": 26,
-        "md_bytes": 335960,
-        "tokens": 79937,
+        "md_bytes": 336600,
+        "tokens": 80065,
         "code_blocks": 355,
         "tables": 63
       },
       "writers": {
         "pages": 15,
-        "md_bytes": 218781,
-        "tokens": 54428,
+        "md_bytes": 220101,
+        "tokens": 54692,
         "code_blocks": 141,
         "tables": 51
       },
       "install": {
         "pages": 5,
-        "md_bytes": 92469,
-        "tokens": 22208,
+        "md_bytes": 92709,
+        "tokens": 22256,
         "code_blocks": 106,
         "tables": 8
       },
@@ -80,8 +80,8 @@
       },
       "community": {
         "pages": 7,
-        "md_bytes": 69710,
-        "tokens": 15953,
+        "md_bytes": 70282,
+        "tokens": 16073,
         "code_blocks": 70,
         "tables": 3
       },
@@ -94,36 +94,36 @@
       },
       "getting-started": {
         "pages": 6,
-        "md_bytes": 53760,
-        "tokens": 12712,
+        "md_bytes": 53880,
+        "tokens": 12739,
         "code_blocks": 49,
         "tables": 6
       },
       "understanding": {
         "pages": 4,
-        "md_bytes": 54819,
-        "tokens": 12561,
+        "md_bytes": 54859,
+        "tokens": 12569,
         "code_blocks": 0,
         "tables": 6
       },
       "fusion/install": {
         "pages": 4,
-        "md_bytes": 46823,
-        "tokens": 11064,
+        "md_bytes": 46903,
+        "tokens": 11080,
         "code_blocks": 57,
         "tables": 2
       },
       "benchmarks": {
         "pages": 1,
-        "md_bytes": 34969,
-        "tokens": 10144,
+        "md_bytes": 35009,
+        "tokens": 10152,
         "code_blocks": 26,
         "tables": 21
       },
       "features": {
         "pages": 1,
-        "md_bytes": 11176,
-        "tokens": 2523,
+        "md_bytes": 11256,
+        "tokens": 2539,
         "code_blocks": 0,
         "tables": 3
       },
@@ -143,8 +143,8 @@
       },
       "core": {
         "pages": 6,
-        "md_bytes": 9018,
-        "tokens": 1803,
+        "md_bytes": 9098,
+        "tokens": 1819,
         "code_blocks": 0,
         "tables": 0
       },
@@ -215,8 +215,8 @@
     "largest": [
       {
         "url": "https://olake.io/docs/writers/iceberg/catalog/rest/",
-        "tokens": 30229,
-        "md_bytes": 121990
+        "tokens": 30421,
+        "md_bytes": 122950
       },
       {
         "url": "https://olake.io/docs/fusion/getting-started/compaction/",
@@ -225,43 +225,43 @@
       },
       {
         "url": "https://olake.io/docs/benchmarks/ingestion/",
-        "tokens": 10144,
-        "md_bytes": 34969
+        "tokens": 10152,
+        "md_bytes": 35009
       },
       {
         "url": "https://olake.io/docs/install/kubernetes/",
-        "tokens": 8469,
-        "md_bytes": 34506
+        "tokens": 8485,
+        "md_bytes": 34586
       },
       {
         "url": "https://olake.io/docs/community/setting-up-a-dev-env/",
-        "tokens": 7160,
-        "md_bytes": 30741
+        "tokens": 7232,
+        "md_bytes": 31101
       },
       {
         "url": "https://olake.io/docs/connectors/s3/",
-        "tokens": 6760,
-        "md_bytes": 25981
+        "tokens": 6792,
+        "md_bytes": 26141
       },
       {
         "url": "https://olake.io/docs/understanding/terminologies/general/",
-        "tokens": 5678,
-        "md_bytes": 25605
+        "tokens": 5686,
+        "md_bytes": 25645
       },
       {
         "url": "https://olake.io/docs/install/docker-cli/",
-        "tokens": 5468,
-        "md_bytes": 23030
+        "tokens": 5484,
+        "md_bytes": 23110
       },
       {
         "url": "https://olake.io/docs/writers/iceberg/catalog/hive/",
-        "tokens": 5387,
-        "md_bytes": 20435
+        "tokens": 5403,
+        "md_bytes": 20515
       },
       {
         "url": "https://olake.io/docs/getting-started/playground/",
-        "tokens": 5310,
-        "md_bytes": 20965
+        "tokens": 5319,
+        "md_bytes": 21005
       }
     ]
   },
@@ -269,15 +269,15 @@
     "total": {
       "pages": 85,
       "html_bytes": 10783366,
-      "md_bytes": 2039173,
-      "tokens": 446137,
+      "md_bytes": 2039859,
+      "tokens": 446275,
       "code_blocks": 472,
       "tables": 112,
       "tabs": 17,
       "admonitions": 46,
       "headings": 1803,
       "tokens_per_page_p50": 4175,
-      "tokens_per_page_max": 19794,
+      "tokens_per_page_max": 19818,
       "pages_under_100_tokens": [
         "https://olake.io/blog/how-to-set-up-postgresql-cdc-on-aws-rds-2025/"
       ]
@@ -285,13 +285,13 @@
     "largest": [
       {
         "url": "https://olake.io/blog/iceberg-compaction-tpch-benchmark/",
-        "tokens": 19794,
-        "md_bytes": 82510
+        "tokens": 19818,
+        "md_bytes": 82630
       },
       {
         "url": "https://olake.io/blog/databricks-vs-iceberg/",
-        "tokens": 17911,
-        "md_bytes": 66079
+        "tokens": 17943,
+        "md_bytes": 66239
       },
       {
         "url": "https://olake.io/blog/olake-architecture-deep-dive/",
@@ -300,13 +300,13 @@
       },
       {
         "url": "https://olake.io/blog/olake-mor-cow-databricks/",
-        "tokens": 14600,
-        "md_bytes": 63521
+        "tokens": 14610,
+        "md_bytes": 63567
       },
       {
         "url": "https://olake.io/blog/iceberg-compaction-spark-vs-fusion-benchmark/",
-        "tokens": 12695,
-        "md_bytes": 51112
+        "tokens": 12719,
+        "md_bytes": 51232
       },
       {
         "url": "https://olake.io/blog/apache-iceberg-metadata-explained/",
@@ -335,41 +335,188 @@
       }
     ]
   },
-  "repos": {
-    "clone_wall_s": 3.36,
+  "fusion_pages": {
+    "pages": 23,
+    "stubs": 7,
+    "content_tokens": 28391,
+    "per_page": [
+      {
+        "url": "https://olake.io/docs/fusion/getting-started/compaction/",
+        "tokens": 10277,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/install/kubernetes-compaction/",
+        "tokens": 4812,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/install/olake-ui/",
+        "tokens": 2587,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/install/olake-ui/offline-environments-aws/",
+        "tokens": 2145,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/getting-started/configure-first-compaction/",
+        "tokens": 1741,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/install/olake-ui/offline-environments-generic/",
+        "tokens": 1536,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/maintenance/catalogs/",
+        "tokens": 775,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/compaction/types-of-compaction/",
+        "tokens": 751,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/maintenance/metrics/",
+        "tokens": 686,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/maintenance/runs-and-logs/",
+        "tokens": 559,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/core/use-cases/",
+        "tokens": 535,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/compaction/configuration/",
+        "tokens": 501,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/getting-started/quickstart/",
+        "tokens": 428,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/getting-started/overview/",
+        "tokens": 417,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/release/maintenance/v0.1.0/",
+        "tokens": 376,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/release/maintenance/overview/",
+        "tokens": 214,
+        "stub": false
+      },
+      {
+        "url": "https://olake.io/docs/fusion/community/issues-and-prs/",
+        "tokens": 10,
+        "stub": true
+      },
+      {
+        "url": "https://olake.io/docs/fusion/community/code-of-conduct/",
+        "tokens": 8,
+        "stub": true
+      },
+      {
+        "url": "https://olake.io/docs/fusion/core/compatibility/query-engines/",
+        "tokens": 8,
+        "stub": true
+      },
+      {
+        "url": "https://olake.io/docs/fusion/community/contributing/",
+        "tokens": 7,
+        "stub": true
+      },
+      {
+        "url": "https://olake.io/docs/fusion/core/terminologies/",
+        "tokens": 7,
+        "stub": true
+      },
+      {
+        "url": "https://olake.io/docs/fusion/community/channels/",
+        "tokens": 6,
+        "stub": true
+      },
+      {
+        "url": "https://olake.io/docs/fusion/core/architecture/",
+        "tokens": 5,
+        "stub": true
+      }
+    ]
+  },
+  "releases": {
     "total": {
-      "files": 84,
-      "bytes": 609665,
-      "tokens": 143596,
-      "markdown_code_blocks": 191,
-      "markdown_tables": 19
+      "releases": 34,
+      "tokens": 8602
+    },
+    "per_repo": {
+      "olake": {
+        "releases": 10,
+        "tokens": 3731,
+        "newest": "v0.12.1"
+      },
+      "olake-ui": {
+        "releases": 10,
+        "tokens": 2448,
+        "newest": "v0.7.1"
+      },
+      "olake-helm": {
+        "releases": 10,
+        "tokens": 1891,
+        "newest": "v0.4.0"
+      },
+      "olake-fusion": {
+        "releases": 4,
+        "tokens": 532,
+        "newest": "v0.1.4"
+      }
+    }
+  },
+  "repos": {
+    "allowlist_version": "v2",
+    "clone_wall_s": 4.01,
+    "total": {
+      "files": 38,
+      "bytes": 420495,
+      "tokens": 80176,
+      "markdown_code_blocks": 151,
+      "markdown_tables": 32
     },
     "per_repo": {
       "olake": {
         "sha": "d20c68ed98ced12293cd621ac04136a946ba4290",
         "branch": "master",
         "commit_date": "2026-10-15T18:47:35+05:30",
-        "clone_s": 1.41,
+        "clone_s": 1.47,
         "tracked_files": 450,
-        "files": 58,
-        "bytes": 369196,
-        "tokens": 82666,
+        "files": 25,
+        "bytes": 247725,
+        "tokens": 44056,
         "by_kind": {
           "markdown": {
-            "files": 15,
-            "tokens": 28773
+            "files": 14,
+            "tokens": 28266
+          },
+          "spec": {
+            "files": 10,
+            "tokens": 13000
           },
           "go": {
-            "files": 20,
-            "tokens": 24126
-          },
-          "yaml": {
-            "files": 13,
-            "tokens": 9306
-          },
-          "json": {
-            "files": 10,
-            "tokens": 20461
+            "files": 1,
+            "tokens": 2790
           }
         }
       },
@@ -377,23 +524,19 @@
         "sha": "56826cf172a4c10e80a2276d0a2095313ec5b667",
         "branch": "master",
         "commit_date": "2026-10-15T18:57:16+05:30",
-        "clone_s": 1.37,
+        "clone_s": 1.29,
         "tracked_files": 519,
-        "files": 11,
-        "bytes": 86974,
-        "tokens": 22682,
+        "files": 3,
+        "bytes": 29984,
+        "tokens": 7786,
         "by_kind": {
           "markdown": {
-            "files": 6,
-            "tokens": 12631
+            "files": 1,
+            "tokens": 1616
           },
           "yaml": {
-            "files": 4,
-            "tokens": 8633
-          },
-          "go": {
-            "files": 1,
-            "tokens": 1418
+            "files": 2,
+            "tokens": 6170
           }
         }
       },
@@ -401,19 +544,23 @@
         "sha": "c63f10c48cd4dc2cbe3a130c6190ccedf0dafa83",
         "branch": "master",
         "commit_date": "2026-10-08T17:40:26+05:30",
-        "clone_s": 1.22,
+        "clone_s": 1.3,
         "tracked_files": 123,
         "files": 6,
-        "bytes": 76427,
-        "tokens": 19090,
+        "bytes": 71696,
+        "tokens": 17836,
         "by_kind": {
           "markdown": {
-            "files": 4,
-            "tokens": 11567
+            "files": 3,
+            "tokens": 9688
           },
           "yaml": {
             "files": 2,
             "tokens": 7523
+          },
+          "text": {
+            "files": 1,
+            "tokens": 625
           }
         }
       },
@@ -421,29 +568,20 @@
         "sha": "15ca160b298bf038f78f6639ec7aae67e4d4e33a",
         "branch": "master",
         "commit_date": "2026-10-13T13:50:37+05:30",
-        "clone_s": 3.31,
+        "clone_s": 3.61,
         "tracked_files": 2315,
-        "files": 9,
-        "bytes": 77068,
-        "tokens": 19158,
+        "files": 4,
+        "bytes": 71090,
+        "tokens": 10498,
         "by_kind": {
           "markdown": {
             "files": 4,
-            "tokens": 7230
-          },
-          "yaml": {
-            "files": 5,
-            "tokens": 11928
+            "tokens": 10498
           }
         }
       }
     },
     "largest": [
-      {
-        "file": "olake/destination/iceberg/resources/spec.json",
-        "tokens": 7474,
-        "bytes": 43371
-      },
       {
         "file": "olake-helm/helm/olake/README.md",
         "tokens": 7438,
@@ -455,24 +593,19 @@
         "bytes": 28988
       },
       {
-        "file": "olake-ui/api-contract.md",
-        "tokens": 6756,
-        "bytes": 24156
-      },
-      {
         "file": "olake-ui/docker-compose-v1.yml",
         "tokens": 5678,
         "bytes": 21887
       },
       {
-        "file": "olake-fusion/CONTRIBUTING.md",
-        "tokens": 4913,
-        "bytes": 20574
+        "file": "olake/destination/iceberg/resources/spec.json",
+        "tokens": 5097,
+        "bytes": 43371
       },
       {
-        "file": "olake-fusion/charts/amoro/values.yaml",
-        "tokens": 4003,
-        "bytes": 15942
+        "file": "olake-fusion/docs/admin-guides/deployment.md",
+        "tokens": 3831,
+        "bytes": 17438
       },
       {
         "file": "olake/README.md",
@@ -480,20 +613,31 @@
         "bytes": 13931
       },
       {
-        "file": "olake-fusion/local-test/docker-compose.yml",
-        "tokens": 3357,
-        "bytes": 12823
+        "file": "olake-fusion/docs/user-guides/configurations.md",
+        "tokens": 3008,
+        "bytes": 27050
       },
       {
-        "file": "olake/protocol/sync.go",
-        "tokens": 2961,
-        "bytes": 12164
+        "file": "olake/protocol/root.go",
+        "tokens": 2790,
+        "bytes": 11925
+      },
+      {
+        "file": "olake/drivers/mssql/README.md",
+        "tokens": 2514,
+        "bytes": 10819
+      },
+      {
+        "file": "olake/drivers/mongodb/README.md",
+        "tokens": 2510,
+        "bytes": 10575
       }
     ]
   },
-  "combined_docs_plus_repos": {
-    "documents": 208,
-    "tokens": 407210,
-    "fetch_wall_s": 20.04
+  "combined_core_index": {
+    "what": "docs + repo allowlist + release notes (blog is a separate tier)",
+    "documents": 196,
+    "tokens": 353043,
+    "fetch_wall_s": 20.68
   }
 }

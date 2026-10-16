@@ -5,82 +5,166 @@
     {
       "target": 300,
       "hard_max": 450,
-      "chunks": 1861,
+      "chunks": 1742,
       "tokens": {
-        "n": 1861,
-        "mean": 240.0,
-        "p5": 94,
-        "p50": 235,
+        "n": 1742,
+        "mean": 225.9,
+        "p5": 70,
+        "p50": 226,
         "p95": 420,
         "max": 501,
-        "sum": 446652
+        "sum": 393555
       },
       "by_source_type": {
         "docs": {
-          "n": 1248,
-          "mean": 233.9,
-          "p5": 106,
-          "p50": 231,
-          "p95": 410,
+          "n": 1344,
+          "mean": 220.2,
+          "p5": 67,
+          "p50": 222,
+          "p95": 411,
           "max": 471,
-          "sum": 291913
+          "sum": 295903
+        },
+        "release": {
+          "n": 48,
+          "mean": 193.4,
+          "p5": 39,
+          "p50": 157,
+          "p95": 438,
+          "max": 439,
+          "sum": 9281
         },
         "repo": {
-          "n": 613,
-          "mean": 252.4,
-          "p5": 54,
-          "p50": 244,
-          "p95": 435,
+          "n": 350,
+          "mean": 252.5,
+          "p5": 104,
+          "p50": 243,
+          "p95": 434,
           "max": 501,
-          "sum": 154739
+          "sum": 88371
         }
       },
-      "over_target": 359,
-      "over_hard_max": 4,
-      "under_50_tokens": 40,
-      "continued_section_pieces": 455,
-      "unbalanced_fences": 2,
-      "include_blog": false
+      "over_target": 282,
+      "over_hard_max": 3,
+      "under_50_tokens": 55,
+      "continued_section_pieces": 426,
+      "unbalanced_fences": 0,
+      "chunks_mixing_two_tabs": 0,
+      "chunks_with_tab_in_header": 488,
+      "blog_tier": {
+        "target": 300,
+        "hard_max": 450,
+        "chunks": 2158,
+        "tokens": {
+          "n": 2158,
+          "mean": 226.6,
+          "p5": 106,
+          "p50": 229,
+          "p95": 403,
+          "max": 614,
+          "sum": 489083
+        },
+        "by_source_type": {
+          "blog": {
+            "n": 2158,
+            "mean": 226.6,
+            "p5": 106,
+            "p50": 229,
+            "p95": 403,
+            "max": 614,
+            "sum": 489083
+          }
+        },
+        "over_target": 185,
+        "over_hard_max": 3,
+        "under_50_tokens": 5,
+        "continued_section_pieces": 819,
+        "unbalanced_fences": 0,
+        "chunks_mixing_two_tabs": 0,
+        "chunks_with_tab_in_header": 78
+      }
     },
     {
       "target": 600,
       "hard_max": 900,
-      "chunks": 951,
+      "chunks": 961,
       "tokens": {
-        "n": 951,
-        "mean": 446.5,
-        "p5": 117,
-        "p50": 470,
-        "p95": 815,
-        "max": 881,
-        "sum": 424613
+        "n": 961,
+        "mean": 387.8,
+        "p5": 51,
+        "p50": 420,
+        "p95": 796,
+        "max": 891,
+        "sum": 372671
       },
       "by_source_type": {
         "docs": {
-          "n": 622,
-          "mean": 443.2,
-          "p5": 165,
-          "p50": 471,
-          "p95": 739,
+          "n": 751,
+          "mean": 372.9,
+          "p5": 42,
+          "p50": 400,
+          "p95": 714,
           "max": 881,
-          "sum": 275673
+          "sum": 280025
+        },
+        "release": {
+          "n": 35,
+          "mean": 256.3,
+          "p5": 66,
+          "p50": 187,
+          "p95": 844,
+          "max": 875,
+          "sum": 8970
         },
         "repo": {
-          "n": 329,
-          "mean": 452.7,
-          "p5": 44,
-          "p50": 468,
-          "p95": 852,
-          "max": 879,
-          "sum": 148940
+          "n": 175,
+          "mean": 478.1,
+          "p5": 159,
+          "p50": 481,
+          "p95": 865,
+          "max": 891,
+          "sum": 83676
         }
       },
-      "over_target": 131,
+      "over_target": 100,
       "over_hard_max": 0,
-      "under_50_tokens": 27,
-      "continued_section_pieces": 120,
-      "unbalanced_fences": 2,
-      "include_blog": false
+      "under_50_tokens": 45,
+      "continued_section_pieces": 105,
+      "unbalanced_fences": 0,
+      "chunks_mixing_two_tabs": 0,
+      "chunks_with_tab_in_header": 311,
+      "blog_tier": {
+        "target": 600,
+        "hard_max": 900,
+        "chunks": 1039,
+        "tokens": {
+          "n": 1039,
+          "mean": 446.8,
+          "p5": 177,
+          "p50": 469,
+          "p95": 696,
+          "max": 867,
+          "sum": 464236
+        },
+        "by_source_type": {
+          "blog": {
+            "n": 1039,
+            "mean": 446.8,
+            "p5": 177,
+            "p50": 469,
+            "p95": 696,
+            "max": 867,
+            "sum": 464236
+          }
+        },
+        "over_target": 72,
+        "over_hard_max": 0,
+        "under_50_tokens": 5,
+        "continued_section_pieces": 190,
+        "unbalanced_fences": 0,
+        "chunks_mixing_two_tabs": 0,
+        "chunks_with_tab_in_header": 52
+      }
     }
   ]
 }

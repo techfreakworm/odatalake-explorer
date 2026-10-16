@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-16T19:08:19+00:00",
+  "generated_at": "2026-10-16T19:14:46+00:00",
   "crawled_at": "2026-10-16T16:53:23+00:00",
   "extractor": "poc/ingest/html2md.py",
-  "extractor_commit": "1be1424",
+  "extractor_commit": "20b4bac",
   "tokenizer": "tiktoken o200k_base",
   "sitemap_urls": 275,
   "pages": 124,
-  "total_tokens": 263614,
+  "total_tokens": 264265,
   "docs": [
     {
       "url": "https://olake.io/docs/",
@@ -40,9 +40,9 @@
       "title": "OLake Ingestion Benchmarks: Speed, Cost, Performance",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 10144,
-      "md_bytes": 34969,
-      "sha256": "17dbdb00f5aaddb488f84d27d0c1f148e6d74067b530f6f66f84ddde95f56f3d"
+      "tokens": 10152,
+      "md_bytes": 35009,
+      "sha256": "7e89f07c67d64b38979ef6b9df32678a26167105058ab21e180aeb13da67c4e3"
     },
     {
       "url": "https://olake.io/docs/community/channels/",
@@ -67,18 +67,18 @@
       "title": "OLake CLI Commands and Flags Reference",
       "lastmod": "2026-10-15",
       "last_updated": "2026-10-15T18:39:37.000Z",
-      "tokens": 3706,
-      "md_bytes": 15347,
-      "sha256": "402459b5b5e5659b9646dd5cfbb917b9d27d36ea512915046f2776a86a796010"
+      "tokens": 3722,
+      "md_bytes": 15427,
+      "sha256": "de117d49a23dea945ba27703e40fa63ff69b8d36d33a4f7a7db8d825f773afb9"
     },
     {
       "url": "https://olake.io/docs/community/contributing/",
       "title": "Contributing to OLake Go: Contributor Guide",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 1229,
-      "md_bytes": 5632,
-      "sha256": "ba52cb2d0fcfe526d0a0cfc27d1ef8582725588e9375da4ba350cdfa15c9eb46"
+      "tokens": 1261,
+      "md_bytes": 5764,
+      "sha256": "07b4487c50b0c18e2036fae287288947d126b6f7651b5adef60ec98a5f575dfc"
     },
     {
       "url": "https://olake.io/docs/community/issues-and-prs/",
@@ -103,27 +103,27 @@
       "title": "Set Up an OLake Development Environment",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 7160,
-      "md_bytes": 30741,
-      "sha256": "042bdd2e658fba6a6bfa5a0e6507867e020ee5ab44e8fbb4f11f92441f869826"
+      "tokens": 7232,
+      "md_bytes": 31101,
+      "sha256": "4afa5c629e6863db40138e2f16b51da8d25a1f1ef54146043c534aedcb94acb6"
     },
     {
       "url": "https://olake.io/docs/connectors/db2/",
       "title": "OLake DB2 Connector | Data Sync & Troubleshooting",
       "lastmod": "2026-10-15",
       "last_updated": "2026-10-15T18:39:37.000Z",
-      "tokens": 2245,
-      "md_bytes": 9040,
-      "sha256": "e6400ff5e84efe4d4554f45efb24c22222d12238015d3db91b5c631c052c3b80"
+      "tokens": 2253,
+      "md_bytes": 9080,
+      "sha256": "40a45ac6e4324508ee1c4d93d5a7b4792b2e08e10fcbc9e8685b0f6ee0a8b10d"
     },
     {
       "url": "https://olake.io/docs/connectors/kafka/",
       "title": "OLake Kafka Connector | Data Sync & Troubleshooting",
       "lastmod": "2026-10-15",
       "last_updated": "2026-10-15T18:39:37.000Z",
-      "tokens": 4300,
-      "md_bytes": 18525,
-      "sha256": "45c27080d07bc7abb571883eae729ec2df635b95529c1fe7157af6f0aa5b089c"
+      "tokens": 4308,
+      "md_bytes": 18565,
+      "sha256": "61048a3291a82da414e1003a3e3ca769a76814be3700b24fb8049d51e4dc7d26"
     },
     {
       "url": "https://olake.io/docs/connectors/kafka/overview/",
@@ -139,9 +139,9 @@
       "title": "OLake MongoDB Connector: Sync Modes and Setup",
       "lastmod": "2026-10-15",
       "last_updated": "2026-10-15T18:39:37.000Z",
-      "tokens": 3858,
-      "md_bytes": 15765,
-      "sha256": "041fbb744dd6f870da05355fc0b3b0bc2682fb80294711384d36234506802ba3"
+      "tokens": 3866,
+      "md_bytes": 15805,
+      "sha256": "d68942b06b58665db297fa8d96753082b03b2da792abc639157e5c00b3f51ace"
     },
     {
       "url": "https://olake.io/docs/connectors/mongodb/cdc_setup/",
@@ -157,27 +157,27 @@
       "title": "Local MongoDB Replica Set with Docker Compose",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 4888,
-      "md_bytes": 21887,
-      "sha256": "8f4b57e3f8529f7d26b863f18fb575c9f935edac72c273f77c36f78577bee8aa"
+      "tokens": 4896,
+      "md_bytes": 21927,
+      "sha256": "22913f43b486eb23e4422aa492c1ce79942dbdf9ec24f160356db7296c971bb8"
     },
     {
       "url": "https://olake.io/docs/connectors/mssql/",
       "title": "MSSQL Source Connector Guide | OLake Data Sync & CDC",
       "lastmod": "2026-10-15",
       "last_updated": "2026-10-15T18:39:37.000Z",
-      "tokens": 4546,
-      "md_bytes": 19490,
-      "sha256": "73e23893914af766d24d1c39777c42bd4b24dd56e26b93485658183116def2b1"
+      "tokens": 4562,
+      "md_bytes": 19570,
+      "sha256": "51ff78eb440eb0b2f452384d2425ef016dba5bf7353167c7d4665eefb4344210"
     },
     {
       "url": "https://olake.io/docs/connectors/mysql/",
       "title": "OLake MySQL Connector: Setup and Sync Modes",
       "lastmod": "2026-10-15",
       "last_updated": "2026-10-15T18:39:37.000Z",
-      "tokens": 4595,
-      "md_bytes": 19073,
-      "sha256": "2f323e150ee88ada761365341dac348334f9ca5ad24ef41c7ba96a12510a85ca"
+      "tokens": 4603,
+      "md_bytes": 19113,
+      "sha256": "710e3753cccc7df4fc8225e61fb59b23575eedcb1246a02c9496ed156e65009a"
     },
     {
       "url": "https://olake.io/docs/connectors/mysql/setup/aurora/",
@@ -220,9 +220,9 @@
       "title": "Local MySQL with Docker Compose for OLake CDC",
       "lastmod": "2026-10-15",
       "last_updated": "2026-10-15T18:39:37.000Z",
-      "tokens": 4077,
-      "md_bytes": 16741,
-      "sha256": "7e4de6f38432902786d34866be96ad05223e117b03cedb2fa57427ecaec047b9"
+      "tokens": 4093,
+      "md_bytes": 16821,
+      "sha256": "2c1686e3057bef89a1395e7b0f5b6a5bbd7ac73623644b0230b6a0b2f3e54a06"
     },
     {
       "url": "https://olake.io/docs/connectors/mysql/setup/rds/",
@@ -238,9 +238,9 @@
       "title": "OLake Oracle Connector: Setup and Sync Modes",
       "lastmod": "2026-10-15",
       "last_updated": "2026-10-15T18:39:37.000Z",
-      "tokens": 2491,
-      "md_bytes": 10201,
-      "sha256": "e742f6a34de968868e356ffdab26ae2529165f62d7e70bc8c67586f81eb6c406"
+      "tokens": 2499,
+      "md_bytes": 10241,
+      "sha256": "2315b2cbf9a8f5ef823520f042549bf77aa854e9a1e1916f251ffcc8e822f82e"
     },
     {
       "url": "https://olake.io/docs/connectors/oracle/setup/generic/",
@@ -265,9 +265,9 @@
       "title": "OLake Postgres Connector: Sync Modes and CDC",
       "lastmod": "2026-10-15",
       "last_updated": "2026-10-15T18:39:37.000Z",
-      "tokens": 4737,
-      "md_bytes": 20112,
-      "sha256": "86e59d9cd8b8152f7ca7c41b26b7c1db5b8a82012cd997588feee4497d574c95"
+      "tokens": 4745,
+      "md_bytes": 20152,
+      "sha256": "51faf3cd07ade5e91162c7ad69ac19851a3ded40cbe1f1e6d02f778f3b9baf66"
     },
     {
       "url": "https://olake.io/docs/connectors/postgres/setup/aurora/",
@@ -310,9 +310,9 @@
       "title": "Local PostgreSQL CDC Setup with Docker for OLake",
       "lastmod": "2026-10-15",
       "last_updated": "2026-10-15T18:39:37.000Z",
-      "tokens": 3163,
-      "md_bytes": 13303,
-      "sha256": "8b58e3044a50b63bdd57a375a3a5ea275a50fa5f94a56b001ac776ce139fb757"
+      "tokens": 3171,
+      "md_bytes": 13343,
+      "sha256": "a7297749229cac8f401126877829622f8c2642778b92fc536f8fa004527c12d2"
     },
     {
       "url": "https://olake.io/docs/connectors/postgres/setup/rds/",
@@ -337,9 +337,9 @@
       "title": "OLake S3 Source Connector | Multi-Format Data Sync",
       "lastmod": "2026-10-15",
       "last_updated": "2026-10-15T18:39:37.000Z",
-      "tokens": 6760,
-      "md_bytes": 25981,
-      "sha256": "926fb59b8cdbfdb35a2053edf19796cc4a487ec515e4a96dce4a9806aa58e706"
+      "tokens": 6792,
+      "md_bytes": 26141,
+      "sha256": "d9dab715691e56f212cc0d1cafd2c2138a0b13543c793e090860212fbf32b46b"
     },
     {
       "url": "https://olake.io/docs/core/architecture/",
@@ -364,9 +364,9 @@
       "title": "Source config - Core Concepts",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 161,
-      "md_bytes": 914,
-      "sha256": "51090651edb96185be2b1a9cf6660d7c3b3c2c05e69a090c1dbe922267408f99"
+      "tokens": 169,
+      "md_bytes": 954,
+      "sha256": "8fb80d76a2415759aa7063376b12601761f5448409a8ab9658ea1d37d4a494c0"
     },
     {
       "url": "https://olake.io/docs/core/configs/state/",
@@ -382,9 +382,9 @@
       "title": "Destination config - Core Concepts",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 254,
-      "md_bytes": 1297,
-      "sha256": "94e0e2384b5deb6bcd164f6ebd83c143c4717365ecf2962d9d11c6a41b118cf2"
+      "tokens": 262,
+      "md_bytes": 1337,
+      "sha256": "09139f9c9f3eba951e86ab7627994e9cac85b3f34bac3dad65fc54489590649f"
     },
     {
       "url": "https://olake.io/docs/core/use-cases/",
@@ -409,9 +409,9 @@
       "title": "Schema Evolution & Data Type Changes",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 2523,
-      "md_bytes": 11176,
-      "sha256": "4f17d1c40499630f75eaee7682ce9a974cd8f9e74c85a23c5fa5f368e7f2e853"
+      "tokens": 2539,
+      "md_bytes": 11256,
+      "sha256": "e6fefa4ee646e0f9b6856191fe7898505cc794b32031c4cfd4bb8e3955ee1659"
     },
     {
       "url": "https://olake.io/docs/fusion/community/channels/",
@@ -544,9 +544,9 @@
       "title": "Deploy OLake Maintenance on Kubernetes",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 4804,
-      "md_bytes": 20052,
-      "sha256": "3e1f9202f8180408a435b6b38d7d945554a996a1f4c1ce4611b5e3604f24d8de"
+      "tokens": 4812,
+      "md_bytes": 20092,
+      "sha256": "3e595cb7aac2369579bc0d47546b2d64f66be070c2c7a58e6f37e565e1a69a7f"
     },
     {
       "url": "https://olake.io/docs/fusion/install/olake-ui/",
@@ -571,9 +571,9 @@
       "title": "Offline Environments (Generic)",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 1528,
-      "md_bytes": 6356,
-      "sha256": "9387b0132d3dfaaa1a1b17dd21bdaa4b1ed84f335e77d8c00b8d19430d166ac7"
+      "tokens": 1536,
+      "md_bytes": 6396,
+      "sha256": "ef4527c9f41ddc756a8ab01dfc71b6c89b1f99afec85f82fc03f8e96f56c5f9f"
     },
     {
       "url": "https://olake.io/docs/fusion/maintenance/catalogs/",
@@ -652,54 +652,54 @@
       "title": "OLake UI Quickstart with Docker Compose",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 468,
-      "md_bytes": 1942,
-      "sha256": "5c9b9b9e9ad9c98e44caf2cbd3f5cfc47a3b08e510ea1e3e1202799810a46653"
+      "tokens": 477,
+      "md_bytes": 1982,
+      "sha256": "e6891298da1d86b32d8438896a15c3f9c9cf8921c3894799cb48a36878301d4e"
     },
     {
       "url": "https://olake.io/docs/getting-started/playground/",
       "title": "Playground - Get Started",
       "lastmod": "2026-10-15",
       "last_updated": "2026-10-15T18:39:37.000Z",
-      "tokens": 5310,
-      "md_bytes": 20965,
-      "sha256": "6faf2ded63676a5be962d969aadd2d9e7bec8944570009d1f4b619b3d2ccb0aa"
+      "tokens": 5319,
+      "md_bytes": 21005,
+      "sha256": "2eb279e53bde6b8101d3aede94b4422e99e08a302b58686ee876b0cc47fb7c3e"
     },
     {
       "url": "https://olake.io/docs/getting-started/quickstart/",
       "title": "Quickstart - OLake - Get Started",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 504,
-      "md_bytes": 2106,
-      "sha256": "2499b4cbc11158c546562b5d4075ffeaebd9d54f0ea88ba2273911d473e3dce8"
+      "tokens": 513,
+      "md_bytes": 2146,
+      "sha256": "b4469953f179ab268405fb33c2037735490e7f815e9afe9d7c2ed05a4538c092"
     },
     {
       "url": "https://olake.io/docs/install/docker-cli/",
       "title": "OLake Docker CLI Setup: Source, Destination, Sync",
       "lastmod": "2026-10-09",
       "last_updated": "2026-10-09T12:48:19.000Z",
-      "tokens": 5468,
-      "md_bytes": 23030,
-      "sha256": "de4ca8f6b51f944a99fc56dcbe0bcbe87f83c5de349242cc28b226290cd60595"
+      "tokens": 5484,
+      "md_bytes": 23110,
+      "sha256": "f10dc96175bcec213cc07e9037ddf81fa9fb3b093d9ae8c79c4879acfa606ae8"
     },
     {
       "url": "https://olake.io/docs/install/kubernetes/",
       "title": "Deploy OLake UI on Kubernetes with Helm",
       "lastmod": "2026-10-08",
       "last_updated": "2026-10-08T12:50:15.000Z",
-      "tokens": 8469,
-      "md_bytes": 34506,
-      "sha256": "ef07a30dab3cd0e93e5093ae55772945964f44b9cb55398150ada72972a7478e"
+      "tokens": 8485,
+      "md_bytes": 34586,
+      "sha256": "626072e1e1d690a324414a948aea6ba294766cef01922b184e18b1a23b5c468e"
     },
     {
       "url": "https://olake.io/docs/install/olake-ui/",
       "title": "OLake UI Install with Docker Compose",
       "lastmod": "2026-10-08",
       "last_updated": "2026-10-08T12:50:15.000Z",
-      "tokens": 4524,
-      "md_bytes": 19160,
-      "sha256": "c22311ee4921928457105f9caf80d18477cc512a7277f8fd5612617d98c1167f"
+      "tokens": 4532,
+      "md_bytes": 19200,
+      "sha256": "d1605e4fffa5c67c11e0820534e7fa0e2e566387f92d974917b22ea531fe0c3a"
     },
     {
       "url": "https://olake.io/docs/install/olake-ui/offline-environments-aws/",
@@ -715,9 +715,9 @@
       "title": "Offline Environments (Generic)",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 1531,
-      "md_bytes": 6365,
-      "sha256": "ec94bb490c76e49f9b7ed6b849411d8c9faf7fa26656ad23e92e5b16ea0d030d"
+      "tokens": 1539,
+      "md_bytes": 6405,
+      "sha256": "f6c5a51be7c79fa6f76eb0d30dff462225d4c983d17d7298bdec4984da4d820b"
     },
     {
       "url": "https://olake.io/docs/monitoring-and-observability/metrics/",
@@ -976,9 +976,9 @@
       "title": "Data Engineering Glossary of Key Terms",
       "lastmod": "2026-10-15",
       "last_updated": "2026-10-15T18:39:37.000Z",
-      "tokens": 5678,
-      "md_bytes": 25605,
-      "sha256": "cab0afe0cbf09c55a8760a64e5a9cbe49bf2708cfdf1d927a6635439bc9beb54"
+      "tokens": 5686,
+      "md_bytes": 25645,
+      "sha256": "4f17523e164b9e5978c64dcd01d20a80191f9c737fbffdedd07284790c67e165"
     },
     {
       "url": "https://olake.io/docs/understanding/terminologies/olake/",
@@ -1003,36 +1003,36 @@
       "title": "AWS Glue Iceberg Catalog Setup for OLake Go",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 2953,
-      "md_bytes": 12295,
-      "sha256": "c4c29b84599423948f9f05d43f5bc92f3074c10ac9f17b60f2d228df08b7004e"
+      "tokens": 2961,
+      "md_bytes": 12335,
+      "sha256": "f2275d4b514771b2b9dc6cea875489c41982659d0434cb3d9636fb8b494b1fda"
     },
     {
       "url": "https://olake.io/docs/writers/iceberg/catalog/hive/",
       "title": "OLake Iceberg Hive Catalog Setup and Configuration",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 5387,
-      "md_bytes": 20435,
-      "sha256": "3ce61a6cab23f8b24fc3c45db54038c7e2aec24a250252f236a6c2d53d65c3e5"
+      "tokens": 5403,
+      "md_bytes": 20515,
+      "sha256": "a7cba5f704da8384b53b403a8259b9be4c035dcd540682842b3c1680014e33c1"
     },
     {
       "url": "https://olake.io/docs/writers/iceberg/catalog/jdbc/",
       "title": "OLake Iceberg JDBC Catalog Setup and Configuration",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 3056,
-      "md_bytes": 12341,
-      "sha256": "f0c9908d62393a54d6b1cccc52368d9daf7bfe77fa3c88a0a369b87d4ad81fe7"
+      "tokens": 3064,
+      "md_bytes": 12381,
+      "sha256": "d9cda04ff18a059b8c4d102d47ebea41b6094efe7ae13a0e6b6f20ffb8c82cc7"
     },
     {
       "url": "https://olake.io/docs/writers/iceberg/catalog/rest/",
       "title": "OLake Iceberg REST Catalog Setup and Configuration",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 30229,
-      "md_bytes": 121990,
-      "sha256": "e2303a39dbac96d29a55268305629339299f0aa3fe8dd550b3ab6fd7d7ec8b1c"
+      "tokens": 30421,
+      "md_bytes": 122950,
+      "sha256": "6e61e8977def19598ef7f1f32a8d3ef45a9de8bcb25acacc2d63168c8ac1d5a3"
     },
     {
       "url": "https://olake.io/docs/writers/iceberg/gcp/",
@@ -1048,9 +1048,9 @@
       "title": "OLake Iceberg Partitioning for Faster Queries",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 3309,
-      "md_bytes": 13425,
-      "sha256": "daf5189b804f57544b1f61323d0891e3ca32f30437cc4bcb9bf4b8570b00e695"
+      "tokens": 3317,
+      "md_bytes": 13465,
+      "sha256": "3f82f72c15fe40b291ca674f6d6de90869e001e8ba32d14469b14b39942fa3ea"
     },
     {
       "url": "https://olake.io/docs/writers/iceberg/polaris-iam-setup/",
@@ -1066,18 +1066,18 @@
       "title": "OLake Iceberg Troubleshooting & Local Testing Guide",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 843,
-      "md_bytes": 3371,
-      "sha256": "9cb4d6530fd30a7fb60b4a12c7965df198a4b2c7beab3987a66fd6bb8c606f36"
+      "tokens": 851,
+      "md_bytes": 3411,
+      "sha256": "4147445475cbea6383c8bb2f2ca0e5ea3c7acf6f80a1cb10c04d83060cd7a375"
     },
     {
       "url": "https://olake.io/docs/writers/parquet/config/",
       "title": "OLake Parquet S3 Writer Setup & Configuration Guide",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 1242,
-      "md_bytes": 4538,
-      "sha256": "6ac989b6efbf1ca0d24dcc668b8262587be98adfd3c5f3fc4f8733b436caa62f"
+      "tokens": 1250,
+      "md_bytes": 4578,
+      "sha256": "ce40032e5be2b457bfa2517de260717968aa3c012330b896a7766c668a97e4ad"
     },
     {
       "url": "https://olake.io/docs/writers/parquet/gcs/",
@@ -1093,18 +1093,18 @@
       "title": "Local System - Destinations",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 329,
-      "md_bytes": 1255,
-      "sha256": "886ff526de2bd922004689e34fc277794554741b2c0aaf82364c9c4e7ebaef24"
+      "tokens": 337,
+      "md_bytes": 1295,
+      "sha256": "5427e3ec3b3acbb9d7f70417c7535c9203c0ba54b3895c7305c6a01dd1ab0b96"
     },
     {
       "url": "https://olake.io/docs/writers/parquet/partitioning/",
       "title": "Parquet Data Partitioning for S3 in OLake",
       "lastmod": "2026-10-06",
       "last_updated": "2026-10-06T16:35:16.000Z",
-      "tokens": 2589,
-      "md_bytes": 10123,
-      "sha256": "996807f11a7185310066b362d2fadcf4c78f66d35a8341a24ac3141cd2b8d237"
+      "tokens": 2597,
+      "md_bytes": 10163,
+      "sha256": "fa75e05a4ca3d94bd2186c217c9261c792f1afab18a584770a4093df17a97f31"
     },
     {
       "url": "https://olake.io/docs/writers/parquet/permission/",

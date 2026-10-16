@@ -80,6 +80,26 @@ def main() -> None:
         out["blog"] = summarize_pages(blog, lambda r: "blog")
         del out["blog"]["by_section"]
 
+    # Fusion coverage: which /docs/fusion pages carry real content
+    fus = sorted(({"url": r["url"], "tokens": ntok(r["markdown"])} for r in docs if "/docs/fusion/" in r["url"]),
+                 key=lambda x: -x["tokens"])
+    for f in fus:
+        f["stub"] = f["tokens"] < 100
+    out["fusion_pages"] = {"pages": len(fus), "stubs": sum(f["stub"] for f in fus),
+                           "content_tokens": sum(f["tokens"] for f in fus), "per_page": fus}
+
+    rel_path = CORPUS_DIR / "releases.jsonl"
+    if rel_path.exists():
+        rels = read_jsonl(rel_path)
+        per = defaultdict(lambda: {"releases": 0, "tokens": 0, "newest": None})
+        for r in rels:
+            p_ = per[r["repo"]]
+            p_["releases"] += 1
+            p_["tokens"] += ntok(r["markdown"])
+            p_["newest"] = p_["newest"] or r["tag"]
+        out["releases"] = {"total": {"releases": len(rels), "tokens": sum(v["tokens"] for v in per.values())},
+                           "per_repo": dict(per)}
+
     repos = read_jsonl(CORPUS_DIR / "repos.jsonl")
     rfetch = json.loads((CORPUS_DIR / "fetch_repos.json").read_text())
     per_repo = {}
@@ -106,6 +126,7 @@ def main() -> None:
         pr["by_kind"] = {k: {"files": v[0], "tokens": v[1]} for k, v in pr["by_kind"].items()}
     largest.sort(key=lambda x: -x["tokens"])
     out["repos"] = {
+        "allowlist_version": rfetch.get("allowlist_version", "v1"),
         "clone_wall_s": rfetch["clone_wall_s"],
         "total": {"files": len(repos), "bytes": sum(r["bytes"] for r in repos),
                   "tokens": sum(p["tokens"] for p in per_repo.values()),
@@ -113,14 +134,17 @@ def main() -> None:
         "per_repo": per_repo,
         "largest": largest[:10],
     }
-    out["combined_docs_plus_repos"] = {
-        "documents": out["docs"]["total"]["pages"] + len(repos),
-        "tokens": out["docs"]["total"]["tokens"] + out["repos"]["total"]["tokens"],
+    rel_tok = out.get("releases", {}).get("total", {}).get("tokens", 0)
+    out["combined_core_index"] = {
+        "what": "docs + repo allowlist + release notes (blog is a separate tier)",
+        "documents": out["docs"]["total"]["pages"] + len(repos) + out.get("releases", {}).get("total", {}).get("releases", 0),
+        "tokens": out["docs"]["total"]["tokens"] + out["repos"]["total"]["tokens"] + rel_tok,
         "fetch_wall_s": round(fetch["total_wall_s"] + rfetch["total_wall_s"], 2),
     }
     write_json(RESULTS_DIR / "corpus.json", out)
     print(json.dumps({k: (v["total"] if isinstance(v, dict) and "total" in v else v)
-                      for k, v in out.items() if k != "docs_fetch"}, indent=1))
+                      for k, v in out.items() if k not in ("docs_fetch", "fusion_pages")}, indent=1))
+    print("fusion pages:", {k: v for k, v in out["fusion_pages"].items() if k != "per_page"})
 
 
 if __name__ == "__main__":
