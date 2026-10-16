@@ -75,10 +75,10 @@ cited directly.
 | Site search | Algolia DocSearch. No AI assistant is configured (DocSearch "Ask AI" is in the bundle but off), so the judges' everyday baseline is keyword search | [docs-site report][r-docs-site] |
 | Sitemap | 275 URLs: 124 under `/docs/` (101 OLake Go, 23 Fusion), 86 under `/blog/` (85 posts and the index), 65 others. 231 carry `lastmod`. All 275 end with `/` | The doc-writer counted `<loc>` entries in [the sitemap][sitemap] at 2026-10-16T17:14Z; the Go/Fusion split is from the [docs-site report][r-docs-site] |
 | Release notes | 24 pages under `/docs/release/` and 2 under `/docs/fusion/release/` | Sitemap count; `poc/results/corpus.json` |
-| Docs size | 238,135 o200k tokens from article text ([docs-site report][r-docs-site], `measure_corpus.py`), or 263,614 from the POC's Markdown, which keeps code and table syntax (`poc/results/corpus.json`). 830 code blocks, 182 tables, 80 tab groups with 202 panels (122 hidden at load), 342 admonitions. The largest page is [the REST catalog page][rest] | [docs-site report][r-docs-site]; `poc/results/corpus.json` |
+| Docs size | 238,135 o200k tokens from article text ([docs-site report][r-docs-site], `measure_corpus.py`), or 264,265 from the POC's Markdown, which keeps code and table syntax (`poc/results/corpus.json`). 830 code blocks, 182 tables, 80 tab groups with 202 panels (122 hidden at load), 342 admonitions. The largest page is [the REST catalog page][rest] | [docs-site report][r-docs-site]; `poc/results/corpus.json` |
 | Thin pages | 13 pages under 100 tokens (7 of them among the 23 Fusion pages), per the POC. The [docs-site report][r-docs-site] counts about 15 stub or stale pages, and the [olake-domain report][r-olake-domain] counts 18 pages under 1,300 characters | `poc/results/corpus.json`; both reports |
 | Fetch cost | All 124 pages in 3.9 s (11.17 MB uncompressed), or 2.2 s and 2.07 MB with gzip, 4 at a time ([docs-site report][r-docs-site]). The POC took 7.52 s at concurrency 4 | [docs-site report][r-docs-site]; `poc/results/corpus.json` |
-| Blog | 85 posts: 428,473 o200k tokens from article text ([docs-site report][r-docs-site]), or 446,137 from the POC's Markdown | [docs-site report][r-docs-site]; `poc/results/corpus.json` |
+| Blog | 85 posts: 428,473 o200k tokens from article text ([docs-site report][r-docs-site]), or 446,275 from the POC's Markdown | [docs-site report][r-docs-site]; `poc/results/corpus.json` |
 
 **Decision: rendered HTML, not raw MDX.** Raw MDX misses content on 22 of the 124 docs pages: every connector main page,
 every catalog page, the Parquet writer pages, docker-cli and commands-and-flags. That content comes from 92 globally
@@ -133,8 +133,13 @@ file; [repos report][r-repos]). The exact list is in plan Appendix A. The highes
 - olake-fusion's [`CLAUDE.md`][fus-claude]: Lite/Medium/Full map to minor/major/full; it also gives the default schedules,
   the 512 MB target file size and the Iceberg-only scope.
 
-The POC used a broader allowlist (84 files, 143,596 tokens, `poc/results/corpus.json`), with more Go config structs.
-The event uses the reports' Tier A list.
+The POC's retrieval and eval measurements (§4.3, §6) used a broader allowlist v1: 84 files, 143,596 tokens, with more Go
+config structs (`poc/results/corpus.json` at POC commit 20b4bac). The POC's corpus v2 switched to the reports' Tier A list:
+38 files, 80,176 tokens, with the connector `spec.json` files converted to Markdown field tables
+(`poc/results/corpus.json`; `poc/ingest/repos.py`, `poc/ingest/spec2md.py`). It also indexes the last 10 GitHub releases
+per repo: 34 notes, 8,602 tokens. The newest, olake v0.12.1, is newer than the docs' release notes, which stop at v0.12.0
+(`poc/results/corpus.json`, `releases`; eval row REL-01). The event uses the Tier A list. Corpus v2 has not been
+re-benchmarked; the retrieval numbers below are on corpus v1.
 
 **[olake-fusion][fusion-repo] is a modified hard fork of [Apache Amoro][amoro].** The evidence: its [NOTICE][fus-notice] and DISCLAIMER; the
 [root POM][fus-pom], whose own coordinates are `org.apache.amoro:amoro-parent:0.9-SNAPSHOT` and whose `<parent>` is
@@ -258,7 +263,7 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
 - **Chunking.** Split at headings and tab markers. Never split inside a code fence or table. Every chunk gets a
   `title › section` header. YAML and JSON split at keys, and Go at top-level declarations (`poc/chunking/chunker.py`). Measured
   sizes are in §9. At a 600-token target, 556 of 951 chunks exceed the 512-WordPiece input limit of the bge embedders and get
-  truncated. At 300 only 79 of 1,861 do (`poc/results/retrieval.json`). On the canonical set, every config scores lower at
+  truncated. At 300 only 79 of 1,861 do (corpus v1, `poc/results/retrieval.json`). On the canonical set, every config scores lower at
   600 than at 300; for example, hybrid bge-small falls to MRR@10 0.719 from 0.736 (`poc/results/retrieval-canonical.json`).
   **Decision: a 300-token target with a 450 hard max** (the POC chunker's 300 configuration). The 600-token option is dropped.
 - **Retrieval.** BM25 (bm25s) and dense (fastembed) candidates fused with RRF, k=60 [[rrf]], with **no reranker**
@@ -343,7 +348,8 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
      maintenance, deployment and troubleshooting. If your question is about OLake, ask in the OLake Slack or GitHub
      Discussions; for commercial or security questions, contact hello@olake.io."
   3. The real abstain decision comes from the model (the `NO_ANSWER` marker or "answerable" flag) plus citation validation.
-     With no valid citation left, it abstains.
+     With no valid citation left, it abstains. This is decision D8, decided by data: in the canonical run the rule caused 0
+     of the 13 false abstains on must-answer rows (§6).
   4. Negative and false-premise answers say "not supported", or correct the premise, with the citation of the page that
      lists what is supported. They never say "the docs don't mention X". The scorer skips abstain matching on those rows.
 
@@ -360,7 +366,12 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   - the "unsupported or undocumented" fact card for near-domain unknowns;
   - the unified short-circuit text above;
   - the v2 prompt, which corrects false premises and answers the real question inside injection attempts (the POC made it
-    selectable by env var in POC commit 300e9c2).
+    selectable by env var in POC commit 300e9c2);
+  - three prompt rules from the canonical run's wrong abstains (§6): answer negatives from the list of what is supported
+    even when no passage names the feature (SRC-08); call a "coming soon" feature not available or documented yet, with no
+    date (UNK-04); decline another tool's configuration (OOS-03);
+  - for type-mapping misses (SYNC-12, Postgres jsonb): keep tables whole in chunks, plus the exact-match boost for
+    identifiers.
 
   PENDING(poc): the combined policy's abstain recall, false-abstain on all must-answer rows, how often the rewrite fires,
   and its latency. On the seed set, the model's own flag added one false abstain (precision 0.75, false-abstain 0.071), on a
@@ -445,7 +456,7 @@ Local fastembed models (ONNX on CPU) are baked into the image. They work with an
 have no rate limit and work offline. Measured in the POC (`poc/results/retrieval.json`, `poc/results/latency_threads.json`;
 2 ONNX threads as a stand-in for a 2-vCPU host, on the laptop):
 
-| Model | Dim | Query embed p50 (2 threads) | Rerank p50, top 10 / top 20 (2 threads) | Full-corpus embed (1,861 chunks, all cores) |
+| Model | Dim | Query embed p50 (2 threads) | Rerank p50, top 10 / top 20 (2 threads) | Full-corpus embed (corpus v1: 1,861 chunks, all cores) |
 |---|---|---|---|---|
 | BAAI/bge-small-en-v1.5 | 384 | 5.4 ms | | 69.09 s |
 | BAAI/bge-base-en-v1.5 | 768 | 15.8 ms | | 229.79 s |
@@ -495,7 +506,7 @@ None. Retrieval stays in process. Stack-report benchmarks at 20k chunks:
 | LanceDB | 3.71 ms |
 | rank_bm25 | 13.8 ms |
 
-Our corpus is 951-1,861 chunks without the blog (`poc/results/chunks.json`). Hosted vector services add a network hop, and
+Our corpus is 961-1,742 chunks without the blog in the POC's corpus v2 (`poc/results/chunks.json`), or 1,039-2,158 more with the blog tier. Hosted vector services add a network hop, and
 their free tiers pause when idle: Qdrant Cloud's after a week unused ([Qdrant][qdrant]), Supabase's after a week of
 inactivity ([Supabase pricing][supabase]). Decision: bm25s plus numpy, fused with RRF. The index artifact is a directory
 (plan section 0.2, I1).
@@ -632,8 +643,17 @@ the 94 rows.
   first token fell from 32,961 ms to 13,920 ms in the think probe. So set the hosted provider's lowest reasoning
   setting, and measure it at the 12:15 load test.
 - **End to end on the curated 94 rows** (`poc/results/eval_run-canonical.json`): the POC API with the v1 prompt, a local
-  qwen3:32b and the same model as judge, at concurrency 4. The run used the configuration from before decision R:
-  bge-base, a MiniLM-L6 rerank of the fused top 20, the -0.891 gate and 6 passages (the file's `config` block).
+  qwen3:32b and the same model as judge, at concurrency 4. The run used the configuration from before decision R (the
+  file's `config` block):
+  - chunks: target 300, hard max 450; the docs plus repo allowlist v1; no blog (corpus v1);
+  - retrieval: hybrid RRF k=60 over the BM25 top 50 and the dense top 50, with bge-base;
+  - Xenova/ms-marco-MiniLM-L-6-v2 reranked the fused top 20 and was also the gate, at -0.891 (tuned on the seed set);
+  - 6 passages to the LLM;
+  - qwen3:32b Q4_K_M on ollama 0.33.3: temperature 0, JSON mode, `reasoning_effort` none, prompt v1;
+  - the scorer at concurrency 4 with a 180 s timeout; the judge qwen3:32b with reasoning off, at concurrency 2;
+  - default onnx threads (all 18 cores) on an Apple M5 Max that another onnxruntime job shared (load average above 200).
+
+  Results:
   - Schema valid: 1.0.
   - Behaviour correct: 0.84.
   - Source hit: 0.695.
@@ -644,11 +664,19 @@ the 94 rows.
   - Abstain recall on unanswerable plus out-of-scope rows: 0.833, which **misses** the ≥ 0.90 target.
   - False-abstain on answerable rows: 0.072, which **misses** the ≤ 0.05 target.
   - Weakest types: false-premise (1 of 4), negative (2 of 5) and adversarial (2 of 4).
-  - Where the false abstains came from (`abstain_breakdown`): 13 of the 82 must-answer rows abstained wrongly. The gate
-    caused 7, the model's "answerable = false" 5, and the scorer's abstain pattern on a sourced answer 1. On answerable
-    rows it was 5 of 69 (gate 3, model 2). Of the 12 must-abstain rows, 2 were missed (UNK-04, OOS-03): the gate passed
-    them and the model answered. Most false abstains came from the gate, which is why the gate is now only a short-circuit
-    calibrated at 0% false abstains (§4.3).
+  - Where the false abstains came from (`abstain_breakdown`): 13 of the 82 must-answer rows abstained wrongly. On
+    answerable rows alone it was 5 of 69 (gate 3, model 2).
+    - The score gate: 7 (SET-07, SRC-11, SYNC-09, DEP-06, FP-03, ADV-02, ADV-03).
+    - The model's answerable = false: 5 (SRC-08, SRC-09, SYNC-12, FP-02, FP-04).
+    - The scorer's don't-know pattern on a sourced negative answer: 1 (SRC-16). Negative rows now skip abstain matching
+      ([eval-questions.md](eval-questions.md#scoring-method)).
+    - The no-valid-citation rule: 0. This decided D8 by data: abstain on zero valid citations.
+  - Missed abstains: 2 of the 12 must-abstain rows, and the gate passed both. UNK-04 answered from the docs note that
+    lists DLQ columns as "coming soon". OOS-03, a Debezium `snapshot.mode` question, got OLake's Strict CDC mode from the
+    Postgres driver README with no decline.
+  - What changes for the event: the gate becomes an off-topic short-circuit calibrated at 0% false abstains (§4.3). Brief
+    B's prompt gets rules for negatives (SRC-08), "coming soon" features (UNK-04) and other tools' configuration
+    (OOS-03). SYNC-12 (Postgres jsonb) is a retrieval fix: tables stay whole, plus the exact-match boost for identifiers.
 
   This run is a lower bound from a local 32B model; its latency (p50 105 s per `/ask`) says nothing about a hosted model.
   The event-day levers are listed in §4.3.
@@ -728,23 +756,27 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 |---|---|---|
 | Sitemap URLs (total, `/docs/`, `/blog/`, other) | 275, 124, 86, 65 | Sitemap fetch and count, 2026-10-16T17:14Z; `poc/results/corpus.json` |
 | Sitemap URLs with `lastmod` | 231 | Same sitemap count |
-| Docs tokens (o200k_base) | 263,614 | `poc/results/corpus.json` |
-| Docs tokens per page (p50, max) | 1,152; 30,229 | `poc/results/corpus.json` |
-| Blog tokens (85 posts) | 446,137 | `poc/results/corpus.json` |
-| Allowlisted repo files and tokens | 84 files, 143,596 tokens | `poc/results/corpus.json` |
-| Docs plus repos | 208 documents, 407,210 tokens | `poc/results/corpus.json` |
+| Docs tokens (o200k_base) | 264,265 | `poc/results/corpus.json` |
+| Docs tokens per page (p50, max) | 1,152; 30,421 | `poc/results/corpus.json` |
+| Blog tokens (85 posts) | 446,275 | `poc/results/corpus.json` |
+| Allowlisted repo files and tokens (corpus v2, Tier A) | 38 files, 80,176 tokens. The measurements used allowlist v1: 84 files, 143,596 tokens | `poc/results/corpus.json` (v1 at POC commit 20b4bac) |
+| Core index: docs, repo allowlist and release notes (corpus v2, no blog) | 196 documents, 353,043 tokens | `poc/results/corpus.json` (`combined_core_index`) |
+| GitHub release notes indexed (the last 10 per repo) | 34 notes, 8,602 tokens; newest olake v0.12.1, olake-ui v0.7.1, olake-helm v0.4.0, olake-fusion v0.1.4 | `poc/results/corpus.json` (`releases`) |
+| Fusion docs pages | 23 pages, 7 stubs, 28,391 tokens of content | `poc/results/corpus.json` (`fusion_pages`) |
 | Fetch of 209 pages at concurrency 4 | 12.77 s (per page p50 0.243 s) | `poc/results/corpus.json` |
-| Chunks at target 300 / hard max 450 (no blog) | 1,861 (docs 1,248, repo 613); tokens p50 235, p95 420, max 501; 4 over hard max | `poc/results/chunks.json` |
-| Chunks at target 600 / hard max 900 (no blog) | 951 (docs 622, repo 329); tokens p50 470, p95 815, max 881; 0 over hard max | `poc/results/chunks.json` |
+| Chunks at target 300 / hard max 450 (no blog) | 1,742 (docs 1,344, repo 350); tokens p50 226, p95 420, max 501; 3 over hard max | `poc/results/chunks.json` (corpus v2; the total includes 48 release-note chunks; 0 chunks mix two tabs) |
+| Chunks at target 600 / hard max 900 (no blog) | 961 (docs 751, repo 175); tokens p50 420, p95 796, max 891; 0 over hard max | `poc/results/chunks.json` (corpus v2; the total includes 35 release-note chunks) |
+| Blog tier chunks (target 300; target 600) | 2,158; 1,039 | `poc/results/chunks.json` (`blog_tier`) |
+| Chunks at target 300 in corpus v1, behind every retrieval and eval number | 1,861 | `poc/results/retrieval.json` |
 | Conditional GET to olake.io (304) | ≈ 12 ms | `poc/results/freshness.json` |
 | `git ls-remote` per repo | 714-1005 ms | `poc/results/freshness.json` |
 | GitHub API limit (unauthenticated, authenticated) | 60 per hour, 5,000 per hour | `poc/results/freshness.json` |
-| Chunks over the bge 512-WordPiece limit | 79 of 1,861 (target 300); 556 of 951 (target 600) | `poc/results/retrieval.json` |
+| Chunks over the bge 512-WordPiece limit (corpus v1) | 79 of 1,861 (target 300); 556 of 951 (target 600) | `poc/results/retrieval.json` |
 | Retrieval MRR@10 / hit@5, 300-token chunks, 14 seed questions | BM25 0.451 / 0.714; hybrid bge-base 0.581 / 0.786; + MiniLM-L6 rerank 0.590 / 0.786; + bge-reranker-base 0.645 / 0.929 | `poc/results/retrieval.json` |
 | Retrieval p50 (all cores) | hybrid bge-base 13.53 ms; + MiniLM-L6 rerank 431.29 ms; + bge-reranker-base 1,786.92 ms | `poc/results/retrieval.json` |
 | Rerank p50 at 2 threads, top 10 | MiniLM-L6 205.9 ms; bge-reranker-base 922.3 ms | `poc/results/latency_threads.json` |
 | Query embedding p50 at 2 threads | bge-small 5.4 ms; bge-base 15.8 ms | `poc/results/latency_threads.json` |
-| Full-corpus embedding (1,861 chunks) | bge-small 69.09 s; bge-base 229.79 s | `poc/results/retrieval.json` |
+| Full-corpus embedding (corpus v1, 1,861 chunks) | bge-small 69.09 s; bge-base 229.79 s | `poc/results/retrieval.json` |
 | Abstain gate on the top rerank score, seed set (18 rows) | threshold -0.891: precision 1.0, recall 1.0, false-abstain 0.0 (3 should abstain, 14 should answer) | `poc/results/answer.json` |
 | Abstain gate, curated set (94 rows; 12 should abstain) | -0.891: recall 0.5, false-abstain 4.3% of answerable rows. Best threshold 1.18: recall 0.917, precision 0.44, false-abstain 13% of answerable and 17.1% of must-answer rows | `poc/results/gate-canonical.json` (the -0.891 figures recomputed from `per_question`) |
 | Top rerank score range by type, curated set | answerable -2.67 to 7.78; unanswerable -5.52 to 6.28; out-of-scope -11.21 to 0.78; adversarial -6.36 to 2.95 | `poc/results/gate-canonical.json` (`by_type`) |
