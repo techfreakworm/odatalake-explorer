@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<url><loc>https://olake.io/docs/</loc><lastmod>2026-10-09</lastmod></url>
+<url><loc>https://olake.io/docs/connectors/postgres/</loc><lastmod>2026-10-15</lastmod></url>
+<url><loc>https://olake.io/docs/connectors/overview/</loc><lastmod>2026-10-06</lastmod></url>
+<url><loc>https://olake.io/docs/core/configs/source/</loc><lastmod>2026-10-06</lastmod></url>
+<url><loc>https://olake.io/docs/release/ingestion/v0.12.0/</loc><lastmod>2026-10-06</lastmod></url>
+<url><loc>https://olake.io/docs/fusion/release/maintenance/v0.1.0/</loc><lastmod>2026-10-06</lastmod></url>
+<url><loc>https://olake.io/docs/fusion/compaction/configuration/</loc><lastmod>2026-10-06</lastmod></url>
+<url><loc>https://olake.io/blog/some-post/</loc><lastmod>2026-09-01</lastmod></url>
+<url><loc>https://olake.io/olake-go/</loc></url>
+<url><loc>https://olake.io/docs/connectors/postgres/</loc><lastmod>2026-10-15</lastmod></url>
+</urlset>

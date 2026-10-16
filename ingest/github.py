@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import base64
 import fnmatch
 import json
 import logging
@@ -229,11 +230,28 @@ def ls_remote_tags(repo: str) -> dict[str, str]:
     return {ref.removeprefix("refs/tags/").removesuffix("^{}"): sha for ref, sha in refs.items()}
 
 
-def compare_files(repo: str, old: str, new: str, *, client: httpx.Client | None = None) -> list[dict]:
-    """Files changed between two commits: [{filename, status, previous_filename}] (compare API)."""
-    body = api_get(f"repos/{config.GITHUB_ORG}/{repo}/compare/{old}...{new}", max_age_s=10 ** 9, client=client)
-    return [{"filename": f.get("filename"), "status": f.get("status"),
-             "previous_filename": f.get("previous_filename")} for f in (body or {}).get("files") or []]
+def compare_files(repo: str, old: str, new: str, *, client: httpx.Client | None = None) -> tuple[list[dict], str | None]:
+    """Files changed between two commits (compare API): ([{filename, status, previous_filename}], head commit date).
+    A compare of two SHAs never changes, so the cached response is reused forever."""
+    body = api_get(f"repos/{config.GITHUB_ORG}/{repo}/compare/{old}...{new}", max_age_s=10 ** 9, client=client) or {}
+    files = [{"filename": f.get("filename"), "status": f.get("status"),
+              "previous_filename": f.get("previous_filename")} for f in body.get("files") or []]
+    commits = body.get("commits") or []
+    date = ((commits[-1].get("commit") or {}).get("committer") or {}).get("date") if commits else None
+    if len(files) >= 300:  # the compare API lists at most 300 files: the list may be incomplete
+        raise GitHubError(f"compare {repo} {old[:7]}...{new[:7]} lists 300+ files; diff locally instead")
+    return files, date
+
+
+def fetch_file_at(repo: str, ref: str, path: str, *, client: httpx.Client | None = None) -> str:
+    """One file's text at a commit (contents API). Content at a SHA never changes: cached forever."""
+    body = api_get(f"repos/{config.GITHUB_ORG}/{repo}/contents/{quote(path)}?ref={ref}", max_age_s=10 ** 9,
+                   client=client)
+    if not isinstance(body, dict) or body.get("type") != "file":
+        raise GitHubError(f"{repo}/{path}@{ref[:7]} is not a file")
+    if body.get("encoding") == "base64" and body.get("content") is not None:
+        return base64.b64decode(body["content"]).decode("utf-8", errors="replace")
+    raise GitHubError(f"{repo}/{path}@{ref[:7]}: unsupported encoding {body.get('encoding')!r}")
 
 
 def tracked_files(path: Path) -> list[str]:
@@ -337,6 +355,34 @@ def redact_credentials(text: str, kind: str) -> str:
     return "\n".join(redact_line(ln, yaml_like) for ln in text.split("\n"))
 
 
+HTML_TAG = re.compile(r"</?(?:a|img|p|br|h[1-6]|div|span|picture|source|strong|b|i|em|sub|sup|center|table|tr|td|th|"
+                      r"thead|tbody|details|summary|kbd|hr)(?:\s[^<>]*)?/?>", re.I)
+MD_IMAGE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+EMPTY_LINK = re.compile(r"\[\s*\]\([^)]*\)")
+
+
+def strip_markdown_html(text: str) -> str:
+    """README chrome: drop inline HTML tags (logos, badges, alignment wrappers) and Markdown images
+    outside code fences, line by line, so line numbers (and #L anchors) do not move."""
+    out, fence = [], None
+    for line in text.split("\n"):
+        m = re.match(r"^\s*(`{3,}|~{3,})", line)
+        if fence is None and m:
+            fence = m.group(1)
+            out.append(line)
+            continue
+        if fence is not None:
+            if line.strip().startswith(fence) and line.strip().strip(fence[0]) == "":
+                fence = None
+            out.append(line)
+            continue
+        new = MD_IMAGE.sub("", line)
+        new = HTML_TAG.sub("", new)
+        new = EMPTY_LINK.sub("", new)
+        out.append(new.rstrip() if new != line else line)
+    return "\n".join(out)
+
+
 def prepare_text(repo: str, path: str, text: str) -> tuple[str, str]:
     """(kind, text) after the per-file treatment: spec.json -> Markdown field table, olake-fusion
     CLAUDE.md sections 1-4 only, NOTES.txt without the banner, credentials redacted."""
@@ -350,6 +396,8 @@ def prepare_text(repo: str, path: str, text: str) -> tuple[str, str]:
         text = keep_sections(text, *config.FUSION_CLAUDE_SECTIONS)
     if path.endswith("NOTES.txt"):
         text = strip_banner(text)
+    if kind == "markdown":
+        text = strip_markdown_html(text)
     return kind, redact_credentials(text, kind)
 
 

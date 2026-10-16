@@ -13,7 +13,6 @@ responses; --prune keeps only CURRENT and the version before it.
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import re
 import time
@@ -25,7 +24,9 @@ from index import logs, sources
 from index.chunk import FIELDS, fences_balanced, ntok, sha256, tab_labels_in
 from index.config import CHUNK_HARD_MAX, EMBED_MODEL, INDEX_DIR
 from index.embed import embed_chunks, vectors_from_index
-from index.manifest import (iso, make_manifest, new_version, prune, read_current, swap_current, utc_now,
+from index.factcheck import check_cards, page_texts
+from index.lock import Busy, index_lock, save_state
+from index.manifest import (make_manifest, new_version, prune, read_current, swap_current, utc_now,
                             write_version)
 from ingest import config
 from ingest.docs import SitemapResult, fetch_docs, fetch_sitemap
@@ -75,7 +76,7 @@ def collect_docs(c: Corpus, offline: bool) -> None:
 def collect_releases(c: Corpus, offline: bool) -> None:
     for repo in config.REPOS:
         try:
-            c.releases[repo] = fetch_releases(repo, offline=offline)
+            c.releases[repo] = sources.mark_latest(repo, fetch_releases(repo, offline=offline))
         except GitHubError as e:
             c.errors.append(f"releases {repo}: {e}")
             log.warning("releases for %s unavailable: %s", repo, e)
@@ -106,13 +107,14 @@ def collect_issues(c: Corpus, offline: bool) -> None:
             log.warning("issue %s has no curated note in index/issues/; using its opening post", url)
 
 
-def latest_versions_card(c: Corpus) -> dict | None:
-    """Generated at build time from the releases API (plan Appendix A "Fact cards": latest versions)."""
+def latest_versions_card(releases: dict[str, list[dict]], page_urls: list[str]) -> dict | None:
+    """Generated from the releases API (plan Appendix A "Fact cards": latest versions). The text holds
+    no build date, so it only changes when a release or a release-notes page does."""
     lines, cite = [], []
     names = {"olake": "OLake Go (ingestion engine and connectors)", "olake-ui": "OLake UI",
              "olake-helm": "OLake Helm chart and worker", "olake-fusion": "OLake Fusion (Iceberg table maintenance)"}
     for repo in config.REPOS:
-        rels = [r for r in c.releases.get(repo, []) if not r.get("prerelease")]
+        rels = [r for r in releases.get(repo, []) if not r.get("prerelease")]
         if not rels:
             continue
         top = rels[0]
@@ -132,22 +134,21 @@ def latest_versions_card(c: Corpus) -> dict | None:
     if not cite:
         return None
     docs_rel = {}
-    for p in c.pages:
-        m = re.search(r"/release/(ingestion|maintenance)/v(\d+)\.(\d+)\.(\d+)/$", p["url"])
+    for url in page_urls:
+        m = re.search(r"/release/(ingestion|maintenance)/v(\d+)\.(\d+)\.(\d+)/$", url)
         if m:
             key = m.group(1)
             ver = tuple(int(x) for x in m.groups()[1:])
             if key not in docs_rel or ver > docs_rel[key][0]:
-                docs_rel[key] = (ver, p["url"])
+                docs_rel[key] = (ver, url)
     tail = []
     for key, label in (("ingestion", "OLake Go"), ("maintenance", "OLake Fusion")):
         if key in docs_rel:
             ver, url = docs_rel[key]
             tail.append(f"- The newest {label} release-notes page on olake.io is v{'.'.join(map(str, ver))}: {url}")
             cite.append(url)
-    built = iso(utc_now())[:10]
-    body = (f"# Latest OLake versions\n\nFrom the GitHub releases API when this index was built ({built}). "
-            "GitHub releases are often newer than the release notes on olake.io, which follow a few days later.\n\n"
+    body = ("# Latest OLake versions\n\nThe newest releases on GitHub, from the GitHub releases API when this index was "
+            "built. GitHub releases are often newer than the release notes on olake.io, which follow a few days later.\n\n"
             + "\n".join(lines) + "\n\n" + "\n".join(tail) + "\n")
     return {"name": "latest-versions", "title": "Latest OLake versions (GitHub releases)", "cite_urls": cite,
             "body": body, "hash": sha256(body)}
@@ -165,7 +166,7 @@ def collect(offline: bool = False, outside: bool = True) -> Corpus:
     if outside:
         c.outside, c.outside_skipped = fetch_outside(offline=offline)
     c.factcards = sources.load_factcards()
-    card = latest_versions_card(c)
+    card = latest_versions_card(c.releases, [p["url"] for p in c.pages])
     if card:
         c.factcards.append(card)
     return c
@@ -254,8 +255,8 @@ def validate(chunks: list[dict], kept_docs: set[str], hard_max: int = CHUNK_HARD
             if not cite or doc_url != cite[0]:
                 problems.append(f"{cid}: doc_url must be the first cite_url")
             for u in cite:
-                if u not in kept_docs and not RELEASE_URL.match(u):
-                    problems.append(f"{cid}: cite_url {u} is not a kept sitemap URL or a releases/tag URL")
+                if u not in kept_docs and u not in allowed["faq"] and not RELEASE_URL.match(u):
+                    problems.append(f"{cid}: cite_url {u} is not a kept sitemap URL, a FAQ page or a releases/tag URL")
         else:
             problems.append(f"{cid}: unexpected source_type {st}")
         if st != "factcard" and c["cite_urls"] is not None:
@@ -323,10 +324,21 @@ def publish(index_root: Path, chunks: list[dict], *, model: str, docs: dict, rep
 
 def build(*, offline: bool = False, outside: bool = True, do_prune: bool = False, index_root: Path = INDEX_DIR,
           model: str = EMBED_MODEL) -> dict:
+    try:
+        with index_lock():
+            return _build(offline=offline, outside=outside, do_prune=do_prune, index_root=index_root, model=model)
+    except Busy as e:
+        raise SystemExit(str(e)) from e
+
+
+def _build(*, offline: bool, outside: bool, do_prune: bool, index_root: Path, model: str) -> dict:
     t0 = time.perf_counter()
     corpus = collect(offline=offline, outside=outside)
     chunks = chunk_corpus(corpus)
     kept = {e.url for e in corpus.entries}
+    factcard_misses = check_cards(corpus.factcards, page_texts(corpus))
+    for m in factcard_misses:
+        log.warning("factcard %s: %r not found on its cited pages (%s)", m["card"], m["token"], m["line"])
     problems = validate(chunks, kept)
     if problems:
         for p in problems[:50]:
@@ -335,9 +347,12 @@ def build(*, offline: bool = False, outside: bool = True, do_prune: bool = False
     version, manifest, stats = publish(
         index_root, chunks, model=model, docs=docs_section(corpus), repos=corpus.repos,
         releases=releases_section(corpus), denylist_skipped=corpus.denylist_skipped,
-        sources_info=sources_section(corpus),
+        sources_info={**sources_section(corpus), "factcard_check": {"unmatched": len(factcard_misses),
+                                                                    "items": factcard_misses}},
         build_info={"command": "index.build", "offline": offline, "outside": outside})
     removed = prune(index_root) if do_prune else []
+    # the poll state restarts from this build: its sitemap ETag, no repo or tag shortcuts
+    save_state({"sitemap_etag": manifest["docs"].get("sitemap_etag")})
     report(corpus, manifest, stats, removed, time.perf_counter() - t0)
     return manifest
 

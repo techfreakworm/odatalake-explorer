@@ -316,12 +316,47 @@ class Piece:
 HeaderFn = Callable[[list[str]], str]
 
 
+LEAD_KINDS = ("heading", "tab")
+
+
+def lead_only(p: Piece) -> bool:
+    """A piece that holds only headings or tab labels (no content yet)."""
+    return bool(p.blocks) and all(b.kind in LEAD_KINDS for b in p.blocks)
+
+
+def is_prefix(a: tuple, b: tuple) -> bool:
+    return len(a) <= len(b) and b[:len(a)] == a
+
+
+def can_carry(lead: Piece, tabctx: tuple) -> bool:
+    """A lead-only piece may open the next piece in the same tab context, or headings (never a tab
+    label) may open a piece inside a nested tab group: a chunk never holds two tab labels."""
+    if lead.tabctx == tabctx:
+        return True
+    return is_prefix(lead.tabctx, tabctx) and not any(b.kind == "tab" for b in lead.blocks)
+
+
+def redundant(lead: Piece, nxt: Piece) -> bool:
+    """Headings/tab labels that the next piece's header or section path already carries."""
+    titles = set(nxt.path) | set(nxt.section_path)
+    return all(b.title in titles for b in lead.blocks)
+
+
 def pack_markdown(blocks: list[Block], header_of: HeaderFn, target: int = CHUNK_TARGET,
-                  hard_max: int = CHUNK_HARD_MAX) -> list[Piece]:
-    """Pack sections into pieces whose rendered text (header + body) is <= hard_max, aiming at target."""
+                  hard_max: int = CHUNK_HARD_MAX, split_level: int = 0) -> list[Piece]:
+    """Pack sections into pieces whose rendered text (header + body) is <= hard_max, aiming at target.
+
+    A heading (or tab label) never ends a piece: a piece holding only headings is carried into the
+    next section, and the first content block after a heading is split so that it fits with it.
+    split_level > 0 starts a new piece at every heading of that level or higher (fact cards use 2,
+    so each section keeps its own citations)."""
 
     def hdr(path: list[str]) -> int:
         return ntok(header_of(path)) + 2
+
+    def hard_start(sec: Section) -> bool:
+        b = sec.blocks[0]
+        return split_level > 0 and b.kind == "heading" and b.level <= split_level
 
     out: list[Piece] = []
     cur: Piece | None = None
@@ -330,33 +365,71 @@ def pack_markdown(blocks: list[Block], header_of: HeaderFn, target: int = CHUNK_
         # section keeps the tab label in the header: title | ... [Tab label]
         parent = sec.path[:-1] if sec.blocks[0].kind == "heading" else sec.path
         tc = sec.tabctx
-        if cur is not None and cur.tabctx == tc and cur.blocks:
-            common = common_prefix(cur.path, parent)
-            if cur.tokens + 2 + sec.tokens <= target - hdr(common):
-                for b in sec.blocks:
-                    cur.add(b)
-                cur.path = common
-                continue
+        carry: Piece | None = None
+        sec_lead_only = all(b.kind in LEAD_KINDS for b in sec.blocks)
         if cur is not None and cur.blocks:
-            out.append(cur)
-        cur = Piece(parent, sec.path, sec.anchor, tc)
-        limit = target - hdr(sec.path)
-        body_max = hard_max - hdr(sec.path)
+            # a section with nothing but its heading joins the piece only if that piece has no content yet
+            if cur.tabctx == tc and not hard_start(sec) and (not sec_lead_only or lead_only(cur)):
+                common = common_prefix(cur.path, parent)
+                if cur.tokens + 2 + sec.tokens <= target - hdr(common):
+                    for b in sec.blocks:
+                        cur.add(b)
+                    cur.path = common
+                    continue
+            if lead_only(cur) and can_carry(cur, tc) and not hard_start(sec):
+                carry = cur  # lone headings travel with the content that follows them
+            else:
+                out.append(cur)
+        if carry is not None:
+            cur = Piece(common_prefix(carry.path, parent), carry.section_path, carry.anchor, tc,
+                        list(carry.blocks), carry.tokens)
+            hdr_path = sec.path if len(sec.path) >= len(carry.path) else carry.path
+        else:
+            cur = Piece(parent, sec.path, sec.anchor, tc)
+            hdr_path = sec.path
+        limit = target - hdr(hdr_path)
+        body_max = hard_max - hdr(hdr_path)
         for b in sec.blocks:
-            parts = split_oversize(b, body_max) if b.tokens > body_max else [b]
+            if b.kind in LEAD_KINDS or not cur.blocks or not lead_only(cur):
+                budget = body_max
+            else:  # the first content block after headings: leave room for them
+                budget = body_max - cur.tokens - 2
+                if budget < min(96, body_max // 3):  # too many stacked headings: let them go alone
+                    out.append(cur)
+                    cur = Piece(sec.path, sec.path, sec.anchor, tc)
+                    budget = body_max
+            parts = split_oversize(b, budget) if b.tokens > budget else [b]
             for p in parts:
-                if cur.blocks and cur.tokens + 2 + p.tokens > limit:
+                if cur.blocks and not lead_only(cur) and cur.tokens + 2 + p.tokens > limit:
                     out.append(cur)
                     cur = Piece(sec.path, sec.path, sec.anchor, tc)
                 cur.add(p)
     if cur is not None and cur.blocks:
         out.append(cur)
 
-    # fold tiny pieces (< target/5) into a neighbour when the result stays under the hard max
+    # fold tiny pieces (< target/5) into a neighbour when the result stays under the hard max;
+    # a lead-only piece goes forward into the next piece, anything else back into the previous one
     merged: list[Piece] = []
+    pending: Piece | None = None
     for p in out:
+        if pending is not None:
+            if can_carry(pending, p.tabctx) and pending.tokens + 2 + p.tokens <= \
+                    hard_max - hdr(common_prefix(pending.path, p.path)):
+                q = Piece(common_prefix(pending.path, p.path), pending.section_path, pending.anchor, p.tabctx,
+                          list(pending.blocks), pending.tokens)
+                for b in p.blocks:
+                    q.add(b)
+                p = q
+            elif not redundant(pending, p):
+                merged.append(pending)
+            pending = None
+        if lead_only(p):
+            pending = p
+            continue
         prev = merged[-1] if merged else None
-        if prev and (prev.tokens < target / 5 or p.tokens < target / 5) and prev.tabctx == p.tabctx:
+        starts_section = split_level > 0 and p.blocks[0].kind == "heading" and p.blocks[0].level <= split_level
+        if prev and not starts_section and (prev.tokens < target / 5 or p.tokens < target / 5) \
+                and prev.tabctx == p.tabctx:
             common = common_prefix(prev.path, p.path)
             if prev.tokens + 2 + p.tokens <= hard_max - hdr(common):
                 for b in p.blocks:
@@ -364,6 +437,8 @@ def pack_markdown(blocks: list[Block], header_of: HeaderFn, target: int = CHUNK_
                 prev.path = common
                 continue
         merged.append(p)
+    if pending is not None:
+        merged.append(pending)
 
     # exact check: re-split anything whose rendered text is still over the hard max
     final: list[Piece] = []
@@ -372,33 +447,46 @@ def pack_markdown(blocks: list[Block], header_of: HeaderFn, target: int = CHUNK_
     return final
 
 
-def enforce_hard_max(p: Piece, header_of: HeaderFn, hard_max: int) -> list[Piece]:
+def enforce_hard_max(p: Piece, header_of: HeaderFn, hard_max: int, depth: int = 0) -> list[Piece]:
+    """Re-split a piece whose rendered text is over the hard max. Leading headings and tab labels stay
+    with the first content block; a single content block is split at line/row boundaries."""
     header = header_of(p.path)
-    if ntok(render(header, p.body)) <= hard_max:
+    if ntok(render(header, p.body)) <= hard_max or depth > 12:
         return [p]
-    if len(p.blocks) > 1:
-        half, acc, total = 1, 0, sum(b.tokens for b in p.blocks)
-        for k, b in enumerate(p.blocks):
+
+    def piece(blocks: list[Block]) -> Piece:
+        q = Piece(p.path, p.section_path, p.anchor, p.tabctx)
+        for b in blocks:
+            q.add(b)
+        return q
+
+    k = 0
+    while k < len(p.blocks) and p.blocks[k].kind in LEAD_KINDS:
+        k += 1
+    lead, rest = p.blocks[:k], p.blocks[k:]
+    if len(rest) > 1:  # halve the content blocks by tokens; the lead stays with the first half
+        total, acc, half = sum(b.tokens for b in rest), 0, 1
+        for i, b in enumerate(rest):
             acc += b.tokens
             if acc >= total / 2:
-                half = max(1, min(len(p.blocks) - 1, k + (1 if k == 0 else 0)))
+                half = max(1, min(len(rest) - 1, i + 1))
                 break
-        left = Piece(p.path, p.section_path, p.anchor, p.tabctx)
-        right = Piece(p.path, p.section_path, p.anchor, p.tabctx)
-        for b in p.blocks[:half]:
-            left.add(b)
-        for b in p.blocks[half:]:
-            right.add(b)
-        return enforce_hard_max(left, header_of, hard_max) + enforce_hard_max(right, header_of, hard_max)
-    budget = hard_max - ntok(header) - 4
-    parts = split_oversize(p.blocks[0], budget)
-    if len(parts) <= 1:  # cannot split further (should not happen): shrink the budget
-        parts = split_oversize(p.blocks[0], max(16, budget // 2))
-    out = []
-    for b in parts:
-        q = Piece(p.path, p.section_path, p.anchor, p.tabctx)
-        q.add(b)
-        out += enforce_hard_max(q, header_of, hard_max) if len(parts) > 1 else [q]
+        return (enforce_hard_max(piece(lead + rest[:half]), header_of, hard_max, depth + 1)
+                + enforce_hard_max(piece(rest[half:]), header_of, hard_max, depth + 1))
+    if not rest:  # nothing but headings: one piece each
+        return [piece([b]) for b in lead]
+    lead_tokens = sum(b.tokens for b in lead) + 2 * len(lead)
+    budget = hard_max - ntok(header) - lead_tokens - 4
+    out: list[Piece] = []
+    if budget < 32:  # too many stacked headings to share a piece with content
+        out += [piece([b]) for b in lead]
+        lead, budget = [], hard_max - ntok(header) - 4
+    parts = split_oversize(rest[0], budget)
+    if len(parts) <= 1:
+        parts = split_oversize(rest[0], max(16, budget // 2))
+    out += enforce_hard_max(piece(lead + parts[:1]), header_of, hard_max, depth + 1)
+    for b in parts[1:]:
+        out += enforce_hard_max(piece([b]), header_of, hard_max, depth + 1)
     return out
 
 
@@ -416,14 +504,14 @@ class Rendered:
 
 
 def chunk_markdown(md: str, *, title: str, lead: str | None = None, crumbs: list[str] | None = None,
-                   target: int = CHUNK_TARGET, hard_max: int = CHUNK_HARD_MAX) -> list[Rendered]:
+                   target: int = CHUNK_TARGET, hard_max: int = CHUNK_HARD_MAX, split_level: int = 0) -> list[Rendered]:
     crumbs = crumbs or []
 
     def header_of(path: list[str]) -> str:
         return render_header(title, lead, crumbs, path)
 
     out = []
-    for p in pack_markdown(parse_markdown(md), header_of, target, hard_max):
+    for p in pack_markdown(parse_markdown(md), header_of, target, hard_max, split_level):
         out.append(Rendered(render(header_of(p.path), p.body), p.section_path, p.anchor,
                             p.blocks[0].start, p.blocks[-1].end))
     return out
@@ -433,6 +521,7 @@ def chunk_markdown(md: str, *, title: str, lead: str | None = None, crumbs: list
 YAML_KEY = re.compile(r"^(\s*)([A-Za-z0-9_.\-]+|\"[^\"]+\"|'[^']+')\s*:(\s|$)")
 JSON_KEY = re.compile(r"^(\s*)\"([^\"]+)\"\s*:")
 GO_DECL = re.compile(r"^(func|type|var|const|import)\b\s*(\([^)]*\)\s*)?(\w+)?")
+GO_SKIP = ("(preamble)", "import")
 
 
 def key_lines(lines: list[str], kind: str, lo: int, hi: int) -> list[tuple[int, int, str]]:
@@ -514,17 +603,19 @@ def struct_split(lines: list[str], kind: str, lo: int, hi: int, path: list[str],
                 segs += struct_split(lines, kind, a, b, path + [name], target, hard_max, depth + 1)
         else:
             segs.append({"path": path + [name], "lo": a, "hi": b, "tok": seg_tok})
-    # pack consecutive small sibling segments up to target
+    # pack consecutive small sibling segments up to target (Go's package clause and imports stay apart:
+    # chunk_code drops them)
     packed: list[dict] = []
     for s in segs:
         tok = s.get("tok") or ntok("\n".join(lines[s["lo"]:s["hi"]]))
+        mergeable = bool(s.get("tok")) and not (kind == "go" and s["path"][-1] in GO_SKIP)
         last = packed[-1] if packed else None
-        if last and last.get("mergeable") and s.get("tok") and last["tok"] + tok <= target and last["hi"] == s["lo"]:
+        if last and last.get("mergeable") and mergeable and last["tok"] + tok <= target and last["hi"] == s["lo"]:
             last["hi"] = s["hi"]
             last["tok"] += tok
             last["keys"].append(s["path"][-1])
             continue
-        packed.append({**s, "tok": tok, "mergeable": bool(s.get("tok")), "keys": [s["path"][-1]]})
+        packed.append({**s, "tok": tok, "mergeable": mergeable, "keys": [s["path"][-1]]})
     for p in packed:
         if len(p["keys"]) > 1:
             shown = ", ".join(p["keys"][:3]) + (", …" if len(p["keys"]) > 3 else "")
@@ -584,7 +675,7 @@ def chunk_code(text: str, kind: str, *, title: str, lead: str | None = None, tar
         out.append(CodePiece(full, path, lo + 1, hi))
 
     for s in segs:
-        if kind == "go" and s["path"] and s["path"][-1] in ("(preamble)", "import"):
+        if kind == "go" and s["path"] and s["path"][-1] in GO_SKIP:
             continue  # package clause, license header and imports carry no answerable content
         emit(s["path"], s["lo"], s["hi"])
     return out

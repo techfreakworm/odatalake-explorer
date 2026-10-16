@@ -58,9 +58,28 @@ def release_markdown(rel: dict) -> tuple[str, str]:
         title += f": {rel['name'].strip()}"
     date = (rel.get("published_at") or "")[:10]
     pre = " (pre-release)" if rel.get("prerelease") else ""
-    md = f"# {title}\n\nGitHub release {rel['tag']} of {config.GITHUB_ORG}/{rel['repo']}, published {date}{pre}.\n\n" \
-         f"{rel.get('body') or '(no release notes)'}\n"
+    latest = f" It is the latest {rel['latest']} on GitHub when this index was built." if rel.get("latest") else ""
+    md = f"# {title}\n\nGitHub release {rel['tag']} of {config.GITHUB_ORG}/{rel['repo']}, published {date}{pre}.{latest}" \
+         f"\n\n{rel.get('body') or '(no release notes)'}\n"
     return title, md
+
+
+def mark_latest(repo: str, rels: list[dict]) -> list[dict]:
+    """Flag the newest published release (per tag family for olake-helm: worker vX.Y.Z and chart
+    olake-X.Y.Z) with a "latest" label; rels are newest first, as the releases API returns them."""
+    seen = set()
+    out = []
+    for r in rels:
+        r = {k: v for k, v in r.items() if k != "latest"}
+        if not r.get("prerelease"):
+            family = "chart" if repo == "olake-helm" and r["tag"].startswith("olake-") else "release"
+            if family not in seen:
+                seen.add(family)
+                what = "Helm chart release" if family == "chart" else (
+                    "worker release" if repo == "olake-helm" else "release")
+                r["latest"] = f"{config.GITHUB_ORG}/{repo} {what}"
+        out.append(r)
+    return out
 
 
 def release_gh_chunks(rel: dict) -> list[dict]:
@@ -197,12 +216,61 @@ def load_factcards(directory: Path = FACTCARD_DIR) -> list[dict]:
     return cards
 
 
+CITE_COMMENT = re.compile(r"^\s*<!--\s*cite:\s*(.*?)\s*-->\s*$")
+HEADING_LINE = re.compile(r"^(#{1,6})\s+\S")
+
+
+def line_cites(body: str, default: list[str]) -> list[list[str] | None]:
+    """The citation URLs in effect on each line (index 0 = line 1) of a fact card body.
+
+    A section declares its sources with a `<!-- cite: url url ... -->` line under its heading;
+    subsections without their own comment inherit it, and lines outside any declaring section use
+    the card's front-matter cite_urls. Heading, blank and comment lines get None (they carry no facts)."""
+    stack: list[tuple[int, list[str] | None]] = [(0, None)]
+    out: list[list[str] | None] = []
+    for line in body.split("\n"):
+        h = HEADING_LINE.match(line)
+        m = CITE_COMMENT.match(line)
+        if h:
+            level = len(h.group(1))
+            while len(stack) > 1 and stack[-1][0] >= level:
+                stack.pop()
+            stack.append((level, None))
+            out.append(None)
+        elif m:
+            stack[-1] = (stack[-1][0], m.group(1).split())
+            out.append(None)
+        elif not line.strip():
+            out.append(None)
+        else:
+            out.append(next((c for _, c in reversed(stack) if c), default))
+    return out
+
+
+def card_cite_urls(card: dict) -> list[str]:
+    """Every URL a card cites: its front matter plus each section's cite comment."""
+    urls = list(card["cite_urls"])
+    for line in card["body"].split("\n"):
+        m = CITE_COMMENT.match(line)
+        if m:
+            urls += [u for u in m.group(1).split() if u not in urls]
+    return urls
+
+
 def factcard_chunks(card: dict) -> list[dict]:
+    """Card -> chunks; each chunk's cite_urls are the sources of the sections it holds (doc_url = the first)."""
+    per_line = line_cites(card["body"], list(card["cite_urls"]))
     out = []
-    for n, r in enumerate(chunk_markdown(card["body"], title=card["title"], lead="OLake fact card")):
-        out.append(make_chunk(id=f"factcard/{card['name']}#{n}", source_type="factcard", doc_url=card["cite_urls"][0],
-                              url=card["cite_urls"][0], title=card["title"], section_path=r.section_path,
-                              text=r.text, ord=n, cite_urls=list(card["cite_urls"])))
+    for n, r in enumerate(chunk_markdown(card["body"], title=card["title"], lead="OLake fact card", split_level=2)):
+        cite: list[str] = []
+        for urls in per_line[r.start - 1:r.end]:
+            for u in urls or ():
+                if u not in cite:
+                    cite.append(u)
+        cite = cite or list(card["cite_urls"])
+        out.append(make_chunk(id=f"factcard/{card['name']}#{n}", source_type="factcard", doc_url=cite[0],
+                              url=cite[0], title=card["title"], section_path=r.section_path, text=r.text, ord=n,
+                              cite_urls=cite))
     return out
 
 

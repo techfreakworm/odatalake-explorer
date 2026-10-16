@@ -1,0 +1,28 @@
+<!doctype html><html lang=en><head><meta charset=UTF-8><title>OLake Example REST Catalog Setup | OLake</title>
+<link rel=canonical href=https://olake.io/docs/writers/example/><meta name=description content="Example page"></head>
+<body><nav class=navbar>Navbar junk<a href=/docs/>Docs</a></nav>
+<div class=row><aside class=sidebar><ul><li>Sidebar item one<li>Sidebar item two</ul></aside>
+<article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label=Breadcrumbs><ul class=breadcrumbs>
+<li class=breadcrumbs__item><a aria-label="Home page" class=breadcrumbs__link href=/><svg viewBox="0 0 24 24"><path d="M10 19"/></svg></a>
+<li class=breadcrumbs__item><span class=breadcrumbs__link>Destinations</span>
+<li class=breadcrumbs__item><span class=breadcrumbs__link>Catalogs</span>
+<li class="breadcrumbs__item breadcrumbs__item--active"><span class=breadcrumbs__link>2. Example</span></ul></nav>
+<div class="theme-doc-markdown markdown"><header><h1>Example Catalog</h1></header>
+<p>The example catalog page intro paragraph.
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id=prerequisites>Prerequisites<a href=#prerequisites class=hash-link aria-label="Direct link to Prerequisites" title="Direct link to Prerequisites">​</a></h2>
+<ul><li><strong>Object store</strong> – S3 or MinIO<li><strong>Database</strong> – PostgreSQL</ul>
+<div class="theme-admonition theme-admonition-note admonition_xJq3 alert alert--secondary"><div class=admonitionHeading_Gvgb><span class=admonitionIcon_Rf37><svg viewBox="0 0 14 16"><path d="M6.3"/></svg></span>Catalog Name Supported for v0.3.5 and above</div><div class=admonitionContent_BuS1><p>Only lowercase letters and underscores.</div></div>
+<h2 class=anchor id=configuration>Configuration<a href=#configuration class=hash-link>​</a></h2>
+<div class="theme-tabs-container tabs-container tabList__CuJ"><ul role=tablist class=tabs><li role=tab tabindex=0 aria-selected=true class="tabs__item tabs__item--active">Generic<li role=tab tabindex=-1 class=tabs__item>Nessie</ul>
+<div class=margin-top--md><div role=tabpanel class=tabItem_Ymn6><p>Generic panel text about the REST endpoint.
+<h3 class=anchor id=authentication>Authentication<a href=#authentication class=hash-link>​</a></h3>
+<div class="theme-tabs-container tabs-container tabList__CuJ"><ul role=tablist class=tabs><li role=tab tabindex=0 aria-selected=true class="tabs__item tabs__item--active">OLake UI<li role=tab tabindex=-1 class=tabs__item>OLake CLI</ul>
+<div class=margin-top--md><div role=tabpanel class=tabItem_Ymn6><p>Fill the <code>Authentication Type</code> field in the UI form.
+<table><thead><tr><th>Parameter<th>Sample Value<th>Description<tbody><tr><td><strong>REST Catalog URL</strong><br><code>required</code><td><code>http://host:8181</code><td>The REST endpoint.<tr><td><strong>S3 Path</strong><td><code>s3://bucket</code><td>Where data | metadata go.</table></div>
+<div role=tabpanel class=tabItem_Ymn6 hidden><p>Create a <code>destination.json</code> with:
+<div class="language-json olake-code codeBlockContainer_Ckt0 theme-code-block"><div class=olake-code__header><span class=olake-code__title>destination.json</span></div><div class=olake-code__body><pre tabindex=0 class="prism-code language-json codeBlock_bY9V"><code class=codeBlockLines_e6Vv><div class=token-line><span class="token punctuation">{</span><br></div><div class=token-line><span class="token plain">  </span><span class="token property">"type"</span><span class="token operator">:</span><span class="token plain"> </span><span class="token string">"ICEBERG"</span><br></div><div class=token-line><span class="token punctuation">}</span></div></code></pre><button class=copyButton>Copy</button></div></div></div></div></div></div>
+<div role=tabpanel class=tabItem_Ymn6 hidden><p>Nessie panel text about the Nessie catalog.</div></div></div>
+<p>Text after the tab group that applies to every catalog.
+<details><summary>Troubleshooting tips</summary><p>Check the endpoint is reachable.</details>
+</div><footer class=theme-doc-footer>Edit this page</footer></article></div>
+<footer class=footer>Site footer</footer></body></html>

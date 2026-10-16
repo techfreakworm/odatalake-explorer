@@ -17,6 +17,7 @@ mis-nests it (and concatenates tab labels). Images, SVGs, buttons and navigation
 
 from __future__ import annotations
 
+import copy
 import re
 
 from bs4 import BeautifulSoup, NavigableString, Tag
@@ -344,23 +345,29 @@ NOISE_SELECTORS = (
 
 
 def extract_main(html: str, url: str, min_chars: int = 400) -> dict:
-    """Main-content extraction for a curated outside page: the first selector with real text."""
+    """Main-content extraction for a curated outside page: the first selector whose cleaned-up
+    Markdown has real text (landing pages often keep their content outside <main>)."""
     soup = BeautifulSoup(html, "lxml")
     title = _clean(soup.title.get_text(" ", strip=True)) if soup.title else url
     title = re.sub(r"\s+", " ", title).strip()[:160]
     ids = page_ids(soup)
-    root = None
-    for sel in MAIN_SELECTORS:
-        cand = soup.select_one(sel)
-        if cand is not None and len(cand.get_text(" ", strip=True)) >= min_chars:
-            root = cand
-            break
-    if root is None:
-        return {"url": url, "title": title, "markdown": "", "ids": ids, "selector": None}
-    for sel in NOISE_SELECTORS:
-        for el in root.select(sel):
-            if el is not root:
+    best = {"url": url, "title": title, "markdown": "", "ids": ids, "selector": None}
+    tried = set()
+    for selector in MAIN_SELECTORS:
+        cand = soup.select_one(selector)
+        if cand is None or id(cand) in tried or len(cand.get_text(" ", strip=True)) < min_chars:
+            continue
+        tried.add(id(cand))
+        root = copy.copy(cand)  # clean a copy, so a rejected candidate leaves the page intact
+        for noise in NOISE_SELECTORS:
+            for el in root.select(noise):
                 el.decompose()
-    conv = Converter()
-    md = "\n\n".join(b for b in conv.blocks(root) if b.strip())
-    return {"url": url, "title": title, "markdown": md, "ids": ids, "selector": sel, "extract_stats": conv.stats}
+        conv = Converter()
+        md = "\n\n".join(b for b in conv.blocks(root) if b.strip())
+        if len(md) >= min_chars:
+            return {"url": url, "title": title, "markdown": md, "ids": ids, "selector": selector,
+                    "extract_stats": conv.stats}
+        if len(md) > len(best["markdown"]):
+            best = {"url": url, "title": title, "markdown": md, "ids": ids, "selector": selector,
+                    "extract_stats": conv.stats}
+    return best

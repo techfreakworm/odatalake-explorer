@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "properties": {
+    "host": {"type": "string", "title": "Host", "description": "Database host"},
+    "port": {"type": "integer", "title": "Port", "default": 5432, "minimum": 1, "maximum": 65535},
+    "ssl": {
+      "type": "object",
+      "title": "SSL",
+      "properties": {"mode": {"type": "string", "enum": ["disable", "require", "verify-ca"], "default": "disable"}},
+      "allOf": [
+        {"if": {"properties": {"mode": {"const": "verify-ca"}}},
+         "then": {"properties": {"server_ca": {"type": "string", "title": "Server CA", "description": "CA | PEM"}}}}
+      ]
+    },
+    "update_method": {
+      "title": "Update method",
+      "oneOf": [
+        {"title": "CDC", "properties": {"type": {"const": "CDC"}, "replication_slot": {"type": "string", "title": "Slot"}}},
+        {"title": "Standalone", "properties": {"type": {"const": "Standalone"}}}
+      ]
+    }
+  },
+  "required": ["host", "port"]
+}
