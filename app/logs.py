@@ -66,6 +66,7 @@ def configure_logging(level: str = "INFO") -> None:
     root = logging.getLogger()
     root.handlers = [handler]
     root.setLevel(level)
+    logging.captureWarnings(True)  # library warnings become JSON lines too, not plain text on stderr
     for name in ("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi"):
         lg = logging.getLogger(name)
         lg.handlers = []

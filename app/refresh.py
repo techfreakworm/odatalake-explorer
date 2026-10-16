@@ -47,9 +47,7 @@ class RefreshPoller:
         """One refresh round. Never raises: a failed refresh keeps serving the current index."""
         if self.refresh_fn is not None:
             try:
-                params = inspect.signature(self.refresh_fn).parameters
-                result = (self.refresh_fn(index_dir=self.index_dir) if "index_dir" in params
-                          else self.refresh_fn())
+                result = self._call_refresh()
                 log_event("refresh_done", result=_summary(result))
             except Exception as e:  # noqa: BLE001 - the poller must survive any refresh failure
                 log_event("refresh_failed", logging.WARNING, error=redact(f"{type(e).__name__}: {e}"))
@@ -59,6 +57,16 @@ class RefreshPoller:
                 self.reload()
         except Exception as e:  # noqa: BLE001
             log_event("index_swap_failed", logging.ERROR, error=redact(f"{type(e).__name__}: {e}"))
+
+    def _call_refresh(self):
+        """index.refresh.refresh_once(index_root=..., *, check=False): pass the app's INDEX_DIR as the first
+        positional argument (or as index_dir=), so ingest and the app always work on the same directory."""
+        params = list(inspect.signature(self.refresh_fn).parameters.values())
+        if any(p.name == "index_dir" for p in params):
+            return self.refresh_fn(index_dir=self.index_dir)
+        if params and params[0].kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
+            return self.refresh_fn(self.index_dir)
+        return self.refresh_fn()
 
 
 def _summary(result) -> object:

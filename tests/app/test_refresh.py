@@ -110,3 +110,16 @@ def test_poller_thread_runs_and_stops(tmp_path):
         time.sleep(0.02)
     p.stop()
     assert calls
+
+
+def test_refresh_fn_with_ingest_signature_gets_the_app_index_dir(tmp_path):
+    d = build_fixture_index(tmp_path)
+    seen = []
+
+    def refresh_once(index_root="data/index", *, check=False):  # index.refresh.refresh_once's signature
+        seen.append((index_root, check))
+        return {"changed": False, "version": None}
+
+    p, _ = poller(d, refresh_once)
+    p.tick()
+    assert seen == [(d, False)]
