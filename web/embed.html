@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask OLake</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 12px; }
+  textarea { width: 100%; box-sizing: border-box; min-height: 64px; }
+  #out { white-space: pre-wrap; margin-top: 12px; }
+</style>
+</head>
+<body>
+<!-- Placeholder chat (Phase 2 builds the real embed app). Calls POST /ask on this origin. -->
+<form id="f">
+  <label for="q">Ask a question about OLake</label>
+  <textarea id="q" maxlength="2000" required></textarea>
+  <button type="submit">Ask</button>
+</form>
+<div id="out" role="log"></div>
+<ol id="src"></ol>
+<script>
+  document.getElementById("f").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var out = document.getElementById("out"), src = document.getElementById("src");
+    out.textContent = "…"; src.textContent = "";
+    fetch("/ask", { method: "POST", headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ question: document.getElementById("q").value }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        out.textContent = d.answer;
+        (d.sources || []).forEach(function (u) {
+          var li = document.createElement("li"), a = document.createElement("a");
+          a.href = u; a.textContent = u; a.target = "_blank"; a.rel = "noopener noreferrer";
+          li.appendChild(a); src.appendChild(li);
+        });
+      })
+      .catch(function () { out.textContent = "Something went wrong. Please retry."; });
+  });
+</script>
+</body>
+</html>

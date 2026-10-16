@@ -1,0 +1,91 @@
+{
+  "version": "20261017T0000Z",
+  "built_at": "2026-10-17T00:00:00Z",
+  "embed_model": "test/hash-embedder",
+  "embed_query_prefix": "",
+  "dim": 512,
+  "chunker": {
+    "target": 300,
+    "hard_max": 450
+  },
+  "counts": {
+    "pages": 19,
+    "chunks": 25
+  },
+  "docs": {
+    "sitemap": "https://olake.io/sitemap.xml",
+    "lastmod_max": "2026-10-09",
+    "pages": {
+      "https://olake.io/docs/connectors/mysql/": {
+        "lastmod": "2026-10-06",
+        "hash": "x"
+      },
+      "https://olake.io/docs/connectors/oracle/": {
+        "lastmod": "2026-10-06",
+        "hash": "x"
+      },
+      "https://olake.io/docs/connectors/postgres/": {
+        "lastmod": "2026-10-06",
+        "hash": "x"
+      },
+      "https://olake.io/docs/connectors/postgres/setup/rds/": {
+        "lastmod": "2026-10-06",
+        "hash": "x"
+      },
+      "https://olake.io/docs/fusion/compaction/types-of-compaction/": {
+        "lastmod": "2026-10-06",
+        "hash": "x"
+      },
+      "https://olake.io/docs/fusion/getting-started/quickstart/": {
+        "lastmod": "2026-10-06",
+        "hash": "x"
+      },
+      "https://olake.io/docs/fusion/install/olake-ui/": {
+        "lastmod": "2026-10-06",
+        "hash": "x"
+      },
+      "https://olake.io/docs/getting-started/quickstart/": {
+        "lastmod": "2026-10-06",
+        "hash": "x"
+      },
+      "https://olake.io/docs/install/olake-ui/": {
+        "lastmod": "2026-10-06",
+        "hash": "x"
+      },
+      "https://olake.io/docs/release/ingestion/v0.11.0/": {
+        "lastmod": "2026-10-06",
+        "hash": "x"
+      },
+      "https://olake.io/docs/release/ingestion/v0.12.0/": {
+        "lastmod": "2026-10-06",
+        "hash": "x"
+      },
+      "https://olake.io/docs/release/ingestion/v0.9.0/": {
+        "lastmod": "2026-10-06",
+        "hash": "x"
+      }
+    }
+  },
+  "repos": {
+    "olake": {
+      "branch": "master",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "commit_date": "2026-10-15T10:00:00Z"
+    },
+    "olake-helm": {
+      "branch": "master",
+      "commit": "89abcdef0123456789abcdef0123456789abcdef",
+      "commit_date": "2026-10-14T10:00:00Z"
+    }
+  },
+  "releases": {
+    "olake": {
+      "tag": "v0.12.1",
+      "published_at": "2026-10-15T09:00:00Z"
+    },
+    "olake-ui": {
+      "tag": "v0.7.1",
+      "published_at": "2026-10-15T08:00:00Z"
+    }
+  }
+}
