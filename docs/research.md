@@ -462,7 +462,9 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
      for ADV-02 a refusal sentence. Only retrieval sees that output, but it is an attack surface, and it costs about 1.2 s
      locally (p50 1,174.8 ms; 191.7 prompt and 11.9 completion tokens on average). So the rewrite is optional, only with a
      TinyBERT gate. If it is ever used, its prompt emits keywords only (no sentences, about 12 tokens at most), and its
-     output is never shown to the user. A short-circuit returns one unified text, which also suits the near-domain
+     output is never shown to the user. A hardened rewrite prompt of that kind, with an output sanitizer, was no net gain
+     on the 15 gate-fired and adversarial rows: ADV-01 then produced keywords, but ADV-02 was still declined, and UNK-06
+     and OOS-05 passed the gate (`poc/results/gate-rewrite-v2-subset.json`). A short-circuit returns one unified text, which also suits the near-domain
      unknowns the gate catches, such as UNK-06 (SOC 2), whose BEHAVIOR item needs the contact pointer:
      "I couldn't find this in the OLake docs or repos. I can help with OLake setup, sources, sync modes, catalogs, Fusion
      maintenance, deployment and troubleshooting. If your question is about OLake, ask in the OLake Slack or GitHub
@@ -848,10 +850,11 @@ the 94 rows.
 
   The v2 rules go into the event prompt (plan section 4.3): correct false premises with the contradicting passage cited,
   answer the genuine question inside an injection, reply in the user's language, and add 2-3 few-shot premise corrections.
-- **End to end with the round-2 policy** (`poc/results/eval_run-canonical-combined.json`, all 94 rows). The config, as poc reported it: prompt v3,
-  k=10 passages, `max_tokens` 600, a TinyBERT top-10 gate at 0.3 with one rewrite, local qwen3:32b, and qwen3:32b as the
-  judge. The file records concurrency 1, and its per-row headers show 11 rewrites. Its model stage is the recommended
-  one; only the gate differs from the final policy (§4.3).
+- **End to end with the round-2 policy** (`poc/results/eval_run-canonical-combined.json`, all 94 rows). The config, from the file's `config` block:
+  corpus v2 with 300-token chunks; hybrid bge-small with no reranker; k=10 passages; a FlashRank TinyBERT top-10 gate
+  below 0.3 with one rewrite (rewrite prompt v1; it fired on 11 rows, p50 1,273.9 ms); prompt v3; local qwen3:32b in JSON
+  mode with reasoning off and `max_tokens` 600; the scorer at concurrency 1; qwen3:32b as the judge. Its model stage is
+  the recommended one; only the gate differs from the final policy (§4.3).
   - Schema valid 1.0; 5xx 0; contradictions 4.
   - Behaviour correct 0.936 (0.84 in the v1 run); source hit 0.841 (0.695); fact coverage 0.603 (0.573); judged BEHAVIOR
     pass 0.85 (0.75).
