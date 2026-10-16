@@ -10,19 +10,20 @@ The runbook that carries out these decisions is [plan.md](plan.md). Open items a
    with a README on architecture and design choices ([challenges page][ch]).
 2. **Corpus** (§3): tier 1 is the 124 `/docs/` pages from the rendered HTML minus a denylist of stub pages, plus GitHub
    release notes, the two product FAQs and fact cards generated at the event. Tier 2 is a Tier A repo allowlist and 10
-   curated issues. Tier 3 is the blog, decided by an A/B run at the event (D4). Tier 4 is about 23 curated outside pages,
+   curated issues. Tier 3, the blog, is off (D4, decided by data: it lowered retrieval at full weight and was neutral at half weight). Tier 4 is about 23 curated outside pages,
    labelled. Not indexed: upstream Amoro docs (D11), bulk issues, discussions.
 3. **Citations** (§3.5): `sources` holds canonical sitemap URLs (trailing slash, no anchor), capped at 5. For repo files,
    `SOURCE_URL_STYLE` switches between branch-form and SHA-permalink GitHub URLs (K3). Anchors and line ranges appear in
    the UI.
-4. **Architecture**: hybrid retrieval (BM25 plus local dense embeddings, RRF k=60) with no reranker, because the measured
-   rerankers did not help. The top 10 chunks go to one grounded LLM call with `[n]` citations. An off-topic gate sits
-   before the call: one rewrite, then a short-circuit, with its threshold set at 0% false abstains. The model's `NO_ANSWER`
-   and citation validation decide abstains, and every abstain is logged. The fallback is BM25-only
+4. **Architecture**: hybrid retrieval (BM25 plus local dense embeddings, RRF k=60) with no cross-encoder in v1; FlashRank
+   TinyBERT is a measured upgrade, switched on at 12:30 only if it helps on the event index (decision R′). The top 10
+   chunks go to one grounded LLM call with `[n]` citations. An off-topic gate on the dense score short-circuits clearly
+   off-topic questions, with no rewrite; its threshold is the lowest must-answer score minus a 0.02 margin. The model's
+   `NO_ANSWER` and citation validation decide most abstains, and every abstain is logged. The fallback is BM25-only
    with the same chunks and prompt, behind a config flag (§4).
 5. **Stack** (§5): Python 3.12 and FastAPI 0.135 or later (native SSE). The `openai` SDK drives an ordered chain of
    OpenAI-compatible providers: the event credits, then the operator's paid key of at least 100 RPM, then Gemma on the
-   Gemini free tier. Retrieval uses fastembed bge-small (ONNX, CPU), bm25s and numpy vectors, with no reranker. One
+   Gemini free tier. Retrieval uses fastembed bge-small (ONNX, CPU), bm25s and numpy vectors, with no reranker in v1. One
    container (2 GiB by default) runs on Cloud Run asia-south1 with one instance always on; DigitalOcean App Platform BLR is the fallback and an ngrok dev domain the emergency path. Latency, not cost,
    decides the model: answers cost $0.0004-0.0045.
 6. **Widget**: a small `widget.js` loader that injects a launcher and an iframe served from our origin (`/embed`), plus a plain
@@ -237,10 +238,10 @@ with `--no-cpu-throttling` [[gcloud-deploy]], so use that flag whenever the poll
 
 ### 4.1 Options
 
-| | A. Simple | B. Hybrid + gates, no rerank (chosen; measured) | C. Agentic tool loop | D. Long-context stuffing |
+| | A. Simple | B. Hybrid + gates, no rerank in v1 (chosen; measured) | C. Agentic tool loop | D. Long-context stuffing |
 |---|---|---|---|---|
-| Retrieval | BM25 over heading-aware chunks, top 10 | BM25 + local dense, RRF k=60 [[rrf]]; the top 10 chunks (max 3 per page) go to the LLM; no reranker, because the measured rerankers did not help (§4.3) | Tools (`search_docs`, `search_repo`, `open_page`) chosen by the LLM | None: the whole docs set goes in the prompt |
-| LLM calls per answer | 1 | 1 (2 when the off-topic gate triggers the rewrite) | Several | 1, very large |
+| Retrieval | BM25 over heading-aware chunks, top 10 | BM25 + local dense, RRF k=60 [[rrf]]; the top 10 chunks (max 3 per page) go to the LLM; no cross-encoder in v1, with TinyBERT as a conditional upgrade (§4.3) | Tools (`search_docs`, `search_repo`, `open_page`) chosen by the LLM | None: the whole docs set goes in the prompt |
+| LLM calls per answer | 1 | 1 (0 when the off-topic gate short-circuits) | Several | 1, very large |
 | Build effort | About 1 hour (memo estimate, unmeasured) | The 10:30-13:30 build window (plan section 3) | Not planned for v1 (memo) | Small, but rejected for serving |
 
 ### 4.2 Options against the judging criteria
@@ -292,8 +293,8 @@ gives a measured number. The prior art and literature follow the table.
 - **Corrective and agentic loops (C).** CRAG adds a retrieval evaluator and a web-search branch. On PopQA its
   generation-only time per question was 0.512 s, against 0.363 s for plain RAG [[lit-crag]].
 
-Decision: **B, hybrid RRF without a reranker (measured)**, with **A** always available as the fallback: same chunks, same
-prompt, switched by `RETRIEVAL_MODE`.
+Decision: **B, hybrid RRF without a cross-encoder in v1 (measured)**, with TinyBERT as a conditional upgrade (§4.3) and
+**A** always available as the fallback: same chunks, same prompt, switched by `RETRIEVAL_MODE`.
 C is a possible low-confidence escalation only if time allows. D is rejected for serving and kept as a debugging oracle.
 
 ### 4.3 Pipeline details
@@ -310,7 +311,8 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   the 82-row canonical set: 300 beats 600 on every config, and hit@10 is 0.939 (`poc/results/retrieval-canonical.json`).
   The report's suggestion comes from a 44-question set with one annotator.
 - **Retrieval.** BM25 (bm25s) and dense (fastembed) candidates fused with RRF, k=60 [[rrf]], with **no reranker**
-  (decided on the canonical numbers below). RRF needs no tuning data, unlike a tuned score blend (§4.2). The top 10 fused chunks, at most 3 per page, go to the LLM: about 3.3k context
+  (decided on the numbers below; TinyBERT over the fused top 20 is a conditional upgrade, decision R′). RRF needs no
+  tuning data, unlike a tuned score blend (§4.2). The top 10 fused chunks, at most 3 per page, go to the LLM: about 3.3k context
   tokens (an estimate from the POC's 1,858 prompt tokens with 6 passages, `poc/results/answer.json`).
   First, the POC results on the 14 seed questions with expected sources (`poc/results/retrieval.json`; 300-token chunks;
   fuse top 50, rerank top 20; retrieval latency only, on an 18-core arm64 laptop with all ONNX threads):
@@ -369,6 +371,34 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   top 10 chunks, not 6, because hit@10 is 0.939. With 6 passages (hybrid bge-base plus MiniLM-L6), an expected source was in
   the context for 70 of the 82 rows with expected sources (85.4%, `poc/results/gate-canonical.json`,
   `context_hit_rate_top_passages`).
+
+  **Corpus v2, decision R′ and decision D4** (`poc/results/retrieval-v2.json`: corpus v2, 300-token chunks, hybrid
+  bge-small, the 82 rows with expected sources; rerank latency on an 18-core laptop with all ONNX threads):
+
+  | Config | MRR@10 | hit@1 | hit@3 | hit@5 | hit@10 | Rerank p50 ms |
+  |---|---|---|---|---|---|---|
+  | No rerank | 0.744 | 0.634 | 0.854 | 0.878 | 0.939 | |
+  | + FlashRank TinyBERT, top 10 | 0.749 | 0.634 | 0.829 | 0.890 | 0.939 | 13.96 |
+  | + FlashRank TinyBERT, top 20 | 0.778 | 0.683 | 0.841 | 0.902 | 0.939 | 28.14 |
+  | + MiniLM-L6, top 10 | 0.731 | 0.634 | 0.768 | 0.866 | 0.939 | 150.82 |
+  | + MiniLM-L6, top 20 | 0.742 | 0.646 | 0.793 | 0.841 | 0.939 | 339.68 |
+  | + bge-reranker-base, top 10 | 0.682 | 0.549 | 0.780 | 0.866 | 0.939 | 911.00 |
+  | + bge-reranker-base, top 20 | 0.649 | 0.500 | 0.768 | 0.866 | 0.915 | 1,646.25 |
+  | Blog tier added, rank weight 1.0 | 0.630 | 0.524 | 0.707 | 0.805 | 0.866 | |
+  | Blog tier added, rank weight 0.5 | 0.743 | 0.634 | 0.841 | 0.890 | 0.939 | |
+
+  **Decision R′ (the lead's call): v1 ships without a cross-encoder**, which keeps the 10:30-12:00 build simple. TinyBERT
+  over the top 20 is the first measured upgrade: MRR@10 0.778 vs 0.744, at 28 ms with a 4 MB model. The LLM gets the top
+  10 either way and hit@10 is unchanged, so the gain is ordering only: 4 more rows with an expected source at rank 1 (56
+  vs 52 of 82), from a single run. Checkpoint 2.7 switches `RERANK=tinybert` on only if the retrieval-only bench on the
+  event index shows at least +0.02 MRR@10 and no hit@10 loss. MiniLM-L6 and bge-reranker-base stay rejected. Why TinyBERT
+  helps when the larger cross-encoders do not is unexplained. One hypothesis, untested: it mostly scores the breadcrumb
+  header and the first lines of each chunk. FlashRank truncates the query and passage to `max_length`, which the POC set to
+  512 (`poc/retrieval/index.py`), so truncation alone would clip only the longest chunks.
+
+  **Decision D4, by data: the blog is off.** At full weight the blog chunks dropped MRR@10 to 0.630; at a 0.5 rank weight
+  they were neutral (0.743 vs 0.744). With no upside on the eval set and a staleness risk, `BLOG=off`. The blog stays a
+  documented opt-in at the 0.5 penalty, for conceptual "why Iceberg" questions only.
 - **Grounding.** One system prompt (plan section 4.3): answer only from numbered passages, cite `[n]` per claim, and copy
   configs exactly. Fixed `NO_ANSWER` and `OUT_OF_SCOPE` markers. Prompt injection is treated as data.
 - **Abstain: the reranker score cannot decide it.** On the 18 seed questions, a gate on the top MiniLM-L6 rerank score at
@@ -381,8 +411,7 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   - The score ranges overlap. A near-domain unknown scores high (UNK-01: 6.28), and an injection-wrapped real question
     scores very low (ADV-03: -6.36). Answerable rows range from -2.67 to 7.78.
 - **Abstain policy** (decided by the lead after this result):
-  1. The gate is only a cheap off-topic short-circuit. Its threshold (`ABSTAIN_THRESHOLD`) is chosen at 0% false abstains
-     on must-answer rows, measured AFTER the one-rewrite step. **The signal is the highest dense cosine**
+  1. The gate is only a cheap off-topic short-circuit. **The signal is the highest dense cosine**
      (`GATE_SIGNAL=dense`), measured on the POC's corpus v2 (bge-small, 300-token chunks; `poc/results/gate-signals.json`).
      At 0 false abstains on the 82 must-answer rows, it caught 7 of the 12 must-abstain rows (recall 0.583, threshold
      0.7126), against 0.417 for TinyBERT over the top 10, 0.333 for MiniLM-L6 and 0 for BM25. It needs no extra model and
@@ -394,14 +423,21 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
      of unanswerables ([arch-prior-art report][r-arch]). So the gate handles off-topic questions only, and the model's
      sufficient-context judgment does the rest, backed by citation validation, because models hallucinate on 15-40% of
      insufficient-context questions [[lit-suffctx]].
-     The threshold 0.7126 is a measured starting value, taken before the rewrite. The rewrite can only rescue rows, so it
-     keeps 0 false abstains with the rewrite, and the after-rewrite calibration can only raise it: PENDING(poc:
-     gate-rewrite.json). The event's index differs from the POC's, so checkpoint 2.5 recalibrates it (plan section 5).
-  2. Below the threshold, ONE LLM rewrite turns the question into search keywords, which strips injections, pasted logs and
-     chit-chat. Retrieval runs again, and the bot short-circuits only if the score is still below the threshold. Measuring
-     after the rewrite matters: on the MiniLM score, two injection-wrapped answerable rows scored below -4 (ADV-02 -4.23,
-     ADV-03 -6.36), and so did two near-domain unknowns (UNK-05 -4.44, UNK-06 -5.52) whose BEHAVIOR items need contact
-     pointers (`poc/results/gate-canonical.json`). So one unified short-circuit text serves both cases:
+     **Threshold: the lowest must-answer dense score minus a 0.02 margin**, calibrated at checkpoint 2.5 on the event index
+     (plan section 5). Every 0-false-abstain threshold has zero margin, because the lowest must-answer row sits right at it
+     (SYNC-11 0.7126, FP-03 0.7127). The starting value is 0.69. There the gate alone caught 5 of the 12 must-abstain rows
+     (0.417) with 0 false declines; the margin gives up OOS-05 (0.699) and UNK-04 (0.701) (`poc/results/gate-rewrite.json`,
+     `poc/results/gate-signals.json`).
+  2. **No rewrite step by default (measured).** With the dense gate, one LLM rewrite before the short-circuit adds nothing
+     (`poc/results/gate-rewrite.json`, written by `poc/answer/rewrite_probe.py`). At 0.71 the gate alone reached recall
+     0.583 with 0 false declines; gate plus one rewrite reached 0.500, because the rewrite "rescued" UNK-04 (0.701 to
+     0.715), which should be declined. Every must-answer row, the injection-wrapped ones included, already scores at or
+     above 0.7126, so nothing needs rescuing. The rewrite call is also injectable: for ADV-01 it emitted the injected claim, and
+     for ADV-02 a refusal sentence. Only retrieval sees that output, but it is an attack surface, and it costs about 1.2 s
+     locally (p50 1,174.8 ms; 191.7 prompt and 11.9 completion tokens on average). So the rewrite is optional, only with a
+     TinyBERT gate. If it is ever used, its prompt emits keywords only (no sentences, about 12 tokens at most), and its
+     output is never shown to the user. A short-circuit returns one unified text, which also suits the near-domain
+     unknowns the gate catches, such as UNK-06 (SOC 2), whose BEHAVIOR item needs the contact pointer:
      "I couldn't find this in the OLake docs or repos. I can help with OLake setup, sources, sync modes, catalogs, Fusion
      maintenance, deployment and troubleshooting. If your question is about OLake, ask in the OLake Slack or GitHub
      Discussions; for commercial or security questions, contact hello@olake.io."
@@ -431,8 +467,9 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   - for type-mapping misses (SYNC-12, Postgres jsonb): keep tables whole in chunks, plus the exact-match boost for
     identifiers.
 
-  PENDING(poc): the combined policy's abstain recall, false-abstain on all must-answer rows, how often the rewrite fires,
-  and its latency. On the seed set, the model's own flag added one false abstain (precision 0.75, false-abstain 0.071), on a
+  PENDING(poc): the end-to-end numbers of poc's full 94-row `/ask` run (a TinyBERT top-10 gate at 0.3 plus one rewrite,
+  k=10, prompt v3). Its model stage is the recommended one; only the gate differs, and the gate's offline effect is
+  measured above. On the seed set, the model's own flag added one false abstain (precision 0.75, false-abstain 0.071), on a
   false-premise question whose retrieval missed (`poc/results/answer.json`).
 - **Honesty specifics** (decided): "not supported" or "not documented" with a fact-card citation is an answer, not an
   abstain. For pricing, SLA and enterprise questions, give no specifics and point to hello@olake.io or
@@ -536,19 +573,22 @@ RAM.**
   ([stack report][r-stack]) the corpus is far too slow to embed at startup. Only the query is embedded at runtime: 2.3 ms
   p50 in the stack bench, 5.4 ms at 2 threads in the POC.
 
-**Reranker (decided): none in the ranking path.** On the canonical set, the MiniLM-L6 rerank left MRR flat and lowered hit@3
-and hit@5, and bge-reranker-base lowered MRR to 0.664 (§4.3; `poc/results/retrieval-canonical.json`, and the log transcription
-`poc/results/retrieval-canonical-bge-reranker.json`). A reranker is only an optional patch-hour experiment. Measured costs,
-for reference:
-- FlashRank TinyBERT-L-2: about 4 MB; 13.9 ms for 20 candidates and 41.7 ms for 50 ([stack report][r-stack]).
+**Reranker (decision R′): none in v1; FlashRank TinyBERT is the conditional upgrade.** On the canonical v1 set, the MiniLM-L6
+rerank left MRR flat and lowered hit@3 and hit@5, and bge-reranker-base lowered MRR to 0.664 (§4.3;
+`poc/results/retrieval-canonical.json`, and the log transcription `poc/results/retrieval-canonical-bge-reranker.json`). On
+corpus v2, TinyBERT over the fused top 20 raised MRR@10 to 0.778 from 0.744 with hit@10 unchanged, while MiniLM-L6 and
+bge-reranker-base stayed flat or worse (`poc/results/retrieval-v2.json`, §4.3). So v1 ships without a cross-encoder, and
+checkpoint 2.7 switches `RERANK=tinybert` on only if it measures better on the event index. Measured costs:
+- FlashRank TinyBERT-L-2: about 4 MB; 13.9 ms for 20 candidates and 41.7 ms for 50 ([stack report][r-stack]); 28.14 ms p50
+  for the top 20 in the POC's corpus v2 bench (`poc/results/retrieval-v2.json`).
 - fastembed MiniLM-L-6: 215 ms for 20 and 863 ms for 50 at low load ([stack report][r-stack]); 205.9 ms for the top 10 at
   2 threads (POC).
 - bge-reranker-base: 922.3 ms for the top 10 at 2 threads, and about 1.5 GB more RSS (POC).
 
 **Off-topic gate signal: the highest dense cosine (measured).** At 0 false abstains on the 82 must-answer rows it caught 7
 of the 12 must-abstain rows, against 5 for TinyBERT, 4 for MiniLM-L6 and none for BM25 (`poc/results/gate-signals.json`,
-§4.3). It reuses the query embedding, so the gate needs no extra model: `GATE_SIGNAL=dense`, `ABSTAIN_THRESHOLD=0.7126`
-as the starting value, recalibrated at checkpoint 2.5.
+§4.3). It reuses the query embedding, so the gate needs no extra model: `GATE_SIGNAL=dense`, no rewrite, and
+`ABSTAIN_THRESHOLD=0.69` to start (the 0-false-abstain point 0.7126 minus a 0.02 margin), recalibrated at checkpoint 2.5.
 
 ### 5.4 Vector store
 None. Retrieval stays in process. Stack-report benchmarks at 20k chunks:
@@ -866,7 +906,7 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Credits throttle or stop during post-freeze scoring | Every row fails | The ordered provider chain: the credits, then the operator's paid key with ≥ 100 RPM (D7), then Gemma on the free tier, failing over before the first byte; a degraded mode that returns the most relevant pages; ask at kickoff (K1) |
 | Endpoint down, cold or rate-limited while scoring | Production readiness and accuracy both lose | Min instances ≥ 1, a queue rather than rejection, a very high rate limit, a synthetic probe every minute (plan section 9) |
 | The organizers match sources differently from us | Citation points lost | Canonical sitemap URLs and branch-form GitHub URLs; ask K3; matching in our own eval is lenient |
-| Over-abstaining or under-abstaining | Accuracy or honesty points lost. Both abstain targets were missed in the local end-to-end run (recall 0.833, false-abstain 0.072; `poc/results/eval_run-canonical.json`) | The reranker score alone cannot separate the cases (§4.3), so the model's `NO_ANSWER` plus citation validation decides. The off-topic gate is calibrated at 0% false abstains after one rewrite, with a unified short-circuit text. Event-day levers: a stronger hosted model, the unknowns fact card, the v2 prompt. The combined policy's numbers are PENDING(poc) |
+| Over-abstaining or under-abstaining | Accuracy or honesty points lost. Both abstain targets were missed in the local end-to-end run (recall 0.833, false-abstain 0.072; `poc/results/eval_run-canonical.json`) | The reranker score alone cannot separate the cases (§4.3), so the model's `NO_ANSWER` plus citation validation decides. The off-topic gate is a dense-score short-circuit with a 0.02 margin and no rewrite, with a unified short-circuit text; it catches at most about 50-58% of the must-abstain rows, so the model does most of the abstaining. Event-day levers: a stronger hosted model, the unknowns fact card, the v2 prompt. The end-to-end numbers of poc's full run are PENDING(poc) |
 | Venue Wi-Fi | Slow builds and deploys | Pre-cached wheels, models, repos and base image; remote builds; phone hotspot (plan section 11) |
 | A teammate edits another track's files | Lost work | One owner per path (plan section 0.3) |
 | Stale stub pages contradict live pages (e.g. "Kafka is WIP") | Confidently wrong answers | Denylist the stubs; fact cards with explicit negatives (§3.1, §3.3) |
@@ -905,6 +945,11 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Abstain gate on the top rerank score, seed set (18 rows) | threshold -0.891: precision 1.0, recall 1.0, false-abstain 0.0 (3 should abstain, 14 should answer) | `poc/results/answer.json` |
 | Abstain gate, curated set (94 rows; 12 should abstain) | -0.891: recall 0.5, false-abstain 4.3% of answerable rows. Best threshold 1.18: recall 0.917, precision 0.44, false-abstain 13% of answerable and 17.1% of must-answer rows | `poc/results/gate-canonical.json` (the -0.891 figures recomputed from `per_question`) |
 | Top rerank score range by type, curated set | answerable -2.67 to 7.78; unanswerable -5.52 to 6.28; out-of-scope -11.21 to 0.78; adversarial -6.36 to 2.95 | `poc/results/gate-canonical.json` (`by_type`) |
+| Gate at 0 false abstains, corpus v2 (82 must-answer, 12 must-abstain rows) | recall: dense max cosine 0.583 (threshold 0.7126); TinyBERT top 10 0.417; MiniLM-L6 0.333; BM25 0 | `poc/results/gate-signals.json` |
+| Dense gate at the 0.69 starting value | recall 0.417 (5 of 12), 0 false declines | `poc/results/gate-rewrite.json` |
+| One LLM rewrite before the gate (local qwen3:32b) | p50 1,174.8 ms, p95 1,817.8 ms; 191.7 prompt and 11.9 completion tokens on average. At 0.71: recall 0.583 without it, 0.500 with it | `poc/results/gate-rewrite.json` |
+| Retrieval on corpus v2 (82 rows), MRR@10 / hit@10 | no rerank 0.744 / 0.939; TinyBERT top 20 0.778 / 0.939 (rerank p50 28.14 ms); MiniLM-L6 top 20 0.742 / 0.939 (339.68 ms); bge-reranker-base top 20 0.649 / 0.915 (1,646.25 ms) | `poc/results/retrieval-v2.json` |
+| Blog tier on corpus v2, MRR@10 | off 0.744; rank weight 0.5: 0.743; rank weight 1.0: 0.630 | `poc/results/retrieval-v2.json` |
 | Expected source among the 6 context passages, curated set (hybrid bge-base + MiniLM-L6) | 70 of the 82 rows with expected sources (85.4%) | `poc/results/gate-canonical.json` (`context_hit_rate_top_passages`) |
 | Retrieval MRR@10 / hit@5 / hit@10, curated set (82 rows with sources, 300-token chunks) | BM25 0.680 / 0.854 / 0.915; hybrid bge-small 0.736 / 0.866 / 0.939; hybrid bge-base 0.745 / 0.890 / 0.927; hybrid bge-small + MiniLM-L6 0.746 / 0.829 / 0.939; hybrid bge-small + bge-reranker-base 0.664 / 0.829 / 0.890 (log transcription) | `poc/results/retrieval-canonical.json`; `poc/results/retrieval-canonical-bge-reranker.json` (log transcription) |
 | API memory (hybrid bge-base + MiniLM-L6) | 1,419 MB RSS after one query; 2,609 MB after a scorer run at concurrency 4 | `poc/results/embed_probe.json` |

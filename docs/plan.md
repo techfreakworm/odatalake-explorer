@@ -56,12 +56,9 @@ flowchart LR
   subgraph B ["Track B: API container (app/)"]
     Q["POST /ask and POST /ask/stream"] --> LRU{"exact-match cache hit?"}
     LRU -- "yes" --> OUT["answer + sources"]
-    LRU -- "no" --> RET["BM25 + dense, RRF k=60, no rerank"]
-    RET --> G1{"off-topic gate: GATE_SIGNAL score at or above ABSTAIN_THRESHOLD?"}
-    G1 -- "no" --> RW["one LLM rewrite into search keywords, retrieve again"]
-    RW --> G1B{"still below?"}
-    G1B -- "yes" --> DEC["unified short-circuit text, sources = []"]
-    G1B -- "no" --> CTX
+    LRU -- "no" --> RET["BM25 + dense, RRF k=60, no rerank in v1"]
+    RET --> G1{"off-topic gate: top dense cosine at or above ABSTAIN_THRESHOLD?"}
+    G1 -- "no" --> DEC["unified short-circuit text, sources = []"]
     G1 -- "yes" --> CTX["top 10 chunks, max 3 per page, about 3.3k tokens"]
     CTX --> LLM["LLM via OpenAI-compatible API"]
     LLM --> G2{"model answered (no NO_ANSWER) and at least one valid citation?"}
@@ -147,9 +144,9 @@ Adversarial rows with `—` decline. Details: [eval-questions.md](eval-questions
 `LLM_MODEL`, `LLM_REASONING_EFFORT` (optional; the lowest value the model supports), `LLM_FALLBACK_BASE_URL`,
 `LLM_FALLBACK_API_KEY`, `LLM_FALLBACK_MODEL`, `LLM_FALLBACK2_BASE_URL`, `LLM_FALLBACK2_API_KEY`, `LLM_FALLBACK2_MODEL`
 (the ordered provider chain), `INDEX_DIR`, `EMBED_MODEL` (default `BAAI/bge-small-en-v1.5`), `RETRIEVAL_MODE` (`hybrid` or
-`bm25`), `RERANK` (`off`; decided), `RERANK_MODEL` (`none`), `GATE_SIGNAL` (`dense`; `off` disables the gate), `ABSTAIN_THRESHOLD` (the off-topic
-short-circuit threshold, starting at 0.7126), `CANARY` (16 hex characters, new on every deploy), `SOURCE_URL_STYLE` (`branch` or `sha`, for repo sources; kickoff question K3
-decides), `BLOG` (`on` or `off`, decision D4), `GITHUB_TOKEN` (optional; makes conditional GitHub requests free),
+`bm25`), `RERANK` (`off` in v1, or `tinybert`: FlashRank TinyBERT over the fused top 20, switched on at 12:30 only if it measures better), `GATE_SIGNAL` (`dense`; `off` disables the gate), `ABSTAIN_THRESHOLD` (the off-topic
+short-circuit threshold, starting at 0.69), `CANARY` (16 hex characters, new on every deploy), `SOURCE_URL_STYLE` (`branch` or `sha`, for repo sources; kickoff question K3
+decides), `BLOG` (`off`; decision D4, decided by data), `GITHUB_TOKEN` (optional; makes conditional GitHub requests free),
 `ONNX_THREADS` (the vCPU count), `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `RATE_LIMIT_BURST`, `DAILY_TOKEN_BUDGET`, `PUBLIC_BASE_URL`, `REFRESH_INTERVAL_MIN`
 (`0` = off), `LOG_LEVEL`.
 
@@ -216,8 +213,9 @@ The log-streaming component is required for tailing Cloud Run logs, and the tail
       uv run --with fastembed python -c "from fastembed.rerank.cross_encoder import TextCrossEncoder as R; [R(m, cache_dir='$FASTEMBED_CACHE_PATH') for m in ('Xenova/ms-marco-MiniLM-L-6-v2','BAAI/bge-reranker-base')]"
       uv run --with flashrank python -c "from flashrank import Ranker; Ranker(model_name='ms-marco-TinyBERT-L-2-v2', cache_dir='$FASTEMBED_CACHE_PATH/flashrank')"
       ```
-      bge-small is the default embedder and bge-base the upgrade. There is no reranker (decided), and the gate uses the
-      dense score. TinyBERT, MiniLM-L6 and bge-reranker-base are only for an optional patch-hour rerank experiment.
+      bge-small is the default embedder and bge-base the upgrade. The gate uses the dense score. FlashRank TinyBERT is the
+      conditional 12:30 rerank upgrade (RERANK=tinybert, checkpoint 2.7). MiniLM-L6 and bge-reranker-base are rejected
+      and cached only to reproduce the POC.
 - [ ] Docker base image: `docker pull --platform linux/amd64 python:3.12-slim`. The plan pins Python 3.12, as the POC does.
       DigitalOcean requires AMD64 Linux images ([research.md §5.5](research.md#55-host)), and an Apple-silicon laptop builds
       arm64 by default, so build locally with `--platform linux/amd64` or let the hosts build remotely.
@@ -385,18 +383,18 @@ The lead spawns the teammates at 10:35, so A, B and C start at 10:40. "msg" mean
 |---|---|---|---|---|
 | 10:30 | | | | Create the repo and copy the kit: `gh repo create ask-olake --public --clone && cd ask-olake && cp -R "$KIT"/. . && git add -A && git commit -m "Kit: contracts, briefs, eval set" && git push -u origin HEAD` |
 | 10:35 | | | | `export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1; claude --permission-mode auto`, then paste the lead prompt (4.1) |
-| 10:40 | Sitemap to URL list (`/docs/` including `/docs/release/`, and `/blog/` flagged as tier 3) | Stub server: every I2 endpoint with canned data in the exact shapes | `embed.html`/`embed.js` chat shell against a mocked stream | Lead: Dockerfile plus `deploy/deploy.sh`, then deploy the stub app (D1) |
+| 10:40 | Sitemap to URL list (`/docs/` including `/docs/release/`; `/blog/` skipped while BLOG=off) | Stub server: every I2 endpoint with canned data in the exact shapes | `embed.html`/`embed.js` chat shell against a mocked stream | Lead: Dockerfile plus `deploy/deploy.sh`, then deploy the stub app (D1) |
 | 10:50 | Fetch the rendered HTML at concurrency 4 and cache it | Stub done: msg `widget` and the lead with the run command | Switch to B's stub at `http://localhost:8000` | Stub live at `$URL`: curl `/healthz` and `/ask` from the phone |
 | 11:00 | HTML to Markdown: article body only, keeping heading anchors, code fences, tables and admonitions | LLM client: the openai SDK over the ordered provider chain, with a 25 s timeout, max_retries 1, and failover before the first byte | `widget.js` loader: launcher button, iframe panel, Esc to close | Eval runner `eval/run.py`: parse the table and run the deterministic checks (D2) |
 | 11:10 | Repo allowlist: shallow clones, record SHA and branch | Fallback-A pipeline: BM25 top 10, numbered context, grounded prompt, parse `[n]`, renumber, `sources` | Safe Markdown rendering (escape first), clickable `[n]`, source cards | Run the eval runner against the stub (it should run, and every row should fail) |
 | 11:20 | Chunker (POC rules), embeddings, manifest, write `CURRENT`. msg `api`: "index v1 ready" | Load the real index from `CURRENT`. First real `/ask` | Loading, error and empty states; feedback thumbs | Get the checkpoint commands ready |
 | **11:30** | **Checkpoint 1** (section 5) | | | |
-| 11:35 | index v2: release-gh, faq, repo Tier A (spec.json to Markdown tables, values.yaml by key, credentials redacted), the 10 curated issues. Retrieval-only eval: does an expected source reach the top 10? | Hybrid: dense plus RRF (no rerank), top 10 to the LLM, the off-topic gate with one rewrite | Demo page `/`: docs-style layout, widget embedded, snippets (script, iframe, Docusaurus) | First real deploy with the index baked into the image (by 12:00) |
+| 11:35 | index v2: release-gh, faq, repo Tier A (spec.json to Markdown tables, values.yaml by key, credentials redacted), the 10 curated issues. Retrieval-only eval: does an expected source reach the top 10? | Hybrid: dense plus RRF (no rerank), top 10 to the LLM, the off-topic gate on the dense score (no rewrite) | Demo page `/`: docs-style layout, widget embedded, snippets (script, iframe, Docusaurus) | First real deploy with the index baked into the image (by 12:00) |
 | 12:00 | index v3: fact cards written from the extracted docs (each with `cite_urls`), plus the curated outside pages | Gate 2, abstain texts, out-of-scope and false-premise handling, injection rules, exact-match LRU cache | Mobile layout (≤ 640 px full screen), dark mode, keyboard and ARIA | Full eval on `$URL`. README skeleton with the diagram |
 | 12:15 | Refresher: sitemap If-None-Match poll, page/chunk hashes, `git ls-remote` plus the compare API, atomic swap. `python -m index.refresh --check` | `/ask/stream` SSE, `/feedback`, JSON logs, `Server-Timing`, semaphore plus queue, rate limit | Wire the UI to `/ask/stream` on `$URL`, falling back to `/ask`; freshness footer from `/healthz` | Load test: eval at concurrency 8. Record p50 and p95 |
 | **12:30** | **Checkpoint 2** | | | |
 | 12:35 | Fix ingestion gaps that the eval found | Check abstains on the eval rows (off-topic gate firing on must-answer rows, NO_ANSWER rate, citation validation); fix prompts | Suggested-question chips, code copy button, polish | Second deploy. README: design-choices table |
-| 13:00 | Freshness wiring: the in-app sitemap poller (`REFRESH_INTERVAL_MIN`, 5-10 minutes; decision D9); blog A/B on the eval (decision D4) | Graceful degradation (LLM down: return the most relevant pages), switch to the fallback provider | Foreign-origin embed test, Safari and mobile check | Cost per answer from the logged tokens. README numbers |
+| 13:00 | Freshness wiring: the in-app sitemap poller (`REFRESH_INTERVAL_MIN`, 5-10 minutes; decision D9). No blog A/B (D4 is decided: off), so the rest of the slot goes to retrieval fixes from the eval triage | Graceful degradation (LLM down: return the most relevant pages), switch to the fallback provider | Foreign-origin embed test, Safari and mobile check | Cost per answer from the logged tokens. README numbers |
 | **13:30** | **Checkpoint 3**, then the patch hour (section 7) | | | |
 | 13:30-14:15 | Fixes from triage in ingest/ and index/ | Fixes from triage in app/ | Fixes from triage in web/ | Eval loop every 15 minutes, triage workflow (4.6), deploy after each fix that passes eval |
 | 13:55 | | | | Pre-freeze review workflow (4.7) |
@@ -469,7 +467,8 @@ Tier 2
   type, default, description). Split helm values.yaml by top-level key. Replace credential values with <redacted>.
 - issue: the 10 curated issues in CLAUDE.md, one chunk each, worded "known issue #N (status; fixed in vX)".
 Tier 3
-- blog: /blog/ posts (#__blog-post-container), dated, only while CLAUDE.md says BLOG=on (decision D4 is an A/B test today).
+- blog: /blog/ posts (#__blog-post-container), dated, only if CLAUDE.md says BLOG=on. Decision D4 is off (decided by data),
+  so skip the blog unless the lead turns it on.
 Tier 4
 - outside: the curated outside pages in CLAUDE.md, labelled "outside OLake docs"; Amoro pages "upstream; Fusion may differ".
 Never index: the olake-fusion docs/ folder (upstream Amoro docs with defaults that contradict Fusion's), tests, lockfiles,
@@ -557,11 +556,13 @@ STEPS (in order; each step leaves a working server)
    It comes from the manifest and the release-gh chunks.
 4. Load data/index/CURRENT at startup. /readyz returns 503 until the index and models are loaded and one warm-up query ran.
 5. Hybrid: dense (the fastembed model named in manifest.json; default BAAI/bge-small-en-v1.5) plus BM25, fused with
-   RRF k=60. NO reranker (RERANK=off): on the canonical set the rerankers did not help (research.md §4.3). Send the top 10
+   RRF k=60. No reranker in v1 (RERANK=off). After hybrid works, and not before 12:00, add the optional RERANK=tinybert
+   path: FlashRank ms-marco-TinyBERT-L-2-v2 (max_length 512, as in the POC) rescores the fused top 20 before the per-page
+   cap and the top-10 cut. Checkpoint 2.7 switches it on only if it measures better on our index. Send the top 10
    fused chunks to the LLM, at most 3 per page, about 3.3k context tokens; hit@10 is 0.939 vs 0.866 for hit@5. The
    off-topic gate reads GATE_SIGNAL=dense: the highest dense cosine between the query and the chunks, which retrieval
    already computes, so the gate needs no extra model. It measured best (research.md §4.3). ABSTAIN_THRESHOLD starts at
-   0.7126 (CLAUDE.md) and is recalibrated at checkpoint 2.5. With RETRIEVAL_MODE=bm25 there is no dense score, so the gate
+   0.69 (CLAUDE.md) and is recalibrated at checkpoint 2.5. With RETRIEVAL_MODE=bm25 there is no dense score, so the gate
    is off (the BM25 score caught no must-abstain row at 0 false abstains). Apply the CLAUDE.md "Corpus" ranking rules: tier weights (a blog or
    outside chunk never outranks a tier-1 chunk that passes gate 1); demote release notes older than the latest two minors
    x0.3; boost the connector page named in the question x1.6; expand the query with the synonym map (OLake = OLake Go =
@@ -570,17 +571,16 @@ STEPS (in order; each step leaves a working server)
    type-mapping tables. If the question names Fusion or compaction, prefer product=fusion; otherwise prefer product=go
    among near-duplicate twin pages. (In the olake-domain research report's BM25 test, the demote, boost and synonym rules
    lifted top-1 hits from 22 to 27 of 35 seed questions.)
-6. Abstain policy. A retrieval score alone cannot decide abstains: on the 94-row set, near-domain unknowns score high and
-   injection-wrapped real questions score very low.
-   - Off-topic gate: if the GATE_SIGNAL score < ABSTAIN_THRESHOLD, do ONE LLM rewrite of the question into search keywords,
-     which strips injections, pasted logs and chit-chat. Retrieve again. Only if the score is still below, short-circuit
-     with the UNIFIED SHORT-CIRCUIT TEXT below and sources = []. The threshold is chosen at 0% false abstains on must-answer
-     rows, measured after this rewrite step.
+6. Abstain policy. A retrieval score alone cannot decide abstains: near-domain unknowns score as high as real questions,
+   so the gate catches only clearly off-topic ones (at most about 50-58% of the must-abstain rows in the POC).
+   - Off-topic gate: if the dense gate score < ABSTAIN_THRESHOLD, short-circuit with the UNIFIED SHORT-CIRCUIT TEXT below
+     and sources = []. No rewrite step: with the dense gate a rewrite rescued only a row that should be declined, cost
+     about 1.2 s and was injectable (research.md §4.3). The threshold is the lowest must-answer gate score minus 0.02
+     (CLAUDE.md).
    - Otherwise always generate. The model decides. NO_ANSWER means abstain, with the abstain text. OUT_OF_SCOPE means the
      standard decline.
    - Citation validation: if no valid citation is left after parsing, abstain (decision D8).
-   - Log abstain_reason every time (retrieval_gate, model_dont_know, no_valid_citation, out_of_scope), plus whether the
-     rewrite fired.
+   - Log abstain_reason every time (retrieval_gate, model_dont_know, no_valid_citation, out_of_scope).
    - Prompt-leak canary (a 5-minute item; it serves ADV-02). The system prompt's first line carries CANARY (env, 16 hex
      characters, new on every deploy; if unset, generate one at startup with secrets.token_hex(8)). If an answer contains
      it: drop every sentence that contains the canary or a line of the system prompt, return "I can't share my
@@ -593,9 +593,9 @@ STEPS (in order; each step leaves a working server)
 8. /ask/stream with FastAPI 0.135+ native SSE: response_class=fastapi.sse.EventSourceResponse, yielding ServerSentEvent
    for meta, token, done and error. It works with POST, sets no-cache and X-Accel-Buffering: no, and pings every 15 s.
    Also: /feedback; structured JSON logs (request_id, timings per stage, tokens in and out, cache hit, abstain_reason,
-   gate score before and after the rewrite, prompt_leak_blocked, top-5 doc_urls, provider used); the Server-Timing header;
+   gate score, prompt_leak_blocked, top-5 doc_urls, provider used); the Server-Timing header;
    debug headers on every /ask response, as the POC does (poc/api/app.py): X-Ask-Reason (the abstain_reason, or
-   "answered"), X-Ask-Rewrite (0 or 1) and X-Ask-Gate-Score (the pre-rewrite gate score), while the JSON body stays
+   "answered") and X-Ask-Gate-Score (the dense gate score), while the JSON body stays
    exactly {answer, sources}; a global asyncio.Semaphore(MAX_CONCURRENCY) that
    queues rather than rejects; a per-client token bucket refilling at RATE_LIMIT_PER_MIN, with burst capacity
    RATE_LIMIT_BURST above the test-set size, so one scorer IP bursting every question never sees 429; a daily token budget
@@ -670,8 +670,8 @@ in a real passage, and do NOT reuse a topic from eval/questions.md, or the eval 
   Q: How do I <do X, which the docs say is not possible>?
   A: <X> is not supported: <what is supported instead> [1]. <The correct way to reach the user's goal> [2].
 
-UNIFIED SHORT-CIRCUIT TEXT (off-topic gate; sources = []). It serves both off-topic questions and near-domain unknowns,
-because the gate also catches unknowns such as UNK-05 and UNK-06, whose expected behaviour includes these contact pointers:
+UNIFIED SHORT-CIRCUIT TEXT (off-topic gate; sources = []). It serves both off-topic questions and the near-domain unknowns
+the gate catches, such as UNK-06 (SOC 2), whose expected behaviour includes these contact pointers:
 "I couldn't find this in the OLake docs or repos. I can help with OLake setup, sources, sync modes, catalogs, Fusion
 maintenance, deployment and troubleshooting. If your question is about OLake, ask in the OLake Slack or GitHub Discussions;
 for commercial or security questions, contact hello@olake.io."
@@ -806,7 +806,8 @@ D2 (11:00-11:30) eval/run.py, following the "Scoring method" section of eval/que
    Flags: --ids, --types, --limit, --concurrency (default 4), --out. Print a summary by Type and Category, plus p50/p95.
    Exit code 1 on any contract failure. If CANARY is set (export CANARY=$(cat .canary)), any answer that contains it
    fails, on every row. Record the X-Ask-* headers per row and print a gate-calibration line: the lowest
-   X-Ask-Gate-Score among the must-answer rows, and how many must-abstain rows score below it. Add --retrieval-only: against a local server with DEBUG=1, call POST /debug/retrieve
+   X-Ask-Gate-Score among the must-answer rows minus 0.02 (the new ABSTAIN_THRESHOLD), and how many must-abstain rows
+   score below it. Add --retrieval-only: against a local server with DEBUG=1, call POST /debug/retrieve
    for the 82 rows that have sources and report hit@1/5/10 and MRR, with no LLM. This is the fast loop for retrieval changes;
    the POC's equivalent took under 4 minutes for 94 questions and 13 configs. End-to-end runs need the hosted provider.
    For the judge (JUDGE_* env), use the strongest model available: the POC's local judge flipped 2 of 14 verdicts between
@@ -898,8 +899,9 @@ Go/no-go:
 | 2.2 | Full eval: contract failures = 0; answerable source hit ≥ 0.75 (**target**: the POC's local-32B lower bound was 0.754, `poc/results/eval_run-canonical.json`); abstain recall ≥ 90% (**target**; the POC reached 0.833); false-abstain ≤ 5% (**target**; the POC had 0.072) | `uv run python -m eval.run --base-url "$URL" --out eval/results/cp2.json` |
 | 2.3 | Latency: p50 ≤ 3 s and p95 ≤ 6 s (**targets**) | The same run prints p50 and p95 |
 | 2.4 | The widget loads from `$URL` on the demo page and on a foreign-origin page | Manual check in the browser |
-| 2.5 | Off-topic gate calibration, then check: set `ABSTAIN_THRESHOLD` just below the lowest pre-rewrite gate score logged for a must-answer row in the 2.2 run, write it to CLAUDE.md and the env, and redeploy. Then the gate short-circuits no must-answer eval row (0 false abstains from the gate) and still catches the out-of-scope rows; the logs show how often the rewrite fired | The eval runner's gate-calibration line from the 2.2 run. After the redeploy, rerun the eval: no must-answer row may come back with `X-Ask-Reason: retrieval_gate` |
+| 2.5 | Off-topic gate calibration, then check: set `ABSTAIN_THRESHOLD` to the lowest gate score of a must-answer row in the 2.2 run minus 0.02, write it to CLAUDE.md and the env, and redeploy. Then the gate short-circuits no must-answer eval row (0 false abstains from the gate) and still catches the clearly off-topic rows | The eval runner's gate-calibration line from the 2.2 run. After the redeploy, rerun the eval: no must-answer row may come back with `X-Ask-Reason: retrieval_gate` |
 | 2.6 | Day-of checks 4-5 on the deployed URL: the preflight from the olake.io origin, SSE chunk timing, and a 50-request burst with no 429 or 5xx | The commands under "Day-of checks 4-5" in section 2 |
+| 2.7 | Optional rerank upgrade (decision R′): switch to `RERANK=tinybert` only if the retrieval-only bench on our index shows MRR@10 up by at least 0.02 and no hit@10 loss; otherwise keep `RERANK=off` | Two runs of `uv run python -m eval.run --base-url http://localhost:8000 --retrieval-only` against a local server with `DEBUG=1`, first with `RERANK=off`, then with `RERANK=tinybert` |
 
 Go/no-go:
 - 2.1 fails: switch to the fallback host now (section 11). No more debugging the primary.
@@ -931,7 +933,7 @@ Cut in this order. Never cut the `/ask` contract, citation mapping, abstain, `/h
 | p50 > 6 s | Lower k from 10 to 6, then the lowest reasoning setting, then a faster model |
 | 13:00 streaming not working | The UI calls `POST /ask` with a spinner |
 | 13:00 loader not ready | Ship only the `<iframe src=".../embed">` snippet |
-| Any time behind | Drop, in order: non-English translation (Brief B step 12), the blog tier, outside pages, multi-turn history, refresher (keep the manual `index.refresh` and the manifest), feedback (keep a stub returning 204) |
+| Any time behind | Drop, in order: non-English translation (Brief B step 12), outside pages, multi-turn history, refresher (keep the manual `index.refresh` and the manifest), feedback (keep a stub returning 204) |
 
 ---
 
@@ -953,8 +955,8 @@ Each loop takes about 15 minutes. The last fix deploy is at 14:15.
 
 Typical fixes, cheapest first: a missing page or extraction bug (ingest), a source-type boost or a wrong k (api), a prompt rule
 for a failure pattern (api), a prompt or citation-validation fix for over- or under-abstaining (api), UI rendering of code or tables (widget).
-An optional reranker experiment (api) belongs here only if triage shows ranking misses inside the top 10, and it is
-kept only if the eval improves. On the canonical set, the rerankers did not help (research.md §4.3).
+The TinyBERT rerank upgrade is decided at checkpoint 2.7, not here. MiniLM-L6 and bge-reranker-base stay rejected
+(research.md §4.3).
 
 ---
 
@@ -966,7 +968,7 @@ kept only if the eval improves. On the canonical set, the rerankers did not help
 - [ ] README: diagram, design choices, eval table with result files, p50/p95, cost per answer, freshness, embed snippet,
       run instructions, and a disclosure of the pre-event research and kit (decision D2).
 - [ ] README "Built with" lists the frameworks, libraries and AI tools used (Claude Code agent teams, the answer model,
-      and the embedding model), and the submission names the AI tools too. MLH's standard rules require
+      the embedding model, and the reranker if RERANK=tinybert), and the submission names the AI tools too. MLH's standard rules require
       transparency about AI code tools [[mlh]], and the MLH organizer guide asks for frameworks to be listed in the README [[mlh-guide]].
 - [ ] The repo is public and stays public after the event (an MLH standard rule [[mlh]]), `LICENSE` is present, and the default branch holds the deployed commit. Run `git tag freeze && git push origin freeze`.
 - [ ] Secrets: `git grep -nE 'sk-|AIza|api_key\s*=\s*"'` finds nothing. `.env` is not tracked. The image holds no keys.
@@ -1083,7 +1085,8 @@ Judging: accuracy 35, citations and honesty 15, production readiness 20, UX and 
 - After a change, run your brief's acceptance checks. Never break the /ask contract.
 
 ## Parameters (set by the lead; change only through the lead)
-Decided by the lead (research.md §4.3, §5.3). The gate threshold is recalibrated at checkpoint 2.5 on our index.
+Decided by the lead (research.md §4.3, §5.3). On our index, checkpoint 2.5 recalibrates the gate threshold and
+checkpoint 2.7 decides the TinyBERT rerank.
 - Chunks: target 300 / hard max 450 tokens (o200k_base). On the canonical set every config scores lower at 600, e.g.
   hybrid bge-small MRR@10 0.719 vs 0.736 (poc/results/retrieval-canonical.json). At a 600 target, 556 of 951 chunks
   also exceed bge's 512-WordPiece limit (corpus v1, poc/results/retrieval.json).
@@ -1092,26 +1095,34 @@ Decided by the lead (research.md §4.3, §5.3). The gate threshold is recalibrat
   faster (69 s vs 230 s for the corpus, poc/results/retrieval.json), and the image is 180 MB with 189 MiB idle RSS
   (docs/reports/stack.md). Upgrade: BAAI/bge-base-en-v1.5 when the host has the RAM. Embed on the laptop and ship
   embeddings.npy; only queries are embedded at runtime.
-- Reranker: NONE (RERANK=off, RERANK_MODEL=none). On the canonical set, MiniLM-L6 left MRR flat (0.746 vs 0.736) and
-  lowered hit@3 and hit@5. bge-reranker-base lowered MRR to 0.664 (poc/results/retrieval-canonical.json; the
-  bge-reranker-base figure is a log transcription in poc/results/retrieval-canonical-bge-reranker.json). On the seed set
-  bge-reranker-base had looked best (seed-set hit@5 0.929 vs 0.786, poc/results/retrieval.json), which the canonical set did
-  not confirm. A reranker is only an optional patch-hour experiment. Its measured costs: Xenova/ms-marco-MiniLM-L-6-v2:
-  205.9 ms for the top 10 at 2 threads; BAAI/bge-reranker-base: 922.3 ms for the top 10 at 2 threads, plus about 1.5 GB
-  RSS (poc/results/latency_threads.json).
-- Off-topic gate: GATE_SIGNAL=dense, the highest dense cosine (no extra model, no added latency). At 0 false abstains on
-  the 82 must-answer rows it caught 7 of the 12 must-abstain rows, against 5 for TinyBERT, 4 for MiniLM-L6 and none for
-  BM25 (poc/results/gate-signals.json; corpus v2, bge-small). ABSTAIN_THRESHOLD=0.7126 to start, the POC's threshold at 0
-  false abstains. Checkpoint 2.5 recalibrates it on our index: set it just below the lowest pre-rewrite gate score logged
-  for a must-answer row in the 2.2 run. That keeps 0 false abstains with or without the rewrite, because the rewrite can
-  only rescue a row. The score does not decide abstains: the model (NO_ANSWER) plus citation validation does. See
+- Reranker (decision R′): none in v1 (RERANK=off). The first measured upgrade is RERANK=tinybert: FlashRank
+  ms-marco-TinyBERT-L-2-v2 (about 4 MB) over the fused top 20. On the POC's corpus v2 it raised MRR@10 to 0.778 from 0.744
+  and hit@1 to 0.683 from 0.634, with hit@10 unchanged at 0.939, at 28 ms (poc/results/retrieval-v2.json). The LLM gets
+  the top 10 either way, so the gain is ordering only, from a single run. Checkpoint 2.7 switches it on only if the
+  retrieval-only bench on our index shows at least +0.02 MRR@10 and no hit@10 loss. Rejected: MiniLM-L6 (0.742 at 340 ms
+  over the top 20) and bge-reranker-base (0.649 at 1.6 s), as on the canonical v1 set, where MiniLM-L6 left MRR flat
+  (0.746 vs 0.736) and bge-reranker-base lowered it to 0.664 (poc/results/retrieval-canonical.json; that figure is a log
+  transcription in poc/results/retrieval-canonical-bge-reranker.json). On the seed set bge-reranker-base had looked best
+  (seed-set hit@5 0.929 vs 0.786, poc/results/retrieval.json), which the larger sets did not confirm. Their costs:
+  Xenova/ms-marco-MiniLM-L-6-v2: 205.9 ms for the top 10 at 2 threads; BAAI/bge-reranker-base: 922.3 ms for the top 10
+  at 2 threads, plus about 1.5 GB RSS (poc/results/latency_threads.json).
+- Off-topic gate: GATE_SIGNAL=dense, the highest dense cosine (no extra model, no added latency), with NO rewrite step.
+  At 0 false abstains on the 82 must-answer rows it caught 7 of the 12 must-abstain rows, against 5 for TinyBERT, 4 for
+  MiniLM-L6 and none for BM25 (poc/results/gate-signals.json; corpus v2, bge-small). That 0-false-abstain point (0.7126)
+  has no margin, because the lowest must-answer row sits right at it. So ABSTAIN_THRESHOLD is the lowest must-answer gate
+  score minus 0.02. It starts at 0.69, where the gate alone caught 5 of the 12 with 0 false declines
+  (poc/results/gate-rewrite.json), and checkpoint 2.5 recalibrates it on our index. A rewrite before the short-circuit
+  measured worse (recall 0.50 vs 0.58, because it rescued UNK-04, which should be declined), costs about 1.2 s and is
+  injectable (research.md §4.3). It is an option only with a TinyBERT gate; it then emits keywords only (no sentences,
+  about 12 tokens at most), and its output is never shown to the user. The score does not decide abstains: the model (NO_ANSWER) plus citation validation does. See
   "Honesty".
 - RRF k = 60; no rerank; the top 10 chunks go to the LLM (max 3 per page, about 3.3k context tokens)
-- Blog rank weight when BLOG=on: set at the event by the 13:00 A/B (decision D4). Start with a x0.5 rank penalty, and keep
-  BLOG=off unless the A/B improves fact coverage.
-- Why not a score gate: on the 94-row set, -0.891 caught only half of the unanswerable and out-of-scope rows, and the best
-  threshold (1.18) false-abstained on 13% of answerable rows (poc/results/gate-canonical.json). The combined policy's
-  numbers are PENDING(poc).
+- Blog: BLOG=off (decision D4, decided by data). At full weight the blog dropped MRR@10 to 0.630 from 0.744; at a x0.5
+  rank weight it was neutral, 0.743 (poc/results/retrieval-v2.json). It is an opt-in only, at the x0.5 penalty, for
+  conceptual "why Iceberg" questions.
+- Why the score gate is only an off-topic short-circuit: on the 94-row set, -0.891 on the MiniLM score caught only half
+  of the unanswerable and out-of-scope rows, and the best threshold (1.18) false-abstained on 13% of answerable rows
+  (poc/results/gate-canonical.json). The end-to-end numbers of poc's full 94-row /ask run are PENDING(poc).
 - Zero valid citations after generation (decision D8, decided by data): abstain. In the canonical run this rule caused 0
   of the 13 false abstains on must-answer rows: the gate caused 7, the model's answerable=false 5 and the scorer's
   pattern 1 (poc/results/eval_run-canonical.json, abstain_breakdown).
@@ -1192,9 +1203,9 @@ Decided by the lead (research.md §4.3, §5.3). The gate threshold is recalibrat
 - Default credentials: only as the docs state them, with "change them for production". Never print secrets from repo files.
 - "Not supported" or "not documented" with a citation (fact cards) is an answer, not an abstain. Negative and false-premise
   answers cite the page that lists what IS supported. Never "the docs don't mention X".
-- Abstain policy: an off-topic gate (GATE_SIGNAL, ABSTAIN_THRESHOLD set at 0% false abstains after the rewrite), with one
-  rewrite, that short-circuits with the unified short-circuit text. Then the model's NO_ANSWER plus
-  citation validation decides. Log every abstain_reason.
+- Abstain policy: an off-topic gate on the dense score (ABSTAIN_THRESHOLD = the lowest must-answer score minus 0.02), with
+  no rewrite, that short-circuits with the unified short-circuit text. The gate stage tops out at about 50-58% recall, so
+  the model's NO_ANSWER plus citation validation does most of the abstaining. Log every abstain_reason.
 - Issues only as "known issue #N (open/closed; fixed in vX)".
 
 ## Contracts
@@ -1232,8 +1243,8 @@ citations); adversarial rows with — decline. A Must-mention item starting BEHA
 ### I4 env
 LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_REASONING_EFFORT, LLM_FALLBACK_BASE_URL, LLM_FALLBACK_API_KEY,
 LLM_FALLBACK_MODEL, LLM_FALLBACK2_BASE_URL, LLM_FALLBACK2_API_KEY, LLM_FALLBACK2_MODEL (ordered chain), INDEX_DIR,
-EMBED_MODEL, RETRIEVAL_MODE (hybrid|bm25), RERANK (off), RERANK_MODEL (none), GATE_SIGNAL (dense|off), ABSTAIN_THRESHOLD
-(off-topic short-circuit), CANARY (per-deploy prompt-leak marker), SOURCE_URL_STYLE (branch|sha), BLOG (on|off), GITHUB_TOKEN (optional),
+EMBED_MODEL, RETRIEVAL_MODE (hybrid|bm25), RERANK (off|tinybert), GATE_SIGNAL (dense|off), ABSTAIN_THRESHOLD
+(off-topic short-circuit), CANARY (per-deploy prompt-leak marker), SOURCE_URL_STYLE (branch|sha), BLOG (off|on), GITHUB_TOKEN (optional),
 ONNX_THREADS, MAX_CONCURRENCY, RATE_LIMIT_PER_MIN, RATE_LIMIT_BURST, DAILY_TOKEN_BUDGET, PUBLIC_BASE_URL, REFRESH_INTERVAL_MIN (0 = off),
 LOG_LEVEL, DEBUG (local only)
 ~~~~
@@ -1305,17 +1316,18 @@ LLM_FALLBACK2_MODEL=
 INDEX_DIR=data/index
 EMBED_MODEL=BAAI/bge-small-en-v1.5
 RETRIEVAL_MODE=hybrid
-# No reranker (decided: the measured rerankers did not help on the canonical set)
+# No reranker in v1. tinybert = FlashRank TinyBERT over the fused top 20, switched on at checkpoint 2.7 only if the
+# retrieval-only bench shows at least +0.02 MRR@10 and no hit@10 loss
 RERANK=off
-RERANK_MODEL=none
-# Off-topic gate: the highest dense cosine (measured best). 0.7126 is the POC's threshold at 0 false abstains on the
-# must-answer rows; checkpoint 2.5 recalibrates it on our index. The model's NO_ANSWER plus citation validation decides
-# abstains.
+# Off-topic gate: the highest dense cosine (measured best), with no rewrite. Threshold = the lowest must-answer gate
+# score minus 0.02: 0.69 from the POC (its 0-false-abstain point was 0.7126); checkpoint 2.5 recalibrates it on our
+# index. The model's NO_ANSWER plus citation validation decides most abstains.
 GATE_SIGNAL=dense
-ABSTAIN_THRESHOLD=0.7126
+ABSTAIN_THRESHOLD=0.69
 # Prompt-leak canary: 16 hex characters, written by deploy.sh on every deploy (openssl rand -hex 8)
 CANARY=
 SOURCE_URL_STYLE=branch
+# Decision D4, decided by data: off. Opt-in only at a x0.5 rank penalty, for conceptual questions
 BLOG=off
 # Optional: a GitHub token makes conditional GitHub API requests free (unauthenticated limit: 60 per hour)
 GITHUB_TOKEN=
@@ -1342,8 +1354,9 @@ others from the credits smoke test (section 2) and the 12:15 load test.
 ## Appendix D: dependency list
 
 This list is the POC's dependency list (`poc/pyproject.toml`) minus `psutil`, which the POC uses only for measurements.
-FastAPI is pinned at 0.135 or later for native SSE (`fastapi.sse`) [[fastapi-sse]]. The gate uses the dense score, so
-`flashrank` is not needed; add it only if the patch-hour rerank experiment keeps TinyBERT. Versions are locked by `uv lock` at the event.
+FastAPI is pinned at 0.135 or later for native SSE (`fastapi.sse`) [[fastapi-sse]]. Include `flashrank` from the start
+and bake its TinyBERT model into the image like the fastembed models, so switching to `RERANK=tinybert` at 12:30 needs no
+install. The gate uses the dense score and needs no extra model. Versions are locked by `uv lock` at the event.
 
 ```toml
 [project]
