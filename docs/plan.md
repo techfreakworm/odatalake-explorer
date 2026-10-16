@@ -1233,8 +1233,8 @@ DEBUG=0
 ```
 
 `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `RATE_LIMIT_BURST` and `DAILY_TOKEN_BUDGET` are starting values, not measurements.
-`RATE_LIMIT_BURST` must stay above the test-set size, so that one scorer IP sending the whole set (about 100 questions) never
-sees a 429. `DAILY_TOKEN_BUDGET=5000000` is about 2,500 answers at the POC's ~2k tokens per answer (`poc/results/answer.json`).
+`RATE_LIMIT_BURST` must stay above the test-set size, so that one scorer IP sending the whole set never sees a 429. The test-set
+size is unknown; our own set has 94 rows. `DAILY_TOKEN_BUDGET=5000000` is about 2,500 answers at the POC's ~2k tokens per answer (`poc/results/answer.json`).
 When it runs out, `/ask` returns the degraded answer (most relevant pages, sources set), never a 429 or 5xx. Raise it
 before the scoring window if the credits allow. Set the
 others from the credits smoke test (section 2) and the 12:15 load test.
