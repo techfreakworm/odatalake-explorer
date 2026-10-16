@@ -1,0 +1,86 @@
+{
+  "tokenizer": "tiktoken o200k_base",
+  "header_format": "title › section › subsection",
+  "configs": [
+    {
+      "target": 300,
+      "hard_max": 450,
+      "chunks": 1861,
+      "tokens": {
+        "n": 1861,
+        "mean": 240.0,
+        "p5": 94,
+        "p50": 235,
+        "p95": 420,
+        "max": 501,
+        "sum": 446652
+      },
+      "by_source_type": {
+        "docs": {
+          "n": 1248,
+          "mean": 233.9,
+          "p5": 106,
+          "p50": 231,
+          "p95": 410,
+          "max": 471,
+          "sum": 291913
+        },
+        "repo": {
+          "n": 613,
+          "mean": 252.4,
+          "p5": 54,
+          "p50": 244,
+          "p95": 435,
+          "max": 501,
+          "sum": 154739
+        }
+      },
+      "over_target": 359,
+      "over_hard_max": 4,
+      "under_50_tokens": 40,
+      "continued_section_pieces": 455,
+      "unbalanced_fences": 2,
+      "include_blog": false
+    },
+    {
+      "target": 600,
+      "hard_max": 900,
+      "chunks": 951,
+      "tokens": {
+        "n": 951,
+        "mean": 446.5,
+        "p5": 117,
+        "p50": 470,
+        "p95": 815,
+        "max": 881,
+        "sum": 424613
+      },
+      "by_source_type": {
+        "docs": {
+          "n": 622,
+          "mean": 443.2,
+          "p5": 165,
+          "p50": 471,
+          "p95": 739,
+          "max": 881,
+          "sum": 275673
+        },
+        "repo": {
+          "n": 329,
+          "mean": 452.7,
+          "p5": 44,
+          "p50": 468,
+          "p95": 852,
+          "max": 879,
+          "sum": 148940
+        }
+      },
+      "over_target": 131,
+      "over_hard_max": 0,
+      "under_50_tokens": 27,
+      "continued_section_pieces": 120,
+      "unbalanced_fences": 2,
+      "include_blog": false
+    }
+  ]
+}
