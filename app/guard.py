@@ -86,10 +86,20 @@ def detect_marker(text: str) -> str | None:
 
 
 def remove_markers(text: str) -> str:
-    out = MARKER_RE.sub("", text)
-    out = re.sub(r"[ \t]{2,}", " ", out)
-    out = re.sub(r"\n{3,}", "\n\n", out)
-    return out.strip()
+    """Drop NO_ANSWER / OUT_OF_SCOPE wherever they appear in prose. Code is never touched (indentation matters)."""
+    out = "".join(seg if is_code else MARKER_RE.sub("", seg) for is_code, seg in segments(text))
+    return tidy(out)
+
+
+def tidy(text: str) -> str:
+    """Strip trailing spaces and collapse 3+ newlines in prose only; code blocks stay byte for byte."""
+    parts = []
+    for is_code, seg in segments(text):
+        if not is_code:
+            seg = re.sub(r"[ \t]+\n", "\n", seg)
+            seg = re.sub(r"\n{3,}", "\n\n", seg)
+        parts.append(seg)
+    return "".join(parts).strip()
 
 
 def _norm(text: str) -> str:

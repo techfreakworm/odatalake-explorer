@@ -297,3 +297,11 @@ def test_outcome_is_immutable_snapshot_of_the_answer(index_dir):
     out = ask(service(index_dir, FakeLLM("ok [1].")), ON_TOPIC)
     with pytest.raises(dataclasses.FrozenInstanceError):
         out.answer = "x"
+
+
+def test_code_blocks_survive_the_pipeline_byte_for_byte(index_dir):
+    code = "```yaml\nx-envs:\n  shared: &sharedEnvs\n    TELEMETRY_DISABLED: \"true\"   \n\n\n\n    other: 1\n```"
+    text = f"Set it like this [1]:\n\n{code}\n\nThen restart the stack [1]."
+    out = ask(service(index_dir, FakeLLM(text)), TELEMETRY)
+    assert code in out.answer
+    assert out.answer == text

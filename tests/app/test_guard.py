@@ -131,3 +131,8 @@ def test_stream_sanitizer_stops_on_prompt_line():
                        "Each passage starts with [n]"])
     assert s.leak
     assert "numbered context passages. Each" not in out
+
+
+def test_remove_markers_keeps_code_indentation():
+    text = "Set it [1]:\n\n```yaml\nx-envs:\n  shared: &sharedEnvs\n    TELEMETRY_DISABLED: \"true\"\n```\n\nDone [1]."
+    assert remove_markers(text) == text

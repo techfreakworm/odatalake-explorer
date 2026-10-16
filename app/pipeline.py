@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
-import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -26,7 +25,7 @@ from app.citations import (
     strip_sources_section,
 )
 from app.config import Settings
-from app.guard import LeakGuard, StreamSanitizer, detect_marker, remove_markers
+from app.guard import LeakGuard, StreamSanitizer, detect_marker, remove_markers, tidy
 from app.index_store import IndexHolder
 from app.limits import AnswerCache, DailyTokenBudget, TokenBucket, cache_key
 from app.llm import LLMResult, LLMStreamError, LLMUnavailable
@@ -284,7 +283,7 @@ class AskService:
         if truncated:
             text = salvage_truncated(text, len(passages))
         cr = resolve_citations(text, passages)
-        answer = _tidy(cr.answer)
+        answer = tidy(cr.answer)
         if leak:
             if cr.sources:
                 return self._outcome(run, f"{prompts.LEAK_REFUSAL}\n\n{answer}", cr.sources,
@@ -336,8 +335,3 @@ def _unparseable(text: str) -> bool:
     if detect_marker(text):
         return False
     return not parse_citation_numbers(text)
-
-
-def _tidy(text: str) -> str:
-    text = re.sub(r"[ \t]+\n", "\n", text)
-    return re.sub(r"\n{3,}", "\n\n", text).strip()
