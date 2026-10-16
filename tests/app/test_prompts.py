@@ -59,7 +59,7 @@ def test_texts_were_not_silently_reworded():
 
 
 def test_create_app_redacts_provider_keys_and_the_canary_in_every_log_line(index_dir, capsys):
-    key, canary = "sk-live-0123456789abcdefghij", "feedfacecafebeef"
+    key, canary = "fake-provider-key-0123456789", "feedfacecafebeef"  # any configured value is redacted
     provs = (ProviderConfig("primary", "http://primary.invalid/v1", key, "m"),)
     create_app(Settings(index_dir=index_dir, canary=canary, providers=provs), llm=FakeLLM(),
                embedder_factory=lambda m, threads, cache_dir: HashEmbedder())
