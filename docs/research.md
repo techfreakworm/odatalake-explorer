@@ -86,6 +86,9 @@ registered MDX partials, 12 JSX config-table components, `FlagDetail.tsx` (CLI f
 registered in the site's [MDX component map][mdx-map]. For example, the Postgres `jsonb` to Iceberg `string` mapping exists
 only in a partial and in the rendered HTML. The rendered HTML is complete: all 202 tab panels are server-rendered
 ([docs-site report][r-docs-site]). Extraction selectors: `.theme-doc-markdown` for docs and `#__blog-post-container` for posts.
+Parse with lxml, never Python's `html.parser`. The minified production HTML omits optional end tags: on the REST catalog
+page, 371 `<li` against 172 `</li>`, and 278 `<p` against 14 `</p>`. `html.parser` mis-nests that markup and concatenates
+tab labels; lxml parses it correctly ([arch-prior-art report][r-arch]). The POC parses with lxml (`poc/ingest/html2md.py`).
 
 **No shortcuts.** [llms.txt][llms] is a hand-written link index with no page bodies (22,607 bytes, 152 lines). The
 site's `/llms-full.txt`, `.md` page URLs and `search-index.json` all return 404 ([docs-site report][r-docs-site]; the doc-writer
@@ -255,27 +258,37 @@ gives a measured number. The prior art and literature follow the table.
 | Engineering: freshness | Rebuild chunks | Rebuild chunks and vectors incrementally | Same as B | Re-send everything each call |
 
 **Prior art and literature** (from the [arch-prior-art report][r-arch], which links each source):
-- **The report's ranking.** It scored three similar designs with the same weights (score × weight / 5). Its "Recommended"
-  design, close to our B (a sufficiency gate, citation verification, streaming, cache, freshness, hardening), scored 86 of
-  100. An "Ambitious" agentic design with a long-context fallback scored 67 (range about 62-77), and a "Simple fallback"
-  close to our A scored 67. It also says to build A first as the safety net, then add B's features in rubric-weight order.
+- **The research agent's scoring.** This is its judgment, not a measurement. Each design scored 1-5 per criterion, with
+  the rubric's weights 35/15/20/15/15; the total is the sum of score × weight / 5.
+
+  | Design (the report's name) | Accuracy (35) | Citations and honesty (15) | Production (20) | UX and embed (15) | Engineering (15) | Total |
+  |---|---|---|---|---|---|---|
+  | "Recommended", close to our B: A plus a sufficiency gate, citation verification, streaming, cache, freshness and hardening | 4 | 5 | 4 | 5 | 4 | 86 |
+  | "Ambitious", close to our C: agentic with CRAG, several sources, a hosted reranker, a Self-Route long-context fallback and claim-level NLI | 4 | 3 | 3 | 4 | 2 | 67 (range about 62-77) |
+  | "Simple fallback", close to our A: crawl, breadcrumb chunks, hybrid RRF, one LLM call with `[n]` citations, FastAPI, a basic widget | 3 | 3 | 4 | 3 | 4 | 67 |
+
+  The report also says to build A first as the safety net, then add B's features in rubric-weight order.
 - **Hybrid with RRF.** In Cormack et al.'s pilot, k=60 was near-optimal but "not critical", and RRF beat the best single
   system by 4-5% on average [[rrf]]. BEIR found BM25 a robust zero-shot baseline that dense retrievers often fail to beat
-  [[lit-beir]]. In Bruch et al.'s tests, a convex combination of normalized scores beat RRF and could be tuned with few
-  samples [[lit-bruch]]. We keep RRF with the standard k=60 because the POC measured it on the curated set (§4.3).
+  [[lit-beir]]. In Bruch et al.'s tests, a tuned convex combination of normalized scores beat RRF, but it needs labelled
+  queries to tune its weight [[lit-bruch]]. RRF needs no tuning data: the standard k=60, which the POC measured on the
+  curated set (§4.3), is the right choice for a 3-hour build.
 - **Chunk headers.** Anthropic's Contextual Retrieval cut the top-20 retrieval failure rate from 5.7% to 3.7% with
   contextual embeddings, to 2.9% when contextual BM25 was added, and to 1.9% with a Cohere rerank on top
-  [[lit-contextual]]. dsRAG reports a similar gain from contextual chunk headers [[lit-dsrag]]. On OLake, the report's
+  [[lit-contextual]]. In dsRAG's KITE benchmark (LLM-graded, 0-10), contextual chunk headers raised the score from 4.72 to
+  6.04 [[lit-dsrag]]. On OLake, the report's
   probe measured +11 to +14 points of Hit@1 from a breadcrumb prefix (44 questions). Every I1 chunk header carries that
   breadcrumb.
 - **Rerankers.** The published gains come from hosted rerankers (the Anthropic numbers above, and
   [Ask Astro][pa-ask-astro-blog]). On OLake, small open cross-encoders lowered Hit@1 in the report's probe (hybrid with
   breadcrumbs 0.864; + MiniLM-L6 0.773; + jina-reranker-v1-turbo 0.750; 44 questions), and they did not help in the POC on
   the 94-row set (§4.3). A hosted reranker is untested on OLake.
-- **Long context (D).** Li et al. found that long context beats RAG on average. Their Self-Route (RAG first, long context
-  only when the model says it cannot answer) comes close while using 38-61% of the long-context tokens [[lit-selfroute]].
-  Accuracy drops when the relevant passage sits in the middle of a long context [[lit-litm]]. Anthropic suggests skipping
-  RAG below about 200k tokens [[lit-contextual]]; the docs alone are 264,265 o200k tokens (§3).
+- **Long context (D).** Li et al. (2024) found that long context beats RAG on average (Gemini-1.5-Pro 49.70 vs 37.33;
+  GPT-4o 48.67 vs 32.60). Their Self-Route (RAG first, long context only when the model says it cannot answer) comes
+  close while using 38-61% of the long-context tokens [[lit-selfroute]]. Accuracy drops when the relevant passage sits in
+  the middle of a long context [[lit-litm]]. Anthropic suggests putting the whole knowledge base in the prompt below about
+  200k tokens [[lit-contextual]]. The docs are above that: about 270k tokens by the report's estimate, and 264,265 o200k
+  tokens in the POC (§3). Hence D is rejected for serving.
 - **Corrective and agentic loops (C).** CRAG adds a retrieval evaluator and a web-search branch. On PopQA its
   generation-only time per question was 0.512 s, against 0.363 s for plain RAG [[lit-crag]].
 
@@ -291,8 +304,13 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   truncated. At 300 only 79 of 1,861 do (corpus v1, `poc/results/retrieval.json`). On the canonical set, every config scores lower at
   600 than at 300; for example, hybrid bge-small falls to MRR@10 0.719 from 0.736 (`poc/results/retrieval-canonical.json`).
   **Decision: a 300-token target with a 450 hard max** (the POC chunker's 300 configuration). The 600-token option is dropped.
+  The context header is backed by evidence: in the arch report's probe, a breadcrumb prefix raised Hit@1 by 11-14 points
+  (44 questions), in line with Anthropic's Contextual Retrieval and dsRAG (§4.2).
+  Considered and not adopted: the arch report suggests a 400-500-token soft cap and the fused top 8. Ours is measured on
+  the 82-row canonical set: 300 beats 600 on every config, and hit@10 is 0.939 (`poc/results/retrieval-canonical.json`).
+  The report's suggestion comes from a 44-question set with one annotator.
 - **Retrieval.** BM25 (bm25s) and dense (fastembed) candidates fused with RRF, k=60 [[rrf]], with **no reranker**
-  (decided on the canonical numbers below). The top 10 fused chunks, at most 3 per page, go to the LLM: about 3.3k context
+  (decided on the canonical numbers below). RRF needs no tuning data, unlike a tuned score blend (§4.2). The top 10 fused chunks, at most 3 per page, go to the LLM: about 3.3k context
   tokens (an estimate from the POC's 1,858 prompt tokens with 6 passages, `poc/results/answer.json`).
   First, the POC results on the 14 seed questions with expected sources (`poc/results/retrieval.json`; 300-token chunks;
   fuse top 50, rerank top 20; retrieval latency only, on an 18-core arm64 laptop with all ONNX threads):
@@ -345,7 +363,9 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
     them. An exact-match boost for `--flags` and `snake_case` keys found in the question is a cheap next step
     (`poc/README.md`, finding 7). The plan adds it to the BM25 query.
 
-  **Decision: no reranker in the ranking path.** A reranker is only an optional patch-hour experiment. The context gets the
+  **Decision: no reranker in the ranking path.** A reranker is only an optional patch-hour experiment. Independent
+  corroboration: in the arch report's probe (44 questions), small open cross-encoders also lowered Hit@1, from 0.864 for
+  hybrid with breadcrumbs to 0.773 with MiniLM-L6 and 0.750 with jina-reranker-v1-turbo ([arch-prior-art report][r-arch]). The context gets the
   top 10 chunks, not 6, because hit@10 is 0.939. With 6 passages (hybrid bge-base plus MiniLM-L6), an expected source was in
   the context for 70 of the 82 rows with expected sources (85.4%, `poc/results/gate-canonical.json`,
   `context_hit_rate_top_passages`).
@@ -362,13 +382,21 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
     scores very low (ADV-03: -6.36). Answerable rows range from -2.67 to 7.78.
 - **Abstain policy** (decided by the lead after this result):
   1. The gate is only a cheap off-topic short-circuit. Its threshold (`ABSTAIN_THRESHOLD`) is chosen at 0% false abstains
-     on must-answer rows, measured AFTER the one-rewrite step. The signal is PENDING(poc): the highest dense cosine, the
-     highest BM25 score, or a TinyBERT score. Prior evidence for the dense signal comes from the arch report's probe
-     (bge-small; 44 answerable, 14 on-topic unanswerable and 6 off-topic questions). The top-1 dense cosine separated
-     off-topic questions perfectly (AUROC 1.0; off-topic 0.512-0.608, answerable 0.732-0.924). It separated on-topic
-     unanswerables only partly (AUROC 0.886; normalized BM25 0.409). At the threshold that keeps 95% of answerable
-     questions answered, it refused 36% of the unanswerables, which is why the model, not the score, decides near-domain
-     abstains ([arch-prior-art report][r-arch]).
+     on must-answer rows, measured AFTER the one-rewrite step. **The signal is the highest dense cosine**
+     (`GATE_SIGNAL=dense`), measured on the POC's corpus v2 (bge-small, 300-token chunks; `poc/results/gate-signals.json`).
+     At 0 false abstains on the 82 must-answer rows, it caught 7 of the 12 must-abstain rows (recall 0.583, threshold
+     0.7126), against 0.417 for TinyBERT over the top 10, 0.333 for MiniLM-L6 and 0 for BM25. It needs no extra model and
+     adds no latency, because retrieval already embeds the query. The rows it cannot catch are near-domain: UNK-02 (0.823),
+     UNK-01 (0.800), OOS-03 (0.779), UNK-05 (0.774) and UNK-03 (0.728). The arch report's probe agrees (bge-small; 44
+     answerable, 14 on-topic unanswerable and 6 off-topic questions). The top-1 dense cosine separated off-topic
+     questions perfectly (AUROC 1.0; off-topic 0.512-0.608, answerable 0.732-0.924), but on-topic unanswerables only
+     partly (AUROC 0.886; normalized BM25 0.409). At 95% answer coverage it refused 100% of off-topic questions and 36%
+     of unanswerables ([arch-prior-art report][r-arch]). So the gate handles off-topic questions only, and the model's
+     sufficient-context judgment does the rest, backed by citation validation, because models hallucinate on 15-40% of
+     insufficient-context questions [[lit-suffctx]].
+     The threshold 0.7126 is a measured starting value, taken before the rewrite. The rewrite can only rescue rows, so it
+     keeps 0 false abstains with the rewrite, and the after-rewrite calibration can only raise it: PENDING(poc:
+     gate-rewrite.json). The event's index differs from the POC's, so checkpoint 2.5 recalibrates it (plan section 5).
   2. Below the threshold, ONE LLM rewrite turns the question into search keywords, which strips injections, pasted logs and
      chit-chat. Retrieval runs again, and the bot short-circuits only if the score is still below the threshold. Measuring
      after the rewrite matters: on the MiniLM score, two injection-wrapped answerable rows scored below -4 (ADV-02 -4.23,
@@ -517,10 +545,10 @@ for reference:
   2 threads (POC).
 - bge-reranker-base: 922.3 ms for the top 10 at 2 threads, and about 1.5 GB more RSS (POC).
 
-**Off-topic gate signal: PENDING(poc).** The candidates are the highest dense cosine, the highest BM25 score, and a TinyBERT
-score (TinyBERT used only for the gate). The winner separates off-topic rows best at 0% false abstains on must-answer rows,
-measured after the one-rewrite step (§4.3). Placeholders: `GATE_SIGNAL=<poc pick>`,
-`ABSTAIN_THRESHOLD=<threshold at 0% false abstains>`.
+**Off-topic gate signal: the highest dense cosine (measured).** At 0 false abstains on the 82 must-answer rows it caught 7
+of the 12 must-abstain rows, against 5 for TinyBERT, 4 for MiniLM-L6 and none for BM25 (`poc/results/gate-signals.json`,
+§4.3). It reuses the query embedding, so the gate needs no extra model: `GATE_SIGNAL=dense`, `ABSTAIN_THRESHOLD=0.7126`
+as the starting value, recalibrated at checkpoint 2.5.
 
 ### 5.4 Vector store
 None. Retrieval stays in process. Stack-report benchmarks at 20k chunks:
@@ -610,7 +638,13 @@ ordinary page the same widget worked across origins, and a second request reused
   `Cache-Control: no-cache` and `X-Accel-Buffering: no`, and sends a keep-alive ping every 15 s
   ([FastAPI SSE][fastapi-sse]).
 - **CORS**: `allow_origins=*` without credentials, `max_age` 86400, and `x-request-id` exposed.
-- **`/ask` always returns `{answer, sources}`**, even on errors, never an HTML 500.
+- **`/ask` always returns `{answer, sources}`**, even on errors, never an HTML 500. Bad input gets 422, FastAPI's validation
+  default and our I2 contract, with the same JSON shape. The arch report suggests 400; clients would accept either.
+- **Prompt-leak canary.** A random per-deploy token (`CANARY`, 16 hex characters) sits in the system prompt. An answer that
+  contains it is replaced by the standard refusal (plus the real question's answer when one survives), the event is
+  logged as `prompt_leak_blocked`, and the canary is never returned. It is a cheap deterministic output check, the kind of
+  control OWASP LLM01 lists among its mitigations [[lit-owasp]]. It serves ADV-02, which asks for the system prompt
+  verbatim.
 - **Limits**: a per-client token bucket (the stack research suggests 60-120 per minute) with its burst capacity above the
   test-set size, because the scorer will probably send a burst from one IP; a global semaphore that queues; and a daily
   token budget. Once the budget is spent, `/ask` returns the degraded answer (the most relevant pages, with sources), never
@@ -640,6 +674,18 @@ ordinary page the same widget worked across origins, and a second request reused
 Method: [eval-questions.md](eval-questions.md). The POC scorer (`poc/eval/score.py`) checks the response schema
 (exactly `answer` and `sources`), the source hit with normalized URLs, behaviour by question type (abstain or decline
 where expected), latency p50 and p95, and must-mention fact coverage judged by an LLM.
+
+**Why a custom scorer** (from the [arch-prior-art report][r-arch]): RAGAS needs the retrieved contexts and a reference,
+and makes about 8 LLM calls per sample [[lit-ragas]]. DeepEval's RAG test cases also need the retrieval context
+[[lit-deepeval]]. `POST /ask` returns only `answer` and `sources`. promptfoo can call `POST /ask` directly through its
+HTTP provider [[lit-promptfoo-http]], but it caches results on disk by default, so live runs need `--no-cache`
+[[lit-promptfoo-cli]]. A custom async scorer makes one judge call per question.
+
+**Judge reliability.** GPT-4 as a judge agreed with humans over 80% of the time, but showed position, verbosity and
+self-enhancement biases [[lit-mtbench]]. Only the largest judges align reasonably, and they are lenient [[lit-judges]].
+Hamel Husain recommends binary labels and aligning the judge with human labels [[lit-hamel]]. So the eval uses a judge
+from a different model family than the generator, at temperature 0, and hand-labels 10-15 items once to check agreement.
+The POC adds one more reason: its local judge flipped 2 of 14 verdicts between thinking on and off (`poc/README.md`).
 
 **The curated set** ([eval-questions.md](eval-questions.md)) has 94 rows:
 - by type: 69 answerable, 5 negative, 4 false-premise, 4 adversarial, 6 out-of-scope, 6 unanswerable;
@@ -755,13 +801,13 @@ From the [arch-prior-art report][r-arch]. Each row links the original source.
 
 | Project | What it does | What we take from it |
 |---|---|---|
-| [Ask Astro][pa-ask-astro] (Astronomer, Airflow docs) | Ingests docs, blog, GitHub PRs and StackOverflow. Per question: 2 LLM rewrites plus the original, up to 100 docs each, a Cohere rerank to 8, a relevancy check, then the answer. A curated question set reruns on every change. Hybrid plus rerank improved about 13.5% more answers, after embedding-only search missed the term "Astro SDK" ([blog][pa-ask-astro-blog]) | Exact product terms need lexical retrieval (BM25 plus the exact-match boost). Rerun the eval on every change (the plan's patch loop) |
-| [DocsGPT][pa-docsgpt] | A self-hosted assistant that cites sources, with guardrails against injection and ungrounded answers. The widget comes from one script tag or a React package ([widget docs][pa-docsgpt-widget]). The README describes no eval method | One script tag is the norm |
+| [Ask Astro][pa-ask-astro] (Astronomer, Airflow docs; Apache-2.0) | Ingests docs, blog, GitHub PRs and StackOverflow into Weaviate. Per question: 2 LLM rewrites plus the original, up to 100 docs each, a Cohere rerank to 8, a relevancy check, then the answer. A curated question set reruns on every change. Hybrid plus rerank improved about 13.5% more answers, after embedding-only search missed the term "Astro SDK" ([blog][pa-ask-astro-blog]) | Exact product terms need lexical retrieval (BM25 plus the exact-match boost). Rerun the eval on every change (the plan's patch loop) |
+| [DocsGPT][pa-docsgpt] (MIT; 18.3k stars) | A self-hosted assistant that cites sources, with guardrails against injection and ungrounded answers. The widget comes from one script tag or a React package ([widget docs][pa-docsgpt-widget]). The README describes no eval method | One script tag is the norm |
 | [Onyx][pa-onyx] (formerly Danswer) | A hybrid vector plus keyword index, with a search-quality regression over ground-truth doc links ([README][pa-onyx-sq]) | A retrieval-only regression: the plan's `--retrieval-only` eval mode |
-| [chat-langchain][pa-chatlc] | Now a managed agent over the docs. Its link checker follows redirects and checks for soft 404s ([link_check_tools.py][pa-chatlc-links]). Its guardrail test checks the prompt's wording only, with no LLM calls ([test_guardrails_scope.py][pa-chatlc-guard]) | Test behaviour with real calls, not prompt text. olake.io serves its 285 redirect stubs with HTTP 200, so sources come only from chunk metadata |
+| [chat-langchain][pa-chatlc] | Now a managed deep agent that searches the docs. Its link checker follows redirects and checks for soft 404s ([link_check_tools.py][pa-chatlc-links]). Its guardrail test checks the prompt's wording only, with no LLM calls ([test_guardrails_scope.py][pa-chatlc-guard]) | Test behaviour with real calls, not prompt text. olake.io serves its 285 redirect stubs with HTTP 200, so sources come only from chunk metadata |
 | Supabase Clippy ([2023 post][pa-clippy]) | MDX sections in pgvector with a similarity threshold, a docs-only prompt and SSE streaming. Per-file checksums re-embed only changed docs ([template][pa-clippy-repo]) | Incremental rebuilds by content hash (the freshness design) |
 | [Verba][pa-verba] (Weaviate), [AutoFlow][pa-autoflow] (PingCAP) | Verba is archived; its reranking was planned and never shipped. AutoFlow is a Graph RAG docs bot with an embeddable JS snippet | Nothing new for a one-day build |
-| kapa.ai ([eval guide][pa-kapa-eval], [widget][pa-kapa-widget]) | Evaluates with about 100 real questions, 15-20% of them unanswerable. Factuality is graded A/B/C = 1/0.5/0, the indexed docs are frozen during an eval, and the judge is a top model with reasoning, repeated and watched for self-preference. The widget is one script tag, full screen on mobile, with an optional uncertain-answer callout | 12 of our 94 rows (12.8%) are unanswerable or out of scope, a little under kapa's share. Use the strongest judge (POC) |
+| kapa.ai ([eval guide][pa-kapa-eval], [widget][pa-kapa-widget]) | Evaluates with about 100 real questions, 15-20% of them unanswerable. Factuality is graded A/B/C = 1/0.5/0 and uncertainty pass/fail, the indexed docs are frozen during an eval, and the judge is a top model with reasoning, repeated and watched for self-preference. The widget is one script tag, full screen on mobile, with an optional uncertain-answer callout | 12 of our 94 rows (12.8%) are unanswerable or out of scope, a little under kapa's share. Use the strongest judge (POC) |
 | [Mintlify assistant][pa-mintlify], [Inkeep][pa-inkeep] | Mintlify says it doesn't have enough information, with an optional deflection email, and re-indexes on publish. Inkeep ships a Docusaurus plugin | Abstain with a next step (the unified short-circuit text, §4.3) |
 | [Algolia DocSearch Ask AI][pa-algolia] | Enabled by an `askAi` assistant id. olake.io runs DocSearch without it (§3) | The judges' everyday baseline is keyword search |
 
@@ -773,14 +819,11 @@ From the [arch-prior-art report][r-arch]. Each row links the original source.
   trade-off as our two abstain targets.
 - **Citation support.** ALCE found that even the best models lack complete citation support half of the time on ELI5
   [[lit-alce]]. The server validates every `[n]`.
-- **LLM judges.** GPT-4 as a judge agreed with humans over 80% of the time, but showed position, verbosity and
-  self-enhancement biases [[lit-mtbench]]. Only the largest judges align reasonably, and they are lenient [[lit-judges]].
-  Hamel Husain recommends binary labels and aligning the judge with human labels [[lit-hamel]]. The report's resulting
-  rule: a judge from a different model family than the generator, temperature 0, and 10-15 hand-labelled checks.
+- **LLM judges.** See "Judge reliability" in §6.
 - **Caching.** Semantic caches risk wrong-answer hits: GPTCache's README warns of false positives [[lit-gptcache]], and
   static similarity thresholds give no correctness guarantee [[lit-vcache]]. OLake questions differ in critical details
   (Postgres vs MySQL, Go vs Fusion), so the plan keeps an exact-match cache only.
-- **Latency.** Feedback within about 1 s keeps the user's flow [[lit-nng]], so the widget streams tokens.
+- **Latency.** See the NN/g limits in §7.2.
 
 ### 7.2 What the rubric lets judges probe
 
@@ -812,6 +855,9 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
   Sources come only from chunk metadata.
 - Latency and concurrency, empty or huge input, mobile layout, the one-line embed: practitioner judgement, backed by NN/g
   [[lit-nng]] and the kapa and DocsGPT widget defaults.
+- NN/g's response-time limits: 0.1 s feels instant, 1 s keeps the user's flow, and after 10 s attention is lost; past 1 s,
+  show that work is under way [[lit-nng]]. So the widget shows progress at once and streams tokens over SSE. First tokens
+  within about 1 s is a target, not a measurement (§5.8).
 
 ## 8. Risks and mitigations
 
@@ -967,6 +1013,10 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 [lit-freshqa]: https://arxiv.org/abs/2310.03214
 [lit-mtrag]: https://arxiv.org/abs/2501.03468
 [lit-ambigqa]: https://arxiv.org/abs/2004.10645
+[lit-ragas]: https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/faithfulness/
+[lit-deepeval]: https://deepeval.com/docs/getting-started-rag
+[lit-promptfoo-http]: https://www.promptfoo.dev/docs/providers/http/
+[lit-promptfoo-cli]: https://www.promptfoo.dev/docs/usage/command-line/
 [sitemap]: https://olake.io/sitemap.xml
 [rrf]: https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf
 [mdn-es]: https://developer.mozilla.org/en-US/docs/Web/API/EventSource/EventSource

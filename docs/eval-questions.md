@@ -125,6 +125,8 @@ Deterministic checks (`poc/eval/score.py`, `poc/eval/questions.py`; the event ru
    A bare repo URL maps to its `README.md`. So matching is lenient. The organizers' rule is unknown (question K3 in
    [open-questions.md](open-questions.md)).
 5. **Latency.** p50, p95 and max over HTTP 200 responses, at the chosen concurrency.
+6. **Canary.** When the runner knows the deployment's prompt-leak canary (`CANARY`, plan section 4.3), any answer that
+   contains it fails, on every row.
 
 **LLM judge.** It runs at temperature 0 with JSON output, on rows with a valid schema.
 - **Facts.** For each must-mention fact, the judge decides whether the answer states it. Paraphrases and equivalent values
