@@ -689,8 +689,43 @@ num $RESEARCH "git ls-remote range" '[.[0].git_ls_remote[].ms] | "| `git ls-remo
 num $RESEARCH "GitHub limits" '"| \(.[0].github_unauthenticated.rate_before.limit) per hour, \(.[0].github_authenticated.rate_before.limit | tostring | commas) per hour |"' $F
 num $RESEARCH "lastmod redesign commit" '"\(.[0].observations.docs_pages_by_sitemap_lastmod["2026-10-06"]) of the \(.[0].observations.docs_pages_by_http_last_modified | add) dates come from one site-wide redesign commit on 2026-10-06"' $F
 
+# Table rows whose numbers the doc rounds: compare each number with the JSON value within half a unit of the
+# doc's last decimal. tolrow <doc> <ERE for the line that introduces the table> <row label> <jq expr> <json...>
+tolrow() {
+  local doc="$1" start="$2" label="$3" expr="$4"; shift 4
+  local row want nums
+  row=$(awk -v s="$start" -v l="| $label |" '
+    !on && $0 ~ s { on = 1; next }
+    on && /^ *\|/ { t = 1; x = $0; sub(/^ +/, "", x); if (index(x, l) == 1) { print x; exit }; next }
+    on && t { exit }' "$doc")
+  if [ -z "$row" ]; then warn "e: no '| $label |' row in the table after /$start/ in $doc; not checked"; return 0; fi
+  if ! want=$(jq -r -s "$JQDEF $expr" "$@" 2>"$TMP/jqerr"); then fail "e: $label: jq failed on $*: $(head -1 "$TMP/jqerr")"; return 0; fi
+  nums=$(printf '%s\n' "${row#*"| $label |"}" | grep -oE -- '-?[0-9]+(\.[0-9]+)?')
+  if [ "$(printf '%s\n' $nums | grep -c .)" -ne "$(printf '%s\n' $want | grep -c .)" ]; then
+    fail "e: $label: the doc row has [$(echo $nums)], the JSON has [$(echo $want)] ($*)"; return 0
+  fi
+  if paste <(printf '%s\n' $nums) <(printf '%s\n' $want) | awk -F'\t' '{
+       d = $1; j = $2; dec = index(d, ".") ? length(d) - index(d, ".") : 0
+       tol = 0.5 * 10 ^ (-dec) + 1e-9; x = d - j; if (x < 0) x = -x; if (x > tol) bad = 1 } END { exit bad }'; then
+    NUM_OK=$((NUM_OK + 1)); [ "$VERBOSE" -eq 1 ] && pass "e: $label: [$(echo $nums)] vs [$(echo $want)] ($*)"
+  else
+    fail "e: $label: the doc row has [$(echo $nums)], the JSON has [$(echo $want)] ($*)"
+  fi
+  return 0
+}
+RC=$RES/retrieval-canonical.json
+if [ -s "$RC" ]; then
+  crow() { tolrow $RESEARCH '[*][*]Canonical set[*][*]' "$1" ".[0].per_target[\"300\"].configs[\"$2\"] | \"\(.\"mrr@10\") \(.\"hit@5\")\"" $RC; }
+  crow "BM25" "bm25"
+  crow "Dense bge-small-en-v1.5" "dense:BAAI/bge-small-en-v1.5"
+  crow "Dense bge-base-en-v1.5" "dense:BAAI/bge-base-en-v1.5"
+  crow "Hybrid (RRF) bge-small" "hybrid:BAAI/bge-small-en-v1.5"
+  crow "Hybrid (RRF) bge-base" "hybrid:BAAI/bge-base-en-v1.5"
+else
+  info "e: $RC is missing, so the canonical-set retrieval table in $RESEARCH was not checked"
+fi
+
 [ "$NUM_OK" -gt 0 ] && pass "e: $NUM_OK number checks agree between the docs and $RES/*.json"
-info "e: not checkable (no JSON in $RES): the canonical-set retrieval table in $RESEARCH (MRR 0.68 ... 0.745)"
 
 # ---------------------------------------------------------------------------------------------------------
 printf '\n== Summary: %d PASS, %d WARN, %d FAIL\n' "$NPASS" "$NWARN" "$NFAIL"
