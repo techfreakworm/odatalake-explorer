@@ -4,7 +4,9 @@
 * fenced code keeps its language:     ```` ```json title="source.json" ````
 * tables become GitHub pipe tables
 * all tab panels are kept (static HTML ships hidden panels too), each prefixed
-  with ``**Tab: <label>**``; admonitions become ``> **Note:** ...`` quotes;
+  with ``**Tab: <label>**``; each tab group is wrapped in ``<!-- tabs:start -->`` /
+  ``<!-- tabs:end -->`` so nested groups stay unambiguous; admonitions become
+  ``> **Note:** ...`` quotes;
   ``<details>`` become a bold summary line followed by the body.
 
 Images, SVGs, buttons and navigation chrome are dropped.
@@ -17,6 +19,8 @@ import re
 from bs4 import BeautifulSoup, NavigableString, Tag
 
 ZW = "​"
+TABS_START = "<!-- tabs:start -->"
+TABS_END = "<!-- tabs:end -->"
 BLOCK_TAGS = {
     "p", "div", "section", "article", "main", "header", "footer", "aside",
     "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "pre", "table",
@@ -210,11 +214,13 @@ class Converter:
 
         labels = [_clean(li.get_text(" ", strip=True)) for li in el.select('[role="tab"]') if own(li)]
         panels = [p for p in el.select('[role="tabpanel"]') if own(p)]
-        out = []
+        # invisible group markers let the chunker resolve nested tab groups (catalog → auth → UI/CLI)
+        out = [TABS_START]
         for i, panel in enumerate(panels):
             label = labels[i] if i < len(labels) else f"Tab {i + 1}"
             out.append(f"**Tab: {label}**")
             out.extend(self.blocks(panel))
+        out.append(TABS_END)
         return out
 
     def admonition(self, el: Tag) -> list[str]:
