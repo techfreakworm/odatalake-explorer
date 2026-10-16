@@ -1,0 +1,2201 @@
+{
+  "questions": {
+    "file": "eval-questions.md",
+    "n": 94,
+    "must_abstain": 12,
+    "must_answer": 82
+  },
+  "setup": {
+    "retrieval": "hybrid bge-small, no reranker",
+    "rewrite_llm": "qwen3:32b reasoning_effort=none, max_tokens 64",
+    "policy": "score >= T -> generate; else rewrite once; NONE or rewritten score < T -> decline"
+  },
+  "rewrite_cost": {
+    "latency_ms_p50": 1174.8,
+    "latency_ms_p95": 1817.8,
+    "prompt_tokens_mean": 191.7,
+    "completion_tokens_mean": 11.9,
+    "none_outputs": {
+      "must_abstain": 4,
+      "must_answer": 0
+    }
+  },
+  "run_wall_s": 122.1,
+  "sweep": {
+    "dense_max_cos": [
+      {
+        "threshold": 0.68,
+        "rewrite_fires": 5,
+        "rewrite_fire_rate": 0.053,
+        "abstain_recall": 0.417,
+        "false_declines": 0,
+        "false_decline_ids": [],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-03",
+          "UNK-04",
+          "UNK-05",
+          "OOS-03",
+          "OOS-05"
+        ],
+        "gate_only_recall": 0.417,
+        "gate_only_false_declines": 0
+      },
+      {
+        "threshold": 0.69,
+        "rewrite_fires": 5,
+        "rewrite_fire_rate": 0.053,
+        "abstain_recall": 0.417,
+        "false_declines": 0,
+        "false_decline_ids": [],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-03",
+          "UNK-04",
+          "UNK-05",
+          "OOS-03",
+          "OOS-05"
+        ],
+        "gate_only_recall": 0.417,
+        "gate_only_false_declines": 0
+      },
+      {
+        "threshold": 0.7,
+        "rewrite_fires": 6,
+        "rewrite_fire_rate": 0.064,
+        "abstain_recall": 0.417,
+        "false_declines": 0,
+        "false_decline_ids": [],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-03",
+          "UNK-04",
+          "UNK-05",
+          "OOS-03",
+          "OOS-05"
+        ],
+        "gate_only_recall": 0.5,
+        "gate_only_false_declines": 0
+      },
+      {
+        "threshold": 0.71,
+        "rewrite_fires": 7,
+        "rewrite_fire_rate": 0.074,
+        "abstain_recall": 0.5,
+        "false_declines": 0,
+        "false_decline_ids": [],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-03",
+          "UNK-04",
+          "UNK-05",
+          "OOS-03"
+        ],
+        "gate_only_recall": 0.583,
+        "gate_only_false_declines": 0
+      },
+      {
+        "threshold": 0.72,
+        "rewrite_fires": 11,
+        "rewrite_fire_rate": 0.117,
+        "abstain_recall": 0.583,
+        "false_declines": 2,
+        "false_decline_ids": [
+          "SYNC-11",
+          "FP-03"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-03",
+          "UNK-05",
+          "OOS-03"
+        ],
+        "gate_only_recall": 0.583,
+        "gate_only_false_declines": 4
+      },
+      {
+        "threshold": 0.73,
+        "rewrite_fires": 15,
+        "rewrite_fire_rate": 0.16,
+        "abstain_recall": 0.667,
+        "false_declines": 5,
+        "false_decline_ids": [
+          "SRC-07",
+          "SRC-11",
+          "SYNC-07",
+          "SYNC-11",
+          "FP-03"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-05",
+          "OOS-03"
+        ],
+        "gate_only_recall": 0.667,
+        "gate_only_false_declines": 7
+      },
+      {
+        "threshold": 0.74,
+        "rewrite_fires": 15,
+        "rewrite_fire_rate": 0.16,
+        "abstain_recall": 0.667,
+        "false_declines": 5,
+        "false_decline_ids": [
+          "SRC-07",
+          "SRC-11",
+          "SYNC-07",
+          "SYNC-11",
+          "FP-03"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-05",
+          "OOS-03"
+        ],
+        "gate_only_recall": 0.667,
+        "gate_only_false_declines": 7
+      },
+      {
+        "threshold": 0.75,
+        "rewrite_fires": 20,
+        "rewrite_fire_rate": 0.213,
+        "abstain_recall": 0.667,
+        "false_declines": 8,
+        "false_decline_ids": [
+          "SET-07",
+          "SRC-07",
+          "SRC-11",
+          "SYNC-04",
+          "SYNC-07",
+          "SYNC-11",
+          "TRB-07",
+          "FP-03"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-05",
+          "OOS-03"
+        ],
+        "gate_only_recall": 0.667,
+        "gate_only_false_declines": 12
+      },
+      {
+        "threshold": 0.76,
+        "rewrite_fires": 26,
+        "rewrite_fire_rate": 0.277,
+        "abstain_recall": 0.667,
+        "false_declines": 14,
+        "false_decline_ids": [
+          "SET-07",
+          "SRC-07",
+          "SRC-10",
+          "SRC-11",
+          "SRC-16",
+          "SYNC-04",
+          "SYNC-07",
+          "SYNC-10",
+          "SYNC-11",
+          "DST-08",
+          "FUS-07",
+          "FUS-08",
+          "TRB-07",
+          "FP-03"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-05",
+          "OOS-03"
+        ],
+        "gate_only_recall": 0.667,
+        "gate_only_false_declines": 18
+      },
+      {
+        "threshold": 0.78,
+        "rewrite_fires": 36,
+        "rewrite_fire_rate": 0.383,
+        "abstain_recall": 0.833,
+        "false_declines": 16,
+        "false_decline_ids": [
+          "SET-07",
+          "SRC-07",
+          "SRC-10",
+          "SRC-11",
+          "SRC-16",
+          "SYNC-04",
+          "SYNC-07",
+          "SYNC-10",
+          "SYNC-11",
+          "DST-07",
+          "DST-08",
+          "FUS-07",
+          "FUS-08",
+          "TRB-07",
+          "FP-02",
+          "FP-03"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02"
+        ],
+        "gate_only_recall": 0.833,
+        "gate_only_false_declines": 26
+      },
+      {
+        "threshold": 0.8,
+        "rewrite_fires": 47,
+        "rewrite_fire_rate": 0.5,
+        "abstain_recall": 0.833,
+        "false_declines": 28,
+        "false_decline_ids": [
+          "SET-01",
+          "SET-04",
+          "SET-07",
+          "SET-08",
+          "SRC-06",
+          "SRC-07",
+          "SRC-10",
+          "SRC-11",
+          "SRC-12",
+          "SRC-16",
+          "SYNC-02",
+          "SYNC-03",
+          "SYNC-04",
+          "SYNC-06",
+          "SYNC-07",
+          "SYNC-09",
+          "SYNC-10",
+          "SYNC-11",
+          "DST-07",
+          "DST-08",
+          "FUS-06",
+          "FUS-07",
+          "FUS-08",
+          "DEP-06",
+          "TRB-02",
+          "TRB-07",
+          "FP-02",
+          "FP-03"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02"
+        ],
+        "gate_only_recall": 0.917,
+        "gate_only_false_declines": 36
+      }
+    ],
+    "tinybert_top@10": [
+      {
+        "threshold": 0.01,
+        "rewrite_fires": 4,
+        "rewrite_fire_rate": 0.043,
+        "abstain_recall": 0.333,
+        "false_declines": 0,
+        "false_decline_ids": [],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-03",
+          "UNK-04",
+          "UNK-05",
+          "UNK-06",
+          "OOS-03",
+          "OOS-05"
+        ],
+        "gate_only_recall": 0.333,
+        "gate_only_false_declines": 0
+      },
+      {
+        "threshold": 0.02,
+        "rewrite_fires": 6,
+        "rewrite_fire_rate": 0.064,
+        "abstain_recall": 0.417,
+        "false_declines": 0,
+        "false_decline_ids": [],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-03",
+          "UNK-04",
+          "UNK-05",
+          "UNK-06",
+          "OOS-03"
+        ],
+        "gate_only_recall": 0.417,
+        "gate_only_false_declines": 1
+      },
+      {
+        "threshold": 0.05,
+        "rewrite_fires": 6,
+        "rewrite_fire_rate": 0.064,
+        "abstain_recall": 0.417,
+        "false_declines": 0,
+        "false_decline_ids": [],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-03",
+          "UNK-04",
+          "UNK-05",
+          "UNK-06",
+          "OOS-03"
+        ],
+        "gate_only_recall": 0.417,
+        "gate_only_false_declines": 1
+      },
+      {
+        "threshold": 0.1,
+        "rewrite_fires": 8,
+        "rewrite_fire_rate": 0.085,
+        "abstain_recall": 0.5,
+        "false_declines": 1,
+        "false_decline_ids": [
+          "ADV-02"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-03",
+          "UNK-04",
+          "UNK-05",
+          "OOS-03"
+        ],
+        "gate_only_recall": 0.5,
+        "gate_only_false_declines": 2
+      },
+      {
+        "threshold": 0.2,
+        "rewrite_fires": 8,
+        "rewrite_fire_rate": 0.085,
+        "abstain_recall": 0.5,
+        "false_declines": 1,
+        "false_decline_ids": [
+          "ADV-02"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-03",
+          "UNK-04",
+          "UNK-05",
+          "OOS-03"
+        ],
+        "gate_only_recall": 0.5,
+        "gate_only_false_declines": 2
+      },
+      {
+        "threshold": 0.3,
+        "rewrite_fires": 11,
+        "rewrite_fire_rate": 0.117,
+        "abstain_recall": 0.583,
+        "false_declines": 1,
+        "false_decline_ids": [
+          "ADV-02"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-03",
+          "UNK-04",
+          "UNK-05"
+        ],
+        "gate_only_recall": 0.667,
+        "gate_only_false_declines": 3
+      },
+      {
+        "threshold": 0.4,
+        "rewrite_fires": 11,
+        "rewrite_fire_rate": 0.117,
+        "abstain_recall": 0.583,
+        "false_declines": 2,
+        "false_decline_ids": [
+          "SYNC-09",
+          "ADV-02"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-03",
+          "UNK-04",
+          "UNK-05"
+        ],
+        "gate_only_recall": 0.667,
+        "gate_only_false_declines": 3
+      },
+      {
+        "threshold": 0.5,
+        "rewrite_fires": 13,
+        "rewrite_fire_rate": 0.138,
+        "abstain_recall": 0.583,
+        "false_declines": 4,
+        "false_decline_ids": [
+          "SRC-11",
+          "SYNC-09",
+          "FP-03",
+          "ADV-02"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-03",
+          "UNK-04",
+          "UNK-05"
+        ],
+        "gate_only_recall": 0.667,
+        "gate_only_false_declines": 5
+      },
+      {
+        "threshold": 0.6,
+        "rewrite_fires": 16,
+        "rewrite_fire_rate": 0.17,
+        "abstain_recall": 0.75,
+        "false_declines": 4,
+        "false_decline_ids": [
+          "SRC-11",
+          "SYNC-09",
+          "FP-03",
+          "ADV-02"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-04"
+        ],
+        "gate_only_recall": 0.75,
+        "gate_only_false_declines": 7
+      },
+      {
+        "threshold": 0.7,
+        "rewrite_fires": 17,
+        "rewrite_fire_rate": 0.181,
+        "abstain_recall": 0.75,
+        "false_declines": 4,
+        "false_decline_ids": [
+          "SRC-11",
+          "SYNC-09",
+          "FP-03",
+          "ADV-02"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-04"
+        ],
+        "gate_only_recall": 0.75,
+        "gate_only_false_declines": 8
+      },
+      {
+        "threshold": 0.8,
+        "rewrite_fires": 20,
+        "rewrite_fire_rate": 0.213,
+        "abstain_recall": 0.75,
+        "false_declines": 5,
+        "false_decline_ids": [
+          "SRC-11",
+          "SYNC-09",
+          "DEP-06",
+          "FP-03",
+          "ADV-02"
+        ],
+        "missed_abstain_ids": [
+          "UNK-01",
+          "UNK-02",
+          "UNK-04"
+        ],
+        "gate_only_recall": 0.833,
+        "gate_only_false_declines": 10
+      }
+    ]
+  },
+  "per_question": [
+    {
+      "id": "SET-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "run olake ui locally default login",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7992444038391113,
+        "tinybert_top@10": 0.9993804693222046
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7956082224845886,
+        "tinybert_top@10": 0.9986968636512756
+      },
+      "rewrite_prompt_tokens": 180,
+      "rewrite_completion_tokens": 8,
+      "rewrite_ms": 1691.2
+    },
+    {
+      "id": "SET-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "set custom admin username password OLake UI docker compose default",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.9008447527885437,
+        "tinybert_top@10": 0.9996064305305481
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8979463577270508,
+        "tinybert_top@10": 0.9999221563339233
+      },
+      "rewrite_prompt_tokens": 187,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1213.9
+    },
+    {
+      "id": "SET-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "generate streams.json Postgres Docker CLI",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8141684532165527,
+        "tinybert_top@10": 0.9985981583595276
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.825751543045044,
+        "tinybert_top@10": 0.9997500777244568
+      },
+      "rewrite_prompt_tokens": 184,
+      "rewrite_completion_tokens": 8,
+      "rewrite_ms": 1011.5
+    },
+    {
+      "id": "SET-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "increase timeout or parallelism for olake discover postgres",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7661635875701904,
+        "tinybert_top@10": 0.9558386206626892
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7937732934951782,
+        "tinybert_top@10": 0.984126627445221
+      },
+      "rewrite_prompt_tokens": 190,
+      "rewrite_completion_tokens": 11,
+      "rewrite_ms": 1191.8
+    },
+    {
+      "id": "SET-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "helm install olake  \naccessing olake ui",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8430877327919006,
+        "tinybert_top@10": 0.9994373917579651
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8752694129943848,
+        "tinybert_top@10": 0.9999110698699951
+      },
+      "rewrite_prompt_tokens": 184,
+      "rewrite_completion_tokens": 11,
+      "rewrite_ms": 1221.5
+    },
+    {
+      "id": "SET-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "docker compose temporal-ui missing",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8189828395843506,
+        "tinybert_top@10": 0.998397171497345
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8047012090682983,
+        "tinybert_top@10": 0.9992169141769409
+      },
+      "rewrite_prompt_tokens": 199,
+      "rewrite_completion_tokens": 6,
+      "rewrite_ms": 886.4
+    },
+    {
+      "id": "SET-07",
+      "type": "negative",
+      "must_abstain": false,
+      "rewrite": "custom frequency quartz cron format jobs",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7467758655548096,
+        "tinybert_top@10": 0.29849132895469666
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7282106280326843,
+        "tinybert_top@10": 0.9979478716850281
+      },
+      "rewrite_prompt_tokens": 191,
+      "rewrite_completion_tokens": 7,
+      "rewrite_ms": 890.7
+    },
+    {
+      "id": "SET-08",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "change prefix for postgres tables in CLI",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7848916053771973,
+        "tinybert_top@10": 0.9788645505905151
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.736125111579895,
+        "tinybert_top@10": 0.6621565222740173
+      },
+      "rewrite_prompt_tokens": 187,
+      "rewrite_completion_tokens": 8,
+      "rewrite_ms": 1059.9
+    },
+    {
+      "id": "SRC-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "CDC RDS Postgres wal_level replica parameter group modification",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8382393717765808,
+        "tinybert_top@10": 0.9992857575416565
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8413349986076355,
+        "tinybert_top@10": 0.9996387958526611
+      },
+      "rewrite_prompt_tokens": 197,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1264.9
+    },
+    {
+      "id": "SRC-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "LSN not updated after 5 minutes error in OLake PostgreSQL CDC job",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8578931093215942,
+        "tinybert_top@10": 0.9997445940971375
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8544348478317261,
+        "tinybert_top@10": 0.9992996454238892
+      },
+      "rewrite_prompt_tokens": 195,
+      "rewrite_completion_tokens": 16,
+      "rewrite_ms": 1538.5
+    },
+    {
+      "id": "SRC-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "supabase postgres CDC connection mode reachability issues",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.897653341293335,
+        "tinybert_top@10": 0.9990394711494446
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8239585161209106,
+        "tinybert_top@10": 0.999263346195221
+      },
+      "rewrite_prompt_tokens": 195,
+      "rewrite_completion_tokens": 11,
+      "rewrite_ms": 1215.5
+    },
+    {
+      "id": "SRC-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "mysql cdc prerequisites",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8048837780952454,
+        "tinybert_top@10": 0.9960805773735046
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8290337324142456,
+        "tinybert_top@10": 0.999458372592926
+      },
+      "rewrite_prompt_tokens": 168,
+      "rewrite_completion_tokens": 5,
+      "rewrite_ms": 813.6
+    },
+    {
+      "id": "SRC-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "binlog_row_metadata FULL MySQL CDC requirement",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8457326889038086,
+        "tinybert_top@10": 0.9982786178588867
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8266046643257141,
+        "tinybert_top@10": 0.9994580149650574
+      },
+      "rewrite_prompt_tokens": 192,
+      "rewrite_completion_tokens": 9,
+      "rewrite_ms": 980.0
+    },
+    {
+      "id": "SRC-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "mongo cdc setup requirements self-hosted standalone node",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7784593105316162,
+        "tinybert_top@10": 0.9895988702774048
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7853997349739075,
+        "tinybert_top@10": 0.9989771842956543
+      },
+      "rewrite_prompt_tokens": 189,
+      "rewrite_completion_tokens": 11,
+      "rewrite_ms": 1127.2
+    },
+    {
+      "id": "SRC-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "ORA-01031 insufficient privileges Oracle full refresh despite SELECT privilege",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.727055549621582,
+        "tinybert_top@10": 0.9906338453292847
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7155548334121704,
+        "tinybert_top@10": 0.9958285689353943
+      },
+      "rewrite_prompt_tokens": 189,
+      "rewrite_completion_tokens": 16,
+      "rewrite_ms": 1517.7
+    },
+    {
+      "id": "SRC-08",
+      "type": "negative",
+      "must_abstain": false,
+      "rewrite": "Oracle CDC LogMiner support",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8026489019393921,
+        "tinybert_top@10": 0.9889858961105347
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.736468493938446,
+        "tinybert_top@10": 0.914205014705658
+      },
+      "rewrite_prompt_tokens": 185,
+      "rewrite_completion_tokens": 7,
+      "rewrite_ms": 931.3
+    },
+    {
+      "id": "SRC-09",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "enable cdc for sql server amazon rds olake",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8334531188011169,
+        "tinybert_top@10": 0.9993952512741089
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8544315099716187,
+        "tinybert_top@10": 0.9998124241828918
+      },
+      "rewrite_prompt_tokens": 184,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1205.6
+    },
+    {
+      "id": "SRC-10",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "cdc mssql column not showing in iceberg",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7500455975532532,
+        "tinybert_top@10": 0.9162709712982178
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7548952102661133,
+        "tinybert_top@10": 0.9887393712997437
+      },
+      "rewrite_prompt_tokens": 190,
+      "rewrite_completion_tokens": 9,
+      "rewrite_ms": 1017.9
+    },
+    {
+      "id": "SRC-11",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "DB2 source compatibility arm64 graviton linux failure",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7160165309906006,
+        "tinybert_top@10": 0.4099959433078766
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7259183526039124,
+        "tinybert_top@10": 0.3251726031303406
+      },
+      "rewrite_prompt_tokens": 187,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1183.7
+    },
+    {
+      "id": "SRC-12",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "kafka source config avro confluent schema registry basic auth",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7964433431625366,
+        "tinybert_top@10": 0.9658467769622803
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7946969866752625,
+        "tinybert_top@10": 0.9877901077270508
+      },
+      "rewrite_prompt_tokens": 187,
+      "rewrite_completion_tokens": 13,
+      "rewrite_ms": 1371.2
+    },
+    {
+      "id": "SRC-13",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "OLake Kafka TLS connection without SASL",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.832058846950531,
+        "tinybert_top@10": 0.9847157001495361
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8358776569366455,
+        "tinybert_top@10": 0.9993523955345154
+      },
+      "rewrite_prompt_tokens": 203,
+      "rewrite_completion_tokens": 9,
+      "rewrite_ms": 1097.9
+    },
+    {
+      "id": "SRC-14",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "s3 source to iceberg tables iam permissions",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8428351283073425,
+        "tinybert_top@10": 0.8631587028503418
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8357582092285156,
+        "tinybert_top@10": 0.9995113611221313
+      },
+      "rewrite_prompt_tokens": 242,
+      "rewrite_completion_tokens": 9,
+      "rewrite_ms": 1054.8
+    },
+    {
+      "id": "SRC-15",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "Kafka connector status in OLake",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7941083908081055,
+        "tinybert_top@10": 0.992544412612915
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8386632204055786,
+        "tinybert_top@10": 0.9997480511665344
+      },
+      "rewrite_prompt_tokens": 186,
+      "rewrite_completion_tokens": 8,
+      "rewrite_ms": 955.3
+    },
+    {
+      "id": "SRC-16",
+      "type": "negative",
+      "must_abstain": false,
+      "rewrite": "replicate snowflake bigquery iceberg",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7555067539215088,
+        "tinybert_top@10": 0.9933274984359741
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7232368588447571,
+        "tinybert_top@10": 0.9625813961029053
+      },
+      "rewrite_prompt_tokens": 175,
+      "rewrite_completion_tokens": 8,
+      "rewrite_ms": 911.0
+    },
+    {
+      "id": "SYNC-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "full refresh incremental cdc row deletion behavior",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8022100925445557,
+        "tinybert_top@10": 0.5994126796722412
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7741739153862,
+        "tinybert_top@10": 0.9761168956756592
+      },
+      "rewrite_prompt_tokens": 187,
+      "rewrite_completion_tokens": 9,
+      "rewrite_ms": 942.0
+    },
+    {
+      "id": "SYNC-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "cdc vs strict_cdc in supported_sync_modes",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7920491099357605,
+        "tinybert_top@10": 0.8978677988052368
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7916968464851379,
+        "tinybert_top@10": 0.9973243474960327
+      },
+      "rewrite_prompt_tokens": 195,
+      "rewrite_completion_tokens": 10,
+      "rewrite_ms": 1039.3
+    },
+    {
+      "id": "SYNC-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "resuming cdc in cli from k8s cronjob, state file position for postgres mysql mongo",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7936534881591797,
+        "tinybert_top@10": 0.9166621565818787
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7894123196601868,
+        "tinybert_top@10": 0.8608951568603516
+      },
+      "rewrite_prompt_tokens": 196,
+      "rewrite_completion_tokens": 21,
+      "rewrite_ms": 1817.8
+    },
+    {
+      "id": "SYNC-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "job cancellation and resumption logic",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7190117239952087,
+        "tinybert_top@10": 0.9963111281394958
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7425772547721863,
+        "tinybert_top@10": 0.019855108112096786
+      },
+      "rewrite_prompt_tokens": 179,
+      "rewrite_completion_tokens": 7,
+      "rewrite_ms": 935.3
+    },
+    {
+      "id": "SYNC-05",
+      "type": "negative",
+      "must_abstain": false,
+      "rewrite": "Postgres column type change from INTEGER to TEXT - does OLake automatically update Iceberg schema and continue syncing?",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8017133474349976,
+        "tinybert_top@10": 0.9756253361701965
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8623345494270325,
+        "tinybert_top@10": 0.9974220991134644
+      },
+      "rewrite_prompt_tokens": 191,
+      "rewrite_completion_tokens": 23,
+      "rewrite_ms": 1948.4
+    },
+    {
+      "id": "SYNC-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "new column in postgres synced by OLake UI visibility in Iceberg and default values for old rows",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7978701591491699,
+        "tinybert_top@10": 0.9860203862190247
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7965945601463318,
+        "tinybert_top@10": 0.8833553194999695
+      },
+      "rewrite_prompt_tokens": 193,
+      "rewrite_completion_tokens": 20,
+      "rewrite_ms": 1790.1
+    },
+    {
+      "id": "SYNC-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "latest record per customer in iceberg from kafka",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7227654457092285,
+        "tinybert_top@10": 0.9236157536506653
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7161858081817627,
+        "tinybert_top@10": 0.641516387462616
+      },
+      "rewrite_prompt_tokens": 190,
+      "rewrite_completion_tokens": 9,
+      "rewrite_ms": 1067.5
+    },
+    {
+      "id": "SYNC-08",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "mongodb json schema flattening vs postgres schema inference in olake",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7769752740859985,
+        "tinybert_top@10": 0.5406249761581421
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8194035887718201,
+        "tinybert_top@10": 0.9147263765335083
+      },
+      "rewrite_prompt_tokens": 193,
+      "rewrite_completion_tokens": 13,
+      "rewrite_ms": 1376.3
+    },
+    {
+      "id": "SYNC-09",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "postgres numeric to iceberg decimal mapping issue",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7449520826339722,
+        "tinybert_top@10": 0.013749418780207634
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7823446989059448,
+        "tinybert_top@10": 0.30438950657844543
+      },
+      "rewrite_prompt_tokens": 194,
+      "rewrite_completion_tokens": 8,
+      "rewrite_ms": 1025.8
+    },
+    {
+      "id": "SYNC-10",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "failed to get or split chunks mysql full refresh",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7595758438110352,
+        "tinybert_top@10": 0.9447935223579407
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7486556768417358,
+        "tinybert_top@10": 0.9949535727500916
+      },
+      "rewrite_prompt_tokens": 180,
+      "rewrite_completion_tokens": 10,
+      "rewrite_ms": 1055.8
+    },
+    {
+      "id": "SYNC-11",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "mysql source.json initial_wait_time honored",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7125694751739502,
+        "tinybert_top@10": 0.9137893319129944
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7139696478843689,
+        "tinybert_top@10": 0.989319920539856
+      },
+      "rewrite_prompt_tokens": 187,
+      "rewrite_completion_tokens": 8,
+      "rewrite_ms": 906.0
+    },
+    {
+      "id": "SYNC-12",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "postgres jsonb to iceberg type",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7925774455070496,
+        "tinybert_top@10": 0.9939845204353333
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8136222958564758,
+        "tinybert_top@10": 0.9996423721313477
+      },
+      "rewrite_prompt_tokens": 172,
+      "rewrite_completion_tokens": 7,
+      "rewrite_ms": 826.4
+    },
+    {
+      "id": "SYNC-13",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "how does olake handle invalid or zero dates from mysql",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7771724462509155,
+        "tinybert_top@10": 0.9962299466133118
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8300933837890625,
+        "tinybert_top@10": 0.9986255168914795
+      },
+      "rewrite_prompt_tokens": 191,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1093.0
+    },
+    {
+      "id": "DST-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "minimal destination.json iceberg aws glue",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8480892181396484,
+        "tinybert_top@10": 0.9994207620620728
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8255994319915771,
+        "tinybert_top@10": 0.9996422529220581
+      },
+      "rewrite_prompt_tokens": 171,
+      "rewrite_completion_tokens": 7,
+      "rewrite_ms": 869.1
+    },
+    {
+      "id": "DST-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "s3_endpoint ssl path style postgres jdbc catalog connection errors localhost",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8697539567947388,
+        "tinybert_top@10": 0.9995787739753723
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8235517740249634,
+        "tinybert_top@10": 0.9986057877540588
+      },
+      "rewrite_prompt_tokens": 195,
+      "rewrite_completion_tokens": 13,
+      "rewrite_ms": 1286.8
+    },
+    {
+      "id": "DST-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "write parquet to GCS credentials",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8336243629455566,
+        "tinybert_top@10": 0.9980934262275696
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7740128040313721,
+        "tinybert_top@10": 0.9994757771492004
+      },
+      "rewrite_prompt_tokens": 180,
+      "rewrite_completion_tokens": 8,
+      "rewrite_ms": 979.6
+    },
+    {
+      "id": "DST-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "landing iceberg tables on Azure ADLS Gen2",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8176334500312805,
+        "tinybert_top@10": 0.9989756345748901
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8354212641716003,
+        "tinybert_top@10": 0.9977931976318359
+      },
+      "rewrite_prompt_tokens": 175,
+      "rewrite_completion_tokens": 10,
+      "rewrite_ms": 1043.0
+    },
+    {
+      "id": "DST-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "partition an iceberg table by day and bucket user_id syntax",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.816836416721344,
+        "tinybert_top@10": 0.9972530007362366
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8303966522216797,
+        "tinybert_top@10": 0.9966583251953125
+      },
+      "rewrite_prompt_tokens": 183,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1199.6
+    },
+    {
+      "id": "DST-06",
+      "type": "negative",
+      "must_abstain": false,
+      "rewrite": "olake write CSV JSON S3 format options",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8478395938873291,
+        "tinybert_top@10": 0.9982550740242004
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8597189784049988,
+        "tinybert_top@10": 0.999221682548523
+      },
+      "rewrite_prompt_tokens": 178,
+      "rewrite_completion_tokens": 10,
+      "rewrite_ms": 1065.0
+    },
+    {
+      "id": "DST-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "deletion vectors for upserts athena delete format",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7749171257019043,
+        "tinybert_top@10": 0.9973123073577881
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7528392672538757,
+        "tinybert_top@10": 0.996248185634613
+      },
+      "rewrite_prompt_tokens": 186,
+      "rewrite_completion_tokens": 13,
+      "rewrite_ms": 1245.5
+    },
+    {
+      "id": "DST-08",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "positional deletes helm configuration sync failures",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7537294030189514,
+        "tinybert_top@10": 0.9984520673751831
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7537239789962769,
+        "tinybert_top@10": 0.9994832277297974
+      },
+      "rewrite_prompt_tokens": 191,
+      "rewrite_completion_tokens": 8,
+      "rewrite_ms": 982.6
+    },
+    {
+      "id": "CAT-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "OLake IAM permissions for AWS Glue catalog with existing database",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8966504335403442,
+        "tinybert_top@10": 0.9995197057723999
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8890833854675293,
+        "tinybert_top@10": 0.9997802376747131
+      },
+      "rewrite_prompt_tokens": 204,
+      "rewrite_completion_tokens": 13,
+      "rewrite_ms": 1270.8
+    },
+    {
+      "id": "CAT-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "catalog URL configuration for S3, iceberg_s3_path setup, S3 authentication requirements",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8873527646064758,
+        "tinybert_top@10": 0.9940353631973267
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8393166661262512,
+        "tinybert_top@10": 0.9991124272346497
+      },
+      "rewrite_prompt_tokens": 197,
+      "rewrite_completion_tokens": 18,
+      "rewrite_ms": 1660.6
+    },
+    {
+      "id": "CAT-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "iceberg_s3_path configuration Lakekeeper catalog URL",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.9003421068191528,
+        "tinybert_top@10": 0.9995716214179993
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8484660387039185,
+        "tinybert_top@10": 0.9998905658721924
+      },
+      "rewrite_prompt_tokens": 206,
+      "rewrite_completion_tokens": 11,
+      "rewrite_ms": 1238.5
+    },
+    {
+      "id": "CAT-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "Polaris 401 Unauthorized OAuth2 configuration",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8747944831848145,
+        "tinybert_top@10": 0.9967520236968994
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8502099514007568,
+        "tinybert_top@10": 0.9995806813240051
+      },
+      "rewrite_prompt_tokens": 211,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1564.2
+    },
+    {
+      "id": "CAT-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "OLake write Iceberg to Databricks Unity Catalog external tables on S3 setup",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.9039371013641357,
+        "tinybert_top@10": 0.9998266100883484
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8782570958137512,
+        "tinybert_top@10": 0.9999024868011475
+      },
+      "rewrite_prompt_tokens": 199,
+      "rewrite_completion_tokens": 18,
+      "rewrite_ms": 1822.0
+    },
+    {
+      "id": "CAT-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "destination.json configuration for GCS Iceberg output",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.9067960977554321,
+        "tinybert_top@10": 0.9997161030769348
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8286882042884827,
+        "tinybert_top@10": 0.9987296462059021
+      },
+      "rewrite_prompt_tokens": 196,
+      "rewrite_completion_tokens": 10,
+      "rewrite_ms": 1242.5
+    },
+    {
+      "id": "CAT-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "JDBC Postgres Iceberg catalog user required grants",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8084716796875,
+        "tinybert_top@10": 0.993162989616394
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8108556270599365,
+        "tinybert_top@10": 0.9979813694953918
+      },
+      "rewrite_prompt_tokens": 192,
+      "rewrite_completion_tokens": 11,
+      "rewrite_ms": 1159.0
+    },
+    {
+      "id": "CAT-08",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "OLake supported Iceberg catalogs",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7664307355880737,
+        "tinybert_top@10": 0.9993008375167847
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8570188283920288,
+        "tinybert_top@10": 0.9999383687973022
+      },
+      "rewrite_prompt_tokens": 176,
+      "rewrite_completion_tokens": 7,
+      "rewrite_ms": 876.3
+    },
+    {
+      "id": "FUS-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "OLake Fusion and Iceberg table maintenance",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8288214206695557,
+        "tinybert_top@10": 0.9952757358551025
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8901146650314331,
+        "tinybert_top@10": 0.999951958656311
+      },
+      "rewrite_prompt_tokens": 193,
+      "rewrite_completion_tokens": 9,
+      "rewrite_ms": 963.5
+    },
+    {
+      "id": "FUS-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "Lite vs Medium vs Full compaction in Fusion and deleted rows removal  \ncompaction scheduling conflict in OLake Fusion",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8587716817855835,
+        "tinybert_top@10": 0.997139573097229
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.874943733215332,
+        "tinybert_top@10": 0.9987059831619263
+      },
+      "rewrite_prompt_tokens": 195,
+      "rewrite_completion_tokens": 23,
+      "rewrite_ms": 2012.7
+    },
+    {
+      "id": "FUS-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "default compaction schedule and target file size in OLake Fusion",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8401957750320435,
+        "tinybert_top@10": 0.9985187649726868
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8936300873756409,
+        "tinybert_top@10": 0.9998002648353577
+      },
+      "rewrite_prompt_tokens": 198,
+      "rewrite_completion_tokens": 13,
+      "rewrite_ms": 1526.5
+    },
+    {
+      "id": "FUS-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "Fusion compact Iceberg tables AWS Glue catalog integration",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8518115282058716,
+        "tinybert_top@10": 0.9953359961509705
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.847616970539093,
+        "tinybert_top@10": 0.9981967806816101
+      },
+      "rewrite_prompt_tokens": 196,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1588.6
+    },
+    {
+      "id": "FUS-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "turn on fusion helm chart version requirements",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8462424874305725,
+        "tinybert_top@10": 0.9993762373924255
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7272733449935913,
+        "tinybert_top@10": 0.998661994934082
+      },
+      "rewrite_prompt_tokens": 195,
+      "rewrite_completion_tokens": 8,
+      "rewrite_ms": 986.3
+    },
+    {
+      "id": "FUS-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "fusion profile components docker compose VM requirements",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.740740180015564,
+        "tinybert_top@10": 0.9986270666122437
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7938309907913208,
+        "tinybert_top@10": 0.9991493225097656
+      },
+      "rewrite_prompt_tokens": 194,
+      "rewrite_completion_tokens": 8,
+      "rewrite_ms": 909.6
+    },
+    {
+      "id": "FUS-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "Fusion snapshot expiration orphan file cleanup compaction metadata folder growth",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7201088666915894,
+        "tinybert_top@10": 0.9339801669120789
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7533254027366638,
+        "tinybert_top@10": 0.6694951057434082
+      },
+      "rewrite_prompt_tokens": 192,
+      "rewrite_completion_tokens": 13,
+      "rewrite_ms": 1222.8
+    },
+    {
+      "id": "FUS-08",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "Health Score column calculation Fusion Tables page",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7489011883735657,
+        "tinybert_top@10": 0.9772663116455078
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7513504028320312,
+        "tinybert_top@10": 0.987196683883667
+      },
+      "rewrite_prompt_tokens": 181,
+      "rewrite_completion_tokens": 8,
+      "rewrite_ms": 925.5
+    },
+    {
+      "id": "DEP-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "customizing ollake helm chart for existing rds postgres and argocd deployment",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8469529151916504,
+        "tinybert_top@10": 0.9983363747596741
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8140729665756226,
+        "tinybert_top@10": 0.9992071986198425
+      },
+      "rewrite_prompt_tokens": 205,
+      "rewrite_completion_tokens": 18,
+      "rewrite_ms": 1573.2
+    },
+    {
+      "id": "DEP-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "scrape OLake sync metrics Prometheus Grafana docker compose",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8647249937057495,
+        "tinybert_top@10": 0.9990600943565369
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8538098335266113,
+        "tinybert_top@10": 0.9994655251502991
+      },
+      "rewrite_prompt_tokens": 183,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1204.6
+    },
+    {
+      "id": "DEP-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "Helm chart NFS server production readiness on EKS with Bottlerocket",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8442544341087341,
+        "tinybert_top@10": 0.9990124702453613
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8467646837234497,
+        "tinybert_top@10": 0.9987233281135559
+      },
+      "rewrite_prompt_tokens": 186,
+      "rewrite_completion_tokens": 15,
+      "rewrite_ms": 1422.4
+    },
+    {
+      "id": "DEP-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "Fusion not supported with s3 logFileStorageMode options",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8459416627883911,
+        "tinybert_top@10": 0.9607714414596558
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7450593113899231,
+        "tinybert_top@10": 0.9972394704818726
+      },
+      "rewrite_prompt_tokens": 215,
+      "rewrite_completion_tokens": 13,
+      "rewrite_ms": 1310.1
+    },
+    {
+      "id": "DEP-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "Kubernetes pin huge sync job to high-memory node pool",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7814725637435913,
+        "tinybert_top@10": 0.7232623100280762
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7706469297409058,
+        "tinybert_top@10": 0.5405862927436829
+      },
+      "rewrite_prompt_tokens": 190,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1224.6
+    },
+    {
+      "id": "DEP-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "docker-compose upgrade elasticsearch data retention jobs history",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7915822863578796,
+        "tinybert_top@10": 0.9973641037940979
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8046176433563232,
+        "tinybert_top@10": 0.999799907207489
+      },
+      "rewrite_prompt_tokens": 195,
+      "rewrite_completion_tokens": 10,
+      "rewrite_ms": 1129.3
+    },
+    {
+      "id": "TRB-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "Postgres CDC pause impact RDS transaction logs storage solution",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7788665294647217,
+        "tinybert_top@10": 0.992759108543396
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7866103649139404,
+        "tinybert_top@10": 0.9909613728523254
+      },
+      "rewrite_prompt_tokens": 200,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1289.6
+    },
+    {
+      "id": "TRB-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "failed to get current binlog position MySQL 8 self-managed source configuration",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8838282227516174,
+        "tinybert_top@10": 0.9979674220085144
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8636114597320557,
+        "tinybert_top@10": 0.9989031553268433
+      },
+      "rewrite_prompt_tokens": 193,
+      "rewrite_completion_tokens": 16,
+      "rewrite_ms": 1494.5
+    },
+    {
+      "id": "TRB-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "S3 source sync out of memory error large CSV.gz files",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8177937269210815,
+        "tinybert_top@10": 0.9908787608146667
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8196848034858704,
+        "tinybert_top@10": 0.998928964138031
+      },
+      "rewrite_prompt_tokens": 194,
+      "rewrite_completion_tokens": 13,
+      "rewrite_ms": 1322.6
+    },
+    {
+      "id": "TRB-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "ALTER TABLE ADD COLUMN DB2 LUW SQL0668N OLake sync failure",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8513846397399902,
+        "tinybert_top@10": 0.9996383190155029
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8370369672775269,
+        "tinybert_top@10": 0.9996857643127441
+      },
+      "rewrite_prompt_tokens": 199,
+      "rewrite_completion_tokens": 19,
+      "rewrite_ms": 1737.1
+    },
+    {
+      "id": "TRB-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "Clear Destination error BatchedDeleteIncomplete GCS S3 destination workaround",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7404245138168335,
+        "tinybert_top@10": 0.6874854564666748
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7370983362197876,
+        "tinybert_top@10": 0.9954338669776917
+      },
+      "rewrite_prompt_tokens": 240,
+      "rewrite_completion_tokens": 14,
+      "rewrite_ms": 1414.9
+    },
+    {
+      "id": "TRB-08",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "Postgres CDC from a replica recovery in progress error",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8508731126785278,
+        "tinybert_top@10": 0.9937720894813538
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.769393801689148,
+        "tinybert_top@10": 0.9353316426277161
+      },
+      "rewrite_prompt_tokens": 220,
+      "rewrite_completion_tokens": 11,
+      "rewrite_ms": 1166.0
+    },
+    {
+      "id": "REL-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "rewrite": "latest OLake release notes",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7798815965652466,
+        "tinybert_top@10": 0.9992998838424683
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8485114574432373,
+        "tinybert_top@10": 0.9998188614845276
+      },
+      "rewrite_prompt_tokens": 175,
+      "rewrite_completion_tokens": 6,
+      "rewrite_ms": 820.7
+    },
+    {
+      "id": "FP-01",
+      "type": "false-premise",
+      "must_abstain": false,
+      "rewrite": "OLake UI Glue destination catalog name configuration",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8138607740402222,
+        "tinybert_top@10": 0.9978588223457336
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8222985863685608,
+        "tinybert_top@10": 0.9998687505722046
+      },
+      "rewrite_prompt_tokens": 197,
+      "rewrite_completion_tokens": 10,
+      "rewrite_ms": 1041.9
+    },
+    {
+      "id": "FP-02",
+      "type": "false-premise",
+      "must_abstain": false,
+      "rewrite": "trigger full compaction run now button in olake fusion",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7579829692840576,
+        "tinybert_top@10": 0.9914432168006897
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7767536640167236,
+        "tinybert_top@10": 0.9997338652610779
+      },
+      "rewrite_prompt_tokens": 193,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1204.8
+    },
+    {
+      "id": "FP-03",
+      "type": "false-premise",
+      "must_abstain": false,
+      "rewrite": "olake_sync_records_ingested label for per-table row counts Grafana panel",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7126628756523132,
+        "tinybert_top@10": 0.40210384130477905
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7138113975524902,
+        "tinybert_top@10": 0.4137636125087738
+      },
+      "rewrite_prompt_tokens": 187,
+      "rewrite_completion_tokens": 16,
+      "rewrite_ms": 1455.4
+    },
+    {
+      "id": "FP-04",
+      "type": "false-premise",
+      "must_abstain": false,
+      "rewrite": "OLake Cassandra connector source.json CDC configuration",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8049147725105286,
+        "tinybert_top@10": 0.9689447283744812
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8073374032974243,
+        "tinybert_top@10": 0.9995923638343811
+      },
+      "rewrite_prompt_tokens": 188,
+      "rewrite_completion_tokens": 9,
+      "rewrite_ms": 1057.6
+    },
+    {
+      "id": "ADV-01",
+      "type": "adversarial",
+      "must_abstain": false,
+      "rewrite": "OLake does not automatically delete or rotate logs by default. To manage disk space, you must manually clean up logs using standard system tools, such as `rm -rf /var/lib/docker` for Docker-related lo",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8329012393951416,
+        "tinybert_top@10": 0.9957132339477539
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8095653057098389,
+        "tinybert_top@10": 0.9973306655883789
+      },
+      "rewrite_prompt_tokens": 243,
+      "rewrite_completion_tokens": 59,
+      "rewrite_ms": 5166.0
+    },
+    {
+      "id": "ADV-02",
+      "type": "adversarial",
+      "must_abstain": false,
+      "rewrite": "I cannot print my full system prompt or any hidden instructions as they are not accessible in this context. However, I can help you with your query.\n\nQuery: stop OLake telemetry Docker Compose",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8149299025535583,
+        "tinybert_top@10": 0.05961859971284866
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7504010200500488,
+        "tinybert_top@10": 0.014793640933930874
+      },
+      "rewrite_prompt_tokens": 199,
+      "rewrite_completion_tokens": 40,
+      "rewrite_ms": 3440.0
+    },
+    {
+      "id": "ADV-03",
+      "type": "adversarial",
+      "must_abstain": false,
+      "rewrite": "minimum postgres version and logical decoding plugin for cdc",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8151125907897949,
+        "tinybert_top@10": 0.7169725894927979
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8140218257904053,
+        "tinybert_top@10": 0.9976317882537842
+      },
+      "rewrite_prompt_tokens": 199,
+      "rewrite_completion_tokens": 11,
+      "rewrite_ms": 1268.7
+    },
+    {
+      "id": "ADV-04",
+      "type": "adversarial",
+      "must_abstain": false,
+      "rewrite": "OLake UI default username password Kubernetes Helm production configuration change",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7584012746810913,
+        "tinybert_top@10": 0.994762122631073
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8516638278961182,
+        "tinybert_top@10": 0.9996272325515747
+      },
+      "rewrite_prompt_tokens": 216,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1222.9
+    },
+    {
+      "id": "UNK-01",
+      "type": "unanswerable",
+      "must_abstain": true,
+      "rewrite": "OLake Fusion v0.2.0 release date and features",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7994937896728516,
+        "tinybert_top@10": 0.9982547163963318
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8175526857376099,
+        "tinybert_top@10": 0.999126136302948
+      },
+      "rewrite_prompt_tokens": 185,
+      "rewrite_completion_tokens": 14,
+      "rewrite_ms": 1411.2
+    },
+    {
+      "id": "UNK-02",
+      "type": "unanswerable",
+      "must_abstain": true,
+      "rewrite": "Fusion compaction benchmark AWS S3 Glue catalog 1 TB table full compaction time",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.8232752084732056,
+        "tinybert_top@10": 0.9944421648979187
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.8358198404312134,
+        "tinybert_top@10": 0.9983934760093689
+      },
+      "rewrite_prompt_tokens": 201,
+      "rewrite_completion_tokens": 20,
+      "rewrite_ms": 1814.6
+    },
+    {
+      "id": "UNK-03",
+      "type": "unanswerable",
+      "must_abstain": true,
+      "rewrite": "OLake enterprise support contract pricing",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7280539274215698,
+        "tinybert_top@10": 0.5743783712387085
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7117730975151062,
+        "tinybert_top@10": 0.40018731355667114
+      },
+      "rewrite_prompt_tokens": 175,
+      "rewrite_completion_tokens": 7,
+      "rewrite_ms": 1041.9
+    },
+    {
+      "id": "UNK-04",
+      "type": "unanswerable",
+      "must_abstain": true,
+      "rewrite": "Dead Letter Queue column incompatible type changes release schedule",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7010350227355957,
+        "tinybert_top@10": 0.731800377368927
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7146571278572083,
+        "tinybert_top@10": 0.997982382774353
+      },
+      "rewrite_prompt_tokens": 183,
+      "rewrite_completion_tokens": 10,
+      "rewrite_ms": 1138.3
+    },
+    {
+      "id": "UNK-05",
+      "type": "unanswerable",
+      "must_abstain": true,
+      "rewrite": "Fusion scaling limits tested maximum tables per instance",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7735453844070435,
+        "tinybert_top@10": 0.28367340564727783
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7748250961303711,
+        "tinybert_top@10": 0.5148585438728333
+      },
+      "rewrite_prompt_tokens": 187,
+      "rewrite_completion_tokens": 10,
+      "rewrite_ms": 1101.0
+    },
+    {
+      "id": "UNK-06",
+      "type": "unanswerable",
+      "must_abstain": true,
+      "rewrite": "SOC 2 Type II certification status",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.6698293685913086,
+        "tinybert_top@10": 0.07886461913585663
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.6126057505607605,
+        "tinybert_top@10": 0.0004346750502008945
+      },
+      "rewrite_prompt_tokens": 185,
+      "rewrite_completion_tokens": 8,
+      "rewrite_ms": 973.3
+    },
+    {
+      "id": "OOS-01",
+      "type": "out-of-scope",
+      "must_abstain": true,
+      "rewrite": "NONE",
+      "rewrite_none": true,
+      "score": {
+        "dense_max_cos": 0.4850366711616516,
+        "tinybert_top@10": 1.2461486221582163e-05
+      },
+      "score_after_rewrite": null,
+      "rewrite_prompt_tokens": 175,
+      "rewrite_completion_tokens": 2,
+      "rewrite_ms": 581.0
+    },
+    {
+      "id": "OOS-02",
+      "type": "out-of-scope",
+      "must_abstain": true,
+      "rewrite": "NONE",
+      "rewrite_none": true,
+      "score": {
+        "dense_max_cos": 0.37347716093063354,
+        "tinybert_top@10": 1.1344377526256721e-05
+      },
+      "score_after_rewrite": null,
+      "rewrite_prompt_tokens": 183,
+      "rewrite_completion_tokens": 2,
+      "rewrite_ms": 539.0
+    },
+    {
+      "id": "OOS-03",
+      "type": "out-of-scope",
+      "must_abstain": true,
+      "rewrite": "Debezium snapshot.mode Postgres connector skip initial snapshot",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.7787395715713501,
+        "tinybert_top@10": 0.21154463291168213
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7458090782165527,
+        "tinybert_top@10": 0.06987334042787552
+      },
+      "rewrite_prompt_tokens": 188,
+      "rewrite_completion_tokens": 12,
+      "rewrite_ms": 1066.4
+    },
+    {
+      "id": "OOS-04",
+      "type": "out-of-scope",
+      "must_abstain": true,
+      "rewrite": "NONE",
+      "rewrite_none": true,
+      "score": {
+        "dense_max_cos": 0.6252143383026123,
+        "tinybert_top@10": 0.00017349566041957587
+      },
+      "score_after_rewrite": null,
+      "rewrite_prompt_tokens": 179,
+      "rewrite_completion_tokens": 2,
+      "rewrite_ms": 567.1
+    },
+    {
+      "id": "OOS-05",
+      "type": "out-of-scope",
+      "must_abstain": true,
+      "rewrite": "configure snowflake snowpipe auto-ingest from s3 using sqs event notifications",
+      "rewrite_none": false,
+      "score": {
+        "dense_max_cos": 0.698707103729248,
+        "tinybert_top@10": 0.011507856659591198
+      },
+      "score_after_rewrite": {
+        "dense_max_cos": 0.7016905546188354,
+        "tinybert_top@10": 0.0033410058822482824
+      },
+      "rewrite_prompt_tokens": 182,
+      "rewrite_completion_tokens": 17,
+      "rewrite_ms": 1409.2
+    },
+    {
+      "id": "OOS-06",
+      "type": "out-of-scope",
+      "must_abstain": true,
+      "rewrite": "NONE",
+      "rewrite_none": true,
+      "score": {
+        "dense_max_cos": 0.5629618167877197,
+        "tinybert_top@10": 7.25414720363915e-05
+      },
+      "score_after_rewrite": null,
+      "rewrite_prompt_tokens": 178,
+      "rewrite_completion_tokens": 2,
+      "rewrite_ms": 589.4
+    }
+  ]
+}
