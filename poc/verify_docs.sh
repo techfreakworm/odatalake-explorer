@@ -742,6 +742,12 @@ if [ -s "$EC3" ]; then
   num $PLAN "plan: round-2 numbers" '.[0] | .by_type.answerable.source_hit, .summary.false_abstain_rate_answerable, .summary.abstain_recall_unanswerable_out_of_scope' $EC3
 fi
 
+# gate-rewrite-v2-subset.json (the hardened rewrite prompt on the gate-fired and adversarial rows)
+GV2=$RES/gate-rewrite-v2-subset.json
+if [ -s "$GV2" ]; then
+  num $D "hardened rewrite subset size" -c 'gate-fired|hardened' '.[0].per_question | length' $GV2
+fi
+
 # freshness.json
 num $D "freshness probes" -c 'ms|per hour' '.[0] | .docs_page.if_none_match.ms, ([.git_ls_remote[].ms] | min), ([.git_ls_remote[].ms] | max), .github_unauthenticated.rate_before.limit, .github_authenticated.rate_before.limit' $F
 num $D "lastmod redesign commit" -c 'redesign' '.[0].observations | .docs_pages_by_sitemap_lastmod["2026-10-06"], (.docs_pages_by_http_last_modified | add)' $F
