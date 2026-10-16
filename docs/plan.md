@@ -147,7 +147,7 @@ Adversarial rows with `—` decline. Details: [eval-questions.md](eval-questions
 `bm25`), `RERANK` (`off` in v1, or `tinybert`: FlashRank TinyBERT over the fused top 20, switched on at 12:30 only if it measures better), `GATE_SIGNAL` (`dense`; `off` disables the gate), `ABSTAIN_THRESHOLD` (the off-topic
 short-circuit threshold, starting at 0.69), `CANARY` (16 hex characters, new on every deploy), `SOURCE_URL_STYLE` (`branch` or `sha`, for repo sources; kickoff question K3
 decides), `BLOG` (`off`; decision D4, decided by data), `GITHUB_TOKEN` (optional; makes conditional GitHub requests free),
-`ONNX_THREADS` (the vCPU count), `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `RATE_LIMIT_BURST`, `DAILY_TOKEN_BUDGET`, `PUBLIC_BASE_URL`, `REFRESH_INTERVAL_MIN`
+`ONNX_THREADS` (the vCPU count), `MAX_TOKENS` (600, on every LLM call), `LLM_TIMEOUT_S` (25, per call), `QUEUE_WAIT_S` (20, the bounded wait for a slot), `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `RATE_LIMIT_BURST`, `DAILY_TOKEN_BUDGET`, `PUBLIC_BASE_URL`, `REFRESH_INTERVAL_MIN`
 (`0` = off), `LOG_LEVEL`.
 
 ### 0.3 Event repo layout and ownership
@@ -385,7 +385,7 @@ The lead spawns the teammates at 10:35, so A, B and C start at 10:40. "msg" mean
 | 10:35 | | | | `export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1; claude --permission-mode auto`, then paste the lead prompt (4.1) |
 | 10:40 | Sitemap to URL list (`/docs/` including `/docs/release/`; `/blog/` skipped while BLOG=off) | Stub server: every I2 endpoint with canned data in the exact shapes | `embed.html`/`embed.js` chat shell against a mocked stream | Lead: Dockerfile plus `deploy/deploy.sh`, then deploy the stub app (D1) |
 | 10:50 | Fetch the rendered HTML at concurrency 4 and cache it | Stub done: msg `widget` and the lead with the run command | Switch to B's stub at `http://localhost:8000` | Stub live at `$URL`: curl `/healthz` and `/ask` from the phone |
-| 11:00 | HTML to Markdown: article body only, keeping heading anchors, code fences, tables and admonitions | LLM client: the openai SDK over the ordered provider chain, with a 25 s timeout, max_retries 1, and failover before the first byte | `widget.js` loader: launcher button, iframe panel, Esc to close | Eval runner `eval/run.py`: parse the table and run the deterministic checks (D2) |
+| 11:00 | HTML to Markdown: article body only, keeping heading anchors, code fences, tables and admonitions | LLM client: the openai SDK over the ordered provider chain, with a 25 s timeout, max_retries 1, max_tokens 600, and failover before the first byte | `widget.js` loader: launcher button, iframe panel, Esc to close | Eval runner `eval/run.py`: parse the table and run the deterministic checks (D2) |
 | 11:10 | Repo allowlist: shallow clones, record SHA and branch | Fallback-A pipeline: BM25 top 10, numbered context, grounded prompt, parse `[n]`, renumber, `sources` | Safe Markdown rendering (escape first), clickable `[n]`, source cards | Run the eval runner against the stub (it should run, and every row should fail) |
 | 11:20 | Chunker (POC rules), embeddings, manifest, write `CURRENT`. msg `api`: "index v1 ready" | Load the real index from `CURRENT`. First real `/ask` | Loading, error and empty states; feedback thumbs | Get the checkpoint commands ready |
 | **11:30** | **Checkpoint 1** (section 5) | | | |
@@ -544,8 +544,15 @@ STEPS (in order; each step leaves a working server)
 1. By 10:50, a stub: every I2 endpoint with canned data in the exact shapes, including the SSE event sequence.
    uv run uvicorn app.main:app --port 8000. Then message widget and the lead.
 2. app/llm.py: the openai SDK, called over an ordered chain of (base_url, model, key): LLM_*, then LLM_FALLBACK_*, then
-   LLM_FALLBACK2_* (each optional). For each client, timeout=25 s and max_retries=1; the SDK defaults are a 10-minute
-   timeout and 2 retries. On 429, 5xx or a timeout, fail over to the next provider BEFORE the first streamed byte.
+   LLM_FALLBACK2_* (each optional). For each client, timeout=LLM_TIMEOUT_S (25 s) and max_retries=1; the SDK defaults are
+   a 10-minute timeout and 2 retries. Keep the server's timeouts shorter than any client's: the whole /ask is bounded at
+   about 30 s (asyncio.timeout around the pipeline, the queue wait included), after which it returns the degraded answer
+   from step 10; if kickoff question K2 reports a scorer timeout under 30 s, set the bound below it. On 429, 5xx
+   or a timeout, fail over to the next provider BEFORE the first streamed byte, within that bound. ALWAYS pass
+   max_tokens=MAX_TOKENS (600; the POC's answers averaged 72 completion tokens, poc/results/answer.json). In the POC, one
+   uncapped request in JSON mode ran past 6,000 tokens, held the only LLM slot and cascaded timeouts through the queue
+   (poc/README.md, "Runaway generation"). When finish_reason is "length", log max_tokens_truncated and keep only the
+   validated, cited part of the answer.
    Pass reasoning_effort=LLM_REASONING_EFFORT only when it is set (the lowest value the model supports). Never depend on
    response_format: parse the text defensively, because some providers ignore it.
 3. Fallback A: bm25s over chunk text, top 10 (max 3 per page), a numbered context "[n] <title> (<doc_url>)\n<text>", the system prompt
@@ -596,22 +603,27 @@ STEPS (in order; each step leaves a working server)
    gate score, prompt_leak_blocked, top-5 doc_urls, provider used); the Server-Timing header;
    debug headers on every /ask response, as the POC does (poc/api/app.py): X-Ask-Reason (the abstain_reason, or
    "answered") and X-Ask-Gate-Score (the dense gate score), while the JSON body stays
-   exactly {answer, sources}; a global asyncio.Semaphore(MAX_CONCURRENCY) that
-   queues rather than rejects; a per-client token bucket refilling at RATE_LIMIT_PER_MIN, with burst capacity
+   exactly {answer, sources}; a global asyncio.Semaphore(MAX_CONCURRENCY) with a BOUNDED wait (QUEUE_WAIT_S, 20 s;
+   asyncio.timeout around acquire), never an unbounded queue: when the wait expires, return the degraded answer from step
+   10 with status 200, never a 503 or 429; a per-client token bucket refilling at RATE_LIMIT_PER_MIN, with burst capacity
    RATE_LIMIT_BURST above the test-set size, so one scorer IP bursting every question never sees 429; a daily token budget
    (DAILY_TOKEN_BUDGET). Once the budget is spent, /ask returns the graceful degraded answer from step 10 (the most
    relevant pages, with sources set) with status 200, never a 429 or 5xx. And CORS * without credentials, max_age 86400,
    exposing x-request-id.
 9. Serve web/: /widget.js -> web/widget.js, /embed -> web/embed.html (HTTP header Content-Security-Policy:
    frame-ancestors *; a <meta> tag cannot carry frame-ancestors), / -> web/demo/index.html, /static -> web/.
-10. Graceful degradation: if the LLM fails after retry and fallback, return 200 with "I couldn't generate an answer right
-    now. These pages are the most relevant:" plus a list of the top 3 pages, and sources = those pages.
-11. Local only (DEBUG=1): POST /debug/retrieve returns the ranked doc_urls with their scores. The eval runner's
+10. Graceful degradation: if the LLM fails after retry and fallback, the 30 s /ask bound expires, or the queue wait
+    (QUEUE_WAIT_S) expires, return 200 with "I couldn't generate an answer right now. These pages are the most
+    relevant:" plus a list of the top 3 pages, and sources = those pages. Log the reason (llm_failed, ask_timeout,
+    queue_timeout).
+11. Local only (DEBUG=1): POST /debug/retrieve returns the ranked doc_urls with their scores, after the rerank when
+    RERANK=tinybert, and the gate score. The eval runner's
     --retrieval-only mode and the triage workflow depend on it.
 12. Stretch (first to cut): if the question is not in English, have the LLM translate it to English for retrieval,
     then answer in the user's language with the same citations.
 
 PITFALLS
+- Cap every generation with max_tokens. One runaway answer holds a slot and every queued request behind it times out.
 - Query embedding is CPU-bound. Never call it directly inside an async def handler: use plain def handlers or
   run_in_threadpool, or every request stalls.
 - /ask returns exactly {"answer", "sources"}. Never add fields. Debug data goes in logs and headers.
@@ -804,12 +816,14 @@ D2 (11:00-11:30) eval/run.py, following the "Scoring method" section of eval/que
    mention on <br> (never on ';'). '—' means none. Score by Type as eval/questions.md says: adversarial rows WITH
    sources are answer rows (plus a judge check); a Must-mention item starting "BEHAVIOR:" goes to the judge only, never to
    string matching; a "Script:" hint inside it may become a deterministic check (e.g. sources non-empty).
-   Flags: --ids, --types, --limit, --concurrency (default 4), --out. Print a summary by Type and Category, plus p50/p95.
+   Flags: --ids, --types, --limit, --concurrency (default 4), --timeout (default 60 s, above the server's 30 s bound),
+   --out. Print a summary by Type and Category, plus p50/p95.
    Exit code 1 on any contract failure. If CANARY is set (export CANARY=$(cat .canary)), any answer that contains it
    fails, on every row. Record the X-Ask-* headers per row and print a gate-calibration line: the lowest
    X-Ask-Gate-Score among the must-answer rows minus 0.02 (the new ABSTAIN_THRESHOLD), and how many must-abstain rows
    score below it. Add --retrieval-only: against a local server with DEBUG=1, call POST /debug/retrieve
-   for the 82 rows that have sources and report hit@1/5/10 and MRR, with no LLM. This is the fast loop for retrieval changes;
+   for the 82 rows that have sources and report hit@1/5/10 and MRR, overall and per category, with no LLM. It writes each
+   row's first-hit rank to --out, and --compare <an earlier --out file> prints the rows that leave or enter the top 10. This is the fast loop for retrieval changes;
    the POC's equivalent took under 4 minutes for 94 questions and 13 configs. End-to-end runs need the hosted provider.
    For the judge (JUDGE_* env), use the strongest model available: the POC's local judge flipped 2 of 14 verdicts between
    thinking on and off. Prefer a different model family than the generator (judges favour their own outputs), at
@@ -902,7 +916,7 @@ Go/no-go:
 | 2.4 | The widget loads from `$URL` on the demo page and on a foreign-origin page | Manual check in the browser |
 | 2.5 | Off-topic gate calibration, then check: set `ABSTAIN_THRESHOLD` to the lowest gate score of a must-answer row in the 2.2 run minus 0.02, write it to CLAUDE.md and the env, and redeploy. Then the gate short-circuits no must-answer eval row (0 false abstains from the gate) and still catches the clearly off-topic rows | The eval runner's gate-calibration line from the 2.2 run. After the redeploy, rerun the eval: no must-answer row may come back with `X-Ask-Reason: retrieval_gate` |
 | 2.6 | Day-of checks 4-5 on the deployed URL: the preflight from the olake.io origin, SSE chunk timing, and a 50-request burst with no 429 or 5xx | The commands under "Day-of checks 4-5" in section 2 |
-| 2.7 | Optional rerank upgrade (decision R′): switch to `RERANK=tinybert` only if the retrieval-only bench on our index shows MRR@10 up by at least 0.02 and no hit@10 loss; otherwise keep `RERANK=off` | Two runs of `uv run python -m eval.run --base-url http://localhost:8000 --retrieval-only` against a local server with `DEBUG=1`, first with `RERANK=off`, then with `RERANK=tinybert` |
+| 2.7 | Optional rerank upgrade (decision R′): switch to `RERANK=tinybert` only if the retrieval-only bench on our index shows MRR@10 up by at least 0.02 and no hit@10 loss; otherwise keep `RERANK=off`. Rationale: on the POC's corpus v2 the gain was concentrated in troubleshooting and catalogs, while destinations and sync-modes dropped and two rows left the top 10 (research.md §4.3). So read the per-category lines and the rows that leave the top 10 before switching | Two runs of `uv run python -m eval.run --base-url http://localhost:8000 --retrieval-only` against a local server with `DEBUG=1`: first with `RERANK=off` and `--out eval/results/rr-off.json`, then with `RERANK=tinybert` and `--compare eval/results/rr-off.json` |
 
 Go/no-go:
 - 2.1 fails: switch to the fallback host now (section 11). No more debugging the primary.
@@ -1246,7 +1260,8 @@ LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_REASONING_EFFORT, LLM_FALLBACK_BASE_UR
 LLM_FALLBACK_MODEL, LLM_FALLBACK2_BASE_URL, LLM_FALLBACK2_API_KEY, LLM_FALLBACK2_MODEL (ordered chain), INDEX_DIR,
 EMBED_MODEL, RETRIEVAL_MODE (hybrid|bm25), RERANK (off|tinybert), GATE_SIGNAL (dense|off), ABSTAIN_THRESHOLD
 (off-topic short-circuit), CANARY (per-deploy prompt-leak marker), SOURCE_URL_STYLE (branch|sha), BLOG (off|on), GITHUB_TOKEN (optional),
-ONNX_THREADS, MAX_CONCURRENCY, RATE_LIMIT_PER_MIN, RATE_LIMIT_BURST, DAILY_TOKEN_BUDGET, PUBLIC_BASE_URL, REFRESH_INTERVAL_MIN (0 = off),
+ONNX_THREADS, MAX_TOKENS (600), LLM_TIMEOUT_S (25), QUEUE_WAIT_S (20), MAX_CONCURRENCY, RATE_LIMIT_PER_MIN, RATE_LIMIT_BURST,
+DAILY_TOKEN_BUDGET, PUBLIC_BASE_URL, REFRESH_INTERVAL_MIN (0 = off),
 LOG_LEVEL, DEBUG (local only)
 ~~~~
 
@@ -1335,6 +1350,11 @@ GITHUB_TOKEN=
 # Serving
 # Cap onnxruntime threads at the vCPU count (default sessions use every core)
 ONNX_THREADS=1
+# Generation cap on every LLM call, the per-call timeout (seconds, shorter than any client's; /ask is bounded at about
+# 30 s) and the bounded wait for a concurrency slot (seconds; on expiry /ask returns the degraded 200 answer)
+MAX_TOKENS=600
+LLM_TIMEOUT_S=25
+QUEUE_WAIT_S=20
 MAX_CONCURRENCY=8
 RATE_LIMIT_PER_MIN=120
 RATE_LIMIT_BURST=200

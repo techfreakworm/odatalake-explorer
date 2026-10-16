@@ -396,6 +396,28 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   header and the first lines of each chunk. FlashRank truncates the query and passage to `max_length`, which the POC set to
   512 (`poc/retrieval/index.py`), so truncation alone would clip only the longest chunks.
 
+  **By category** (same file, `by_category`; MRR@10 / hit@10):
+
+  | Category (rows) | No rerank | + TinyBERT, top 20 |
+  |---|---|---|
+  | catalogs (9) | 0.826 / 1.000 | 1.000 / 1.000 |
+  | deployment (10) | 0.850 / 0.900 | 0.850 / 0.900 |
+  | destinations (8) | 0.828 / 1.000 | 0.688 / 0.875 |
+  | freshness (1) | 0.500 / 1.000 | 0.333 / 1.000 |
+  | setup (8) | 0.750 / 1.000 | 0.812 / 1.000 |
+  | source-config (18) | 0.738 / 0.944 | 0.789 / 0.889 |
+  | sync-modes (13) | 0.674 / 0.846 | 0.598 / 0.923 |
+  | table-maintenance (9) | 0.701 / 1.000 | 0.752 / 1.000 |
+  | troubleshooting (6) | 0.597 / 0.833 | 0.875 / 1.000 |
+
+  - Without a reranker, troubleshooting (0.597) and sync-modes (0.674) are the weakest categories.
+  - TinyBERT's gain is concentrated in troubleshooting and catalogs. It lowers destinations and sync-modes MRR, and
+    behind the unchanged overall hit@10, two rows leave the top 10 (SRC-09 from rank 2, DST-06 from rank 8) while two
+    enter (SYNC-12 at rank 5, TRB-02 at rank 1). 11 rows gain rank 1 and 7 lose it (`first_hit_rank`).
+  - Fusion is covered: all 8 FUS rows have an expected source in the top 10, 7 of them at rank 1 or 2 (FUS-04 at 9).
+  - Corpus v2 against v1 (`first_hit_rank` in `poc/results/retrieval-canonical.json` and `poc/results/retrieval-v2.json`):
+    REL-01 moves from rank 8 to 2, because the GitHub release notes are now indexed, and FUS-07 from rank 5 to 1.
+
   **Decision D4, by data: the blog is off.** At full weight the blog chunks dropped MRR@10 to 0.630; at a 0.5 rank weight
   they were neutral (0.743 vs 0.744). With no upside on the eval set and a staleness risk, `BLOG=off`. The blog stays a
   documented opt-in at the 0.5 penalty, for conceptual "why Iceberg" questions only.
@@ -500,7 +522,8 @@ POC result files named below.
 - **Free tiers will throttle a scorer burst.** Groq's free plan allows 8K TPM, about 2 requests per minute at 4k tokens
   ([Groq rate limits][groq-rl]). A Cerebras trial allows 5 RPM, and Gemma on the Gemini free tier about 15 RPM
   ([stack report][r-stack]).
-- **Decision.** Use an ordered fallback chain of (base URL, model, key), behind a global semaphore that queues. The order is
+- **Decision.** Use an ordered fallback chain of (base URL, model, key), behind a global semaphore with a bounded wait
+  (§5.7). The order is
   always:
   1. the event credits;
   2. the operator's paid personal key with at least 100 RPM: OpenAI gpt-6-luna, a Groq developer key, or a prepaid
@@ -535,7 +558,7 @@ Gemini 3.8 Flash $0.00450, Gemma on the Gemini free tier $0 ([stack report][r-st
 
 **Client rules** (decided):
 - Use the `openai` SDK (a 2.2 MB wheel, against 38.8 MB for LiteLLM) with `timeout` about 25 s and `max_retries` 1. The
-  SDK's defaults are a 10-minute timeout and 2 retries ([SDK README][openai-readme]).
+  SDK's defaults are a 10-minute timeout and 2 retries ([SDK README][openai-readme]). Always pass `max_tokens` (600; §5.7).
 - Fail over to the next provider before the first streamed byte.
 - Never depend on `response_format`; parse defensively. Anthropic's compatibility layer ignores it
   ([Anthropic OpenAI SDK compatibility][claude-compat]), DigitalOcean does not document it
@@ -686,9 +709,16 @@ ordinary page the same widget worked across origins, and a second request reused
   control OWASP LLM01 lists among its mitigations [[lit-owasp]]. It serves ADV-02, which asks for the system prompt
   verbatim.
 - **Limits**: a per-client token bucket (the stack research suggests 60-120 per minute) with its burst capacity above the
-  test-set size, because the scorer will probably send a burst from one IP; a global semaphore that queues; and a daily
+  test-set size, because the scorer will probably send a burst from one IP; a global semaphore with a bounded wait
+  (`QUEUE_WAIT_S`, about 20 s), after which `/ask` returns the degraded 200 answer, never a 503 or 429; and a daily
   token budget. Once the budget is spent, `/ask` returns the degraded answer (the most relevant pages, with sources), never
   a 429 or 5xx. The budget is raised before the scoring window if the credits allow.
+- **Generation caps** (a POC production lesson). In JSON mode with no `max_tokens`, one local qwen3 request generated past
+  6,000 tokens at 8 tok/s, held the only LLM slot, and cascaded timeouts through the concurrency-4 queue, with abandoned
+  requests still holding the slot (`poc/README.md`, "Runaway generation"). So every call passes `max_tokens` (`MAX_TOKENS`,
+  600; answers averaged 72 completion tokens, `poc/results/answer.json`), and a truncation is logged. The server's
+  timeouts are shorter than any client's: `LLM_TIMEOUT_S` 25 s per call, and the whole `/ask` bounded at about 30 s with
+  the queue wait included, after which it returns the degraded 200 answer.
 - **Caching**: an in-process answer cache. It beats provider prompt caching for RAG, because Gemini 3.8 Flash needs a
   4,096-token identical prefix before caching applies ([Gemini caching][gem-caching], [stack report][r-stack]).
 - **onnxruntime threads capped** (`ONNX_THREADS`, set to the vCPU count). By default every onnxruntime session sizes its
@@ -813,6 +843,9 @@ the 94 rows.
     (§5.2).
   - Accuracy is expected to beat the local-32B lower bound above.
   - All three are measured at the 12:30 checkpoint.
+
+Retrieval by category on corpus v2 is in §4.3: troubleshooting and sync-modes are the weakest categories, Fusion rows
+retrieve well, and indexing the release notes moved REL-01 from rank 8 to 2.
 
 > **Surprises from the POC** (`poc/README.md`, Findings; result files as named):
 > - **Cross-encoders do not help on the canonical set.** bge-reranker-base costs 0.07 MRR (0.664 vs 0.736, a log
@@ -950,6 +983,8 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | One LLM rewrite before the gate (local qwen3:32b) | p50 1,174.8 ms, p95 1,817.8 ms; 191.7 prompt and 11.9 completion tokens on average. At 0.71: recall 0.583 without it, 0.500 with it | `poc/results/gate-rewrite.json` |
 | Retrieval on corpus v2 (82 rows), MRR@10 / hit@10 | no rerank 0.744 / 0.939; TinyBERT top 20 0.778 / 0.939 (rerank p50 28.14 ms); MiniLM-L6 top 20 0.742 / 0.939 (339.68 ms); bge-reranker-base top 20 0.649 / 0.915 (1,646.25 ms) | `poc/results/retrieval-v2.json` |
 | Blog tier on corpus v2, MRR@10 | off 0.744; rank weight 0.5: 0.743; rank weight 1.0: 0.630 | `poc/results/retrieval-v2.json` |
+| Retrieval by category, corpus v2 (MRR@10, no rerank) | catalogs 0.826; deployment 0.850; destinations 0.828; setup 0.750; source-config 0.738; sync-modes 0.674; table-maintenance 0.701; troubleshooting 0.597 | `poc/results/retrieval-v2.json` (`by_category`) |
+| Uncapped generation in JSON mode (local qwen3) | one request past 6,000 tokens at 8 tok/s, holding the only LLM slot | `poc/README.md` ("Runaway generation") |
 | Expected source among the 6 context passages, curated set (hybrid bge-base + MiniLM-L6) | 70 of the 82 rows with expected sources (85.4%) | `poc/results/gate-canonical.json` (`context_hit_rate_top_passages`) |
 | Retrieval MRR@10 / hit@5 / hit@10, curated set (82 rows with sources, 300-token chunks) | BM25 0.680 / 0.854 / 0.915; hybrid bge-small 0.736 / 0.866 / 0.939; hybrid bge-base 0.745 / 0.890 / 0.927; hybrid bge-small + MiniLM-L6 0.746 / 0.829 / 0.939; hybrid bge-small + bge-reranker-base 0.664 / 0.829 / 0.890 (log transcription) | `poc/results/retrieval-canonical.json`; `poc/results/retrieval-canonical-bge-reranker.json` (log transcription) |
 | API memory (hybrid bge-base + MiniLM-L6) | 1,419 MB RSS after one query; 2,609 MB after a scorer run at concurrency 4 | `poc/results/embed_probe.json` |
