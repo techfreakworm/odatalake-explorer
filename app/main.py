@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import mimetypes
 import re
 import threading
 import time
@@ -43,6 +44,9 @@ from app.refresh import RefreshPoller, default_refresh_fn
 from app.retrieval import retrieve
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
+EMBED_CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; "
+             "font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'")
+mimetypes.add_type("text/javascript", ".mjs")  # the embed's ES modules, whatever the host's mime.types says
 MAX_QUESTION_CHARS = 2000
 MAX_BODY_BYTES = 64 * 1024
 HISTORY_TURNS = 4
@@ -458,9 +462,13 @@ def create_app(settings: Settings | None = None, *, llm=None, embedder_factory: 
 
     @app.get("/embed")
     async def embed():
-        # frame-ancestors only works as an HTTP header (not in <meta>); no X-Frame-Options, so any site can frame it
-        return web_file("embed.html", "text/html", {"Content-Security-Policy": "frame-ancestors *",
+        # frame-ancestors only works as an HTTP header (not in <meta>); no X-Frame-Options, so any site can frame it.
+        # A second policy locks the embed's own content to this origin (defence in depth for rendered answers).
+        resp = web_file("embed.html", "text/html", {"Content-Security-Policy": "frame-ancestors *",
                                                     "Cache-Control": "no-cache"})
+        if resp.status_code == 200:
+            resp.headers.append("Content-Security-Policy", EMBED_CSP)
+        return resp
 
     @app.get("/")
     async def demo():

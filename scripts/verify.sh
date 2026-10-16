@@ -5,6 +5,7 @@
 #   1. clean tree        git status --porcelain is empty (skipped with --allow-dirty)
 #   2. deps              uv sync --frozen --extra rerank
 #   3. unit tests        uv run pytest -q -m "not e2e"
+#   3a. web tests        node --test tests/web/*.test.mjs (SKIP without node)
 #   3b. index            uv run python -m index.validate (the active index honours I1 and the citation policy)
 #   4. hygiene           no secrets (plan §8 grep), no personal paths, no commit trailers on this branch
 #   5. e2e               tests/e2e against a local ollama, holding .cache/ollama.lock (bounded wait, trap release)
@@ -69,6 +70,13 @@ run_step deps uv sync --frozen --extra rerank
 
 # 3. unit tests (no network, no LLM)
 run_step unit-tests uv run pytest -q -m "not e2e"
+
+# 3a. the widget's Markdown renderer (XSS cases) and SSE parser, when node is installed
+if command -v node >/dev/null 2>&1; then
+  run_step web-tests node --test tests/web/*.test.mjs
+else
+  result SKIP web-tests "node is not installed"
+fi
 
 # 3b. the active index honours contract I1 and the citation policy (offline, about 1 s)
 if [ -f index/validate.py ]; then

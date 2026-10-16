@@ -382,11 +382,34 @@ def test_unknown_route_is_json_404(make_client):
 def test_static_files(make_client):
     c = make_client()
     w = c.get("/widget.js")
-    assert w.status_code == 200 and "javascript" in w.headers["content-type"]
+    assert w.status_code == 200 and w.headers["content-type"].startswith("application/javascript")
     e = c.get("/embed?theme=auto")
     assert e.status_code == 200 and e.headers["content-type"].startswith("text/html")
-    assert e.headers["content-security-policy"] == "frame-ancestors *"
+    policies = e.headers.get_list("content-security-policy")
+    assert "frame-ancestors *" in policies  # any docs site may frame it (only works as an HTTP header)
+    assert any("script-src 'self'" in p and "connect-src 'self'" in p for p in policies)  # defence in depth
     assert "x-frame-options" not in e.headers
     d = c.get("/")
     assert d.status_code == 200 and d.headers["content-type"].startswith("text/html")
-    assert c.get("/static/widget.js").status_code == 200
+    assert "/widget.js" in d.text
+    for path, ctype in (("/static/embed.js", "javascript"), ("/static/embed-core.mjs", "javascript"),
+                        ("/static/embed.css", "text/css"), ("/static/widget.js", "javascript")):
+        r = c.get(path)
+        assert r.status_code == 200 and ctype in r.headers["content-type"], path
+
+
+def test_web_assets_load_nothing_from_other_origins():
+    import re
+
+    for f in sorted(WEB.rglob("*")):
+        if f.suffix not in (".html", ".js", ".mjs", ".css"):
+            continue
+        text = f.read_text()
+        # script/link/img/iframe tags and CSS imports may only point at this origin (relative URLs)
+        for m in re.finditer(r'<(?:script|link|img|iframe)\b[^>]*\b(?:src|href)\s*=\s*["\']([^"\']+)', text):
+            url = m.group(1)
+            if "HOST" not in url:  # usage examples in comments use a HOST placeholder
+                assert not re.match(r"(?i)(https?:)?//", url), f"{f.name}: {m.group(0)}"
+        assert not re.search(r"(?i)@import|fonts\.googleapis|cdn\.|googletagmanager|analytics", text), f.name
+        assert "localStorage" not in text and "document.cookie" not in text, f.name
+        assert ".innerHTML" not in text and "insertAdjacentHTML" not in text, f.name

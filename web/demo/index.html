@@ -3,14 +3,162 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ask OLake demo</title>
-<style>body { font: 16px/1.6 system-ui, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; }</style>
+<meta name="color-scheme" content="light dark">
+<title>Add Ask OLake to your docs</title>
+<style>
+  :root {
+    --bg: #fbfcfc; --ink: #17242b; --muted: #5a6b74; --line: #dbe4e8; --side: #f2f6f7;
+    --code: #eef3f5; --accent: #1b6f80;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1b21; --ink: #dce7ec; --muted: #94a7b1; --line: #24363f; --side: #13222a;
+    --code: #132730; --accent: #62c1d2; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--ink); font: 16px/1.65 var(--sans); }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .top {
+    display: flex; align-items: center; gap: 16px; height: 56px; padding: 0 20px;
+    border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 1;
+  }
+  .brand { font-weight: 700; letter-spacing: -0.01em; }
+  .top .spacer { flex: 1; }
+  .toggle {
+    font: inherit; font-size: 14px; color: var(--ink); background: transparent; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 8px; padding: 4px 12px;
+  }
+  .layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); }
+  nav { border-right: 1px solid var(--line); background: var(--side); padding: 20px 12px; min-height: calc(100vh - 56px); }
+  nav ol { list-style: none; margin: 0; padding: 0; }
+  nav a { display: block; padding: 6px 10px; border-radius: 6px; color: var(--ink); text-decoration: none; font-size: 15px; }
+  nav a:hover { background: var(--bg); }
+  main { padding: 32px clamp(16px, 5vw, 56px) 96px; }
+  article { max-width: 46rem; }
+  h1 { font-size: 2rem; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 12px; }
+  h2 { font-size: 1.3rem; margin: 2.2em 0 0.5em; scroll-margin-top: 72px; }
+  p, li { color: var(--ink); }
+  .lede { color: var(--muted); font-size: 1.08rem; margin-top: 0; }
+  .snippet { position: relative; margin: 12px 0 8px; }
+  pre {
+    margin: 0; padding: 14px 16px; padding-right: 84px; overflow-x: auto;
+    background: var(--code); border: 1px solid var(--line); border-radius: 10px;
+  }
+  code { font: 0.86rem/1.5 var(--mono); }
+  :not(pre) > code { background: var(--code); padding: 1px 5px; border-radius: 4px; }
+  .copy {
+    position: absolute; top: 9px; right: 9px; font: 13px/1 var(--sans); padding: 6px 10px; cursor: pointer;
+    color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 7px;
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { font-weight: 600; }
+  td code { white-space: nowrap; }
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
+    nav { display: none; }
+  }
+</style>
 </head>
 <body>
-<!-- Placeholder demo page (Phase 2 builds the docs-style demo). -->
-<h1>Ask OLake</h1>
-<p>A cited docs assistant for OLake. Click the button in the corner to ask a question.</p>
-<pre><code>&lt;script src="https://HOST/widget.js" data-api="https://HOST" async&gt;&lt;/script&gt;</code></pre>
+<header class="top">
+  <span class="brand">Ask OLake</span>
+  <span class="spacer"></span>
+  <button type="button" class="toggle" id="theme" aria-pressed="false">Dark theme</button>
+</header>
+<div class="layout">
+  <nav aria-label="On this page">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#script">Script tag</a></li>
+      <li><a href="#iframe">Plain iframe</a></li>
+      <li><a href="#docusaurus">Docusaurus</a></li>
+      <li><a href="#options">Options</a></li>
+      <li><a href="#privacy">Privacy</a></li>
+    </ol>
+  </nav>
+  <main>
+    <article>
+      <h1 id="overview">Add Ask OLake to your docs</h1>
+      <p class="lede">Ask OLake answers questions about OLake from its documentation and GitHub repositories, and
+        links every claim to the page it came from. Try it with the button in the corner of this page.</p>
+      <p>The widget is one script. It adds a button and opens the assistant in a frame served from
+        <code id="host-inline"></code>, so your site needs no API calls, no CORS setup and no new styles.</p>
+
+      <h2 id="script">Script tag</h2>
+      <p>Paste this line before <code>&lt;/body&gt;</code>, or in <code>&lt;head&gt;</code>: it loads without blocking
+        the page.</p>
+      <div class="snippet"><pre><code id="snippet-script"></code></pre>
+        <button type="button" class="copy" data-copy="snippet-script">Copy</button></div>
+
+      <h2 id="iframe">Plain iframe</h2>
+      <p>Where a page cannot run third-party scripts, embed the assistant directly. Your content security policy
+        needs this host in <code>frame-src</code>.</p>
+      <div class="snippet"><pre><code id="snippet-iframe"></code></pre>
+        <button type="button" class="copy" data-copy="snippet-iframe">Copy</button></div>
+
+      <h2 id="docusaurus">Docusaurus</h2>
+      <p>Add the script to <code>docusaurus.config.js</code>. Docusaurus puts <code>scripts</code> entries in the page
+        head; <code>async</code> keeps them from delaying rendering. The widget follows the site's light and dark
+        theme.</p>
+      <div class="snippet"><pre><code id="snippet-docusaurus"></code></pre>
+        <button type="button" class="copy" data-copy="snippet-docusaurus">Copy</button></div>
+
+      <h2 id="options">Options</h2>
+      <table>
+        <thead><tr><th>Attribute</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>data-api</code></td><td>Where the assistant runs. Defaults to the host the script came from.</td></tr>
+          <tr><td><code>data-title</code></td><td>Heading of the panel, for example your product name.</td></tr>
+          <tr><td><code>data-position</code></td><td><code>right</code> (default) or <code>left</code> corner.</td></tr>
+          <tr><td><code>data-accent</code></td><td>Button and link color as a hex value, for example <code>#2e5aac</code>.</td></tr>
+          <tr><td><code>data-open</code></td><td><code>true</code> opens the panel when the page loads.</td></tr>
+          <tr><td><code>data-timeout</code></td><td>Seconds to wait for an answer before offering a retry. Default 30.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="privacy">Privacy</h2>
+      <p>The widget sets no cookies and stores nothing in the visitor's browser. Questions go only to the assistant
+        host, and answers are rendered as text, so nothing in an answer can run on your page.</p>
+    </article>
+  </main>
+</div>
+<script>
+  (function () {
+    var host = location.origin;
+    var snippets = {
+      "snippet-script": '<script src="' + host + '/widget.js" data-api="' + host + '" async><\/script>',
+      "snippet-iframe": '<iframe src="' + host + '/embed" title="Ask OLake" width="400" height="600" style="border:0"></iframe>',
+      "snippet-docusaurus": "scripts: [{src: '" + host + "/widget.js', async: true, 'data-api': '" + host + "'}]"
+    };
+    for (var id in snippets) document.getElementById(id).textContent = snippets[id];
+    document.getElementById("host-inline").textContent = host;
+    document.querySelectorAll("[data-copy]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var text = snippets[btn.getAttribute("data-copy")];
+        var done = function (ok) {
+          btn.textContent = ok ? "Copied" : "Press Ctrl+C";
+          setTimeout(function () { btn.textContent = "Copy"; }, 1600);
+        };
+        if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+        else done(false);
+      });
+    });
+    var toggle = document.getElementById("theme");
+    function setTheme(dark) {
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      toggle.setAttribute("aria-pressed", String(dark));
+    }
+    setTheme(window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+    toggle.addEventListener("click", function () {
+      setTheme(document.documentElement.getAttribute("data-theme") !== "dark");
+    });
+  })();
+</script>
 <script src="/widget.js" async></script>
 </body>
 </html>

@@ -3,40 +3,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>Ask OLake</title>
-<style>
-  body { font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 12px; }
-  textarea { width: 100%; box-sizing: border-box; min-height: 64px; }
-  #out { white-space: pre-wrap; margin-top: 12px; }
-</style>
+<link rel="stylesheet" href="/static/embed.css">
+<script type="module" src="/static/embed.js"></script>
 </head>
 <body>
-<!-- Placeholder chat (Phase 2 builds the real embed app). Calls POST /ask on this origin. -->
-<form id="f">
-  <label for="q">Ask a question about OLake</label>
-  <textarea id="q" maxlength="2000" required></textarea>
-  <button type="submit">Ask</button>
-</form>
-<div id="out" role="log"></div>
-<ol id="src"></ol>
-<script>
-  document.getElementById("f").addEventListener("submit", function (e) {
-    e.preventDefault();
-    var out = document.getElementById("out"), src = document.getElementById("src");
-    out.textContent = "…"; src.textContent = "";
-    fetch("/ask", { method: "POST", headers: { "content-type": "application/json" },
-                    body: JSON.stringify({ question: document.getElementById("q").value }) })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        out.textContent = d.answer;
-        (d.sources || []).forEach(function (u) {
-          var li = document.createElement("li"), a = document.createElement("a");
-          a.href = u; a.textContent = u; a.target = "_blank"; a.rel = "noopener noreferrer";
-          li.appendChild(a); src.appendChild(li);
-        });
-      })
-      .catch(function () { out.textContent = "Something went wrong. Please retry."; });
-  });
-</script>
+<div class="app" role="dialog" aria-modal="true" aria-labelledby="title">
+  <header class="bar">
+    <h1 id="title" class="title">Ask OLake</h1>
+    <button type="button" class="icon-btn" id="close" aria-label="Close Ask OLake">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+
+  <div class="log" id="log" role="log" aria-live="polite" aria-busy="false" aria-label="Conversation">
+    <section class="welcome" id="welcome">
+      <p class="lead">Answers come from the OLake docs and GitHub repos. Every claim links to the page it came from.</p>
+      <ul class="chips" aria-label="Example questions">
+        <li><button type="button" class="chip">Which databases can OLake replicate from?</button></li>
+        <li><button type="button" class="chip">How does OLake write data into Apache Iceberg?</button></li>
+        <li><button type="button" class="chip">Can I get an alert when a sync job fails?</button></li>
+      </ul>
+    </section>
+  </div>
+
+  <form class="composer" id="composer">
+    <label class="sr-only" for="q">Your question about OLake</label>
+    <textarea id="q" rows="1" maxlength="2000" enterkeyhint="send"
+              placeholder="Ask about setup, sources, catalogs or Fusion"></textarea>
+    <button type="submit" class="send" id="send" aria-label="Send question">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+    </button>
+  </form>
+  <p class="foot" id="foot"></p>
+</div>
 </body>
 </html>

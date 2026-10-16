@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foreign-origin embed check</title>
+<style>
+  body { font: 16px/1.6 Georgia, serif; max-width: 40rem; margin: 40px auto; padding: 0 16px; }
+  :root[data-theme="dark"] body { background: #222; color: #eee; }
+  /* hostile host styles: the widget's panel must not be affected */
+  iframe { border: 5px dashed red; }
+  button { text-transform: uppercase; letter-spacing: 0.3em; }
+</style>
+</head>
+<body>
+<!-- Cross-origin check for the Ask OLake widget (plan §4.4 acceptance):
+       uv run uvicorn app.main:app --port 8000          (the API, origin http://localhost:8000)
+       python3 -m http.server 9000 --directory tests/web  (this page, origin http://localhost:9000)
+     then open http://localhost:9000/foreign-origin.html. -->
+<h1>A docs site on another origin</h1>
+<p>The launcher in the corner comes from <code>http://localhost:8000/widget.js</code>. The panel is a frame on that
+  origin, so this page makes no API calls and needs no CORS. The red dashed iframe rule and the uppercase button rule
+  are deliberately hostile host styles.</p>
+<p><button type="button" id="theme">Toggle html[data-theme]</button> (the panel should follow it)</p>
+<script>
+  document.getElementById("theme").addEventListener("click", function () {
+    var d = document.documentElement;
+    d.setAttribute("data-theme", d.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  });
+</script>
+<script src="http://localhost:8000/widget.js" data-api="http://localhost:8000" data-title="Ask OLake (foreign origin)" async></script>
+</body>
+</html>

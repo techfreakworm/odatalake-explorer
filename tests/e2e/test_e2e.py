@@ -84,8 +84,10 @@ def test_widget_and_embed_are_served(server):
     w = httpx.get(f"{server['base']}/widget.js", timeout=10)
     assert w.status_code == 200 and "javascript" in w.headers["content-type"]
     e = httpx.get(f"{server['base']}/embed", timeout=10)
-    assert e.status_code == 200 and e.headers["content-security-policy"] == "frame-ancestors *"
+    assert e.status_code == 200 and "frame-ancestors *" in e.headers.get_list("content-security-policy")
     assert "x-frame-options" not in e.headers
+    for path in ("/static/embed.js", "/static/embed-core.mjs", "/static/embed.css", "/"):
+        assert httpx.get(f"{server['base']}{path}", timeout=10).status_code == 200, path
 
 
 def test_cors_preflight_from_olake_io(server):
