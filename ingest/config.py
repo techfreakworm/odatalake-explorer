@@ -81,6 +81,10 @@ FAQ_PAGES: tuple[tuple[str, str], ...] = (
 GITHUB_ORG = "datazip-inc"
 REPOS: tuple[str, ...] = ("olake", "olake-ui", "olake-helm", "olake-fusion")
 RELEASES_PER_REPO = 10
+# product of each repo's GitHub releases (release-gh chunks): OLake Fusion ships from olake-fusion; the
+# engine, the UI and the Helm chart/worker are the OLake Go deployment (the UI also hosts Fusion's
+# Maintenance module, but its releases version the OLake Go control plane)
+REPO_PRODUCT: dict[str, str] = {"olake": "go", "olake-ui": "go", "olake-helm": "go", "olake-fusion": "fusion"}
 
 # Tier A allowlist (plan Appendix A). fnmatch patterns on repo-relative paths.
 # Never: tests, olake-fusion Java/Scala, site/ and docs/ (upstream Amoro), helm templates other

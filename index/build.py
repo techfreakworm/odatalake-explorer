@@ -242,6 +242,8 @@ def validate(chunks: list[dict], kept_docs: set[str], hard_max: int = CHUNK_HARD
         elif st == "release-gh":
             if not RELEASE_URL.match(doc_url):
                 problems.append(f"{cid}: doc_url {doc_url} is not a releases/tag URL")
+            if c["product"] != config.REPO_PRODUCT.get(c["repo"] or ""):
+                problems.append(f"{cid}: product {c['product']!r} != {config.REPO_PRODUCT.get(c['repo'] or '')!r}")
         elif st == "repo":
             if not BLOB_URL.match(doc_url) or not BLOB_URL.match(c["url"]):
                 problems.append(f"{cid}: repo URL {doc_url} / {c['url']} is not a datazip-inc blob URL")

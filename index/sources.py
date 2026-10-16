@@ -88,8 +88,9 @@ def release_gh_chunks(rel: dict) -> list[dict]:
     out = []
     for n, r in enumerate(chunk_markdown(md, title=title, lead=lead)):
         out.append(make_chunk(id=f"release-gh/{rel['repo']}/{rel['tag']}#{n}", source_type="release-gh",
-                              doc_url=rel["url"], url=rel["url"], title=title, section_path=r.section_path,
-                              text=r.text, ord=n, repo=rel["repo"], lastmod=rel.get("published_at")))
+                              product=config.REPO_PRODUCT.get(rel["repo"]), doc_url=rel["url"], url=rel["url"],
+                              title=title, section_path=r.section_path, text=r.text, ord=n, repo=rel["repo"],
+                              lastmod=rel.get("published_at")))
     return out
 
 

@@ -185,3 +185,14 @@ def test_manifest_has_no_absolute_paths(tmp_path):
     text = (tmp_path / "20261017T0412Z" / "manifest.json").read_text()
     assert str(Path.home()) not in text and str(tmp_path) not in text
     json.loads(text)
+
+
+def test_release_gh_product_per_repo():
+    for repo, product in (("olake", "go"), ("olake-ui", "go"), ("olake-helm", "go"), ("olake-fusion", "fusion")):
+        rel = {"repo": repo, "tag": "v0.1.4", "name": "", "published_at": "2026-08-24T13:25:38Z", "prerelease": False,
+               "url": f"https://github.com/datazip-inc/{repo}/releases/tag/v0.1.4", "body": "notes"}
+        chunks = sources.release_gh_chunks(rel)
+        assert chunks and all(c["product"] == product and c["repo"] == repo for c in chunks)
+        assert validate(chunks, set()) == []
+    bad = dict(sources.release_gh_chunks(dict(rel, repo="olake-fusion"))[0], product="go")
+    assert "product 'go' != 'fusion'" in " ".join(validate([bad], set()))
