@@ -739,6 +739,9 @@ if [ -s "$EC3" ]; then
   num $D "round-2 abstain sources" -c 'rewrite|model|unparseable|abstain' '.[0].summary.server_reasons | .gate_after_rewrite, .model_unanswerable, .unparseable' $EC3
   num $D "round-2 false and missed abstains" -c 'abstain|must-answer|answerable' '.[0].abstain_breakdown | .false_abstains_all_must_answer_rows.n, .false_abstains_all_must_answer_rows.of, .missed_abstains.n, .missed_abstains.of' $EC3
   num $D "round-2 rewrites" -c 'rewrite' '.[0].summary.rewrite_fired' $EC3
+  num $D "round-2 rewrite cost and run time" '.[0] | .cost.rewrite_ms_p50, .cost.rewrite_tokens_mean, .summary.total_wall_s' $EC3
+  num $D "round-2 judged behaviour" -c 'judge|behavior|behaviour' '.[0].by_type | ."false-premise".judged_behavior_pass * ."false-premise".n, .unanswerable.judged_behavior_pass * .unanswerable.n, .unanswerable.behaviour_correct * .unanswerable.n | round' $EC3
+  num $D "round-2 missed-abstain gate scores" -c 'unk-02|unk-04' '.[0].abstain_breakdown.missed_abstains.rows[] | .gate_score | tonumber' $EC3
   num $PLAN "plan: round-2 numbers" '.[0] | .by_type.answerable.source_hit, .summary.false_abstain_rate_answerable, .summary.abstain_recall_unanswerable_out_of_scope' $EC3
 fi
 
