@@ -1,24 +1,337 @@
-# odatalake-explorer
+# Ask OLake
 
-Research and planning for the "Ask OLake" challenge at Hacktoberfest Hack Day Bengaluru x OLake, Sunday 2026-10-18
-([event page](https://events.mlh.com/events/15468-hacktoberfest-hack-day-bengaluru-x-olake),
+A cited docs assistant for [OLake](https://olake.io). Ask a question about OLake Go (ingestion into Apache Iceberg)
+or OLake Fusion (Iceberg table maintenance) and get a short answer whose `[n]` markers point at the OLake pages,
+GitHub files, releases and issues it came from. When the corpus has no answer, it says so instead of guessing.
+
+- Public API: `POST /ask` with `{"question": "..."}` returns exactly `{"answer": "...", "sources": ["<url>", ...]}`
+- The chat widget embeds in any docs site with one script tag
+- Live demo: `https://HOST/` · API: `POST https://HOST/ask` · License: Apache-2.0. `HOST` is the deployment URL;
+  see [WAKEUP.md](WAKEUP.md) for how to get one.
+
+## Embed it
+
+One line on any docs page:
+
+```html
+<script src="https://HOST/widget.js" data-api="https://HOST" async></script>
+```
+
+Where a page cannot run third-party scripts, use a plain iframe. The page's CSP then needs `HOST` in `frame-src`:
+
+```html
+<iframe src="https://HOST/embed" title="Ask OLake" width="400" height="600" style="border:0"></iframe>
+```
+
+In Docusaurus, add it to `docusaurus.config.js`; the widget follows the site's light and dark theme:
+
+```js
+scripts: [{src: 'https://HOST/widget.js', async: true, 'data-api': 'https://HOST'}],
+```
+
+Options: `data-title`, `data-position="left|right"`, `data-accent="#hex"`, `data-open="true"` and `data-timeout`.
+The loader sets no cookies and no storage, and its CSS only touches `.askolake-*` elements (`web/widget.js`).
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph B ["Index build on the laptop: ingest/, index/"]
+    SM["olake.io sitemap.xml<br/>124 /docs/ URLs, 16 denylisted"] --> FH["rendered HTML<br/>4 at a time, cached"]
+    FH --> MD["html2md: anchors, code,<br/>tables, nested tabs"]
+    GH["GitHub: 34 releases, 10 curated issues,<br/>Tier A files of 4 repos"] --> RF["spec.json to field tables,<br/>credentials redacted"]
+    OUT["23 curated outside pages"] --> MD
+    CARDS["6 fact cards, 2 product FAQs"] --> CH
+    MD --> CH["chunker: 300 / 450 tokens,<br/>context header per chunk"]
+    RF --> CH
+    CH --> EM["bge-small passage vectors<br/>fastembed ONNX"]
+    CH --> ART[("data/index/VERSION<br/>chunks.jsonl, embeddings.npy,<br/>manifest.json, CURRENT")]
+    EM --> ART
+  end
+  subgraph S ["API container: app/ (FastAPI)"]
+    Q["POST /ask, POST /ask/stream"] --> CA{"exact-match cache"}
+    CA -- "miss" --> RT["BM25 + dense, RRF k=60, ranking rules,<br/>max 3 per page, top 10"]
+    RT --> GT{"dense gate at or above<br/>ABSTAIN_THRESHOLD?"}
+    GT -- "no" --> SC["decline, sources = []"]
+    GT -- "yes" --> LLM["one LLM call over the provider chain<br/>failover before the first byte"]
+    LLM --> AB{"NO_ANSWER, OUT_OF_SCOPE<br/>or no valid citation?"}
+    AB -- "yes" --> DK["I don't know, sources = []"]
+    AB -- "no" --> OK["answer, [n] renumbered to sources"]
+  end
+  subgraph W ["web/"]
+    WJ["widget.js loader"] --> IF["iframe: /embed"]
+  end
+  ART --> RT
+  IF --> Q
+  PO["in-app refresher<br/>REFRESH_INTERVAL_MIN"] -.-> ART
+```
+
+| Component | Paths | What it does |
+|---|---|---|
+| Ingestion | `ingest/` (`sitemap.py`, `fetch.py`, `html2md.py`, `docs.py`, `github.py`, `spec2md.py`, `faq.py`, `outside.py`, `config.py`) | Sitemap and denylist, polite cached fetching, Docusaurus HTML to Markdown, GitHub releases, issues and repo files (clones, compare API, contents API), spec.json field tables, the FAQ JSON-LD, outside pages. `config.py` holds the whole corpus definition |
+| Index | `index/` (`chunk.py`, `sources.py`, `embed.py`, `build.py`, `refresh.py`, `manifest.py`, `validate.py`, `probe.py`, `factcheck.py`) | Structure-aware chunking, the chunk records of contract I1, passage embeddings with vector reuse, the versioned artifact with an atomic `CURRENT` swap, the incremental refresher, the validator and the BM25 probe |
+| Curated corpus | `index/factcards/*.md`, `index/issues/*.md` | Fact cards written from the extracted docs, each section citing its pages; key facts of the 10 curated issues |
+| Index artifact | `data/index/<version>/`, `data/index/CURRENT` | The committed index the image serves |
+| API | `app/` (`main.py`, `pipeline.py`, `retrieval.py`, `llm.py`, `citations.py`, `guard.py`, `limits.py`, `index_store.py`, `refresh.py`, `prompts.py`, `embedder.py`, `config.py`, `logs.py`) | Endpoints (contract I2), retrieval and ranking rules, the off-topic gate, the provider chain, citation validation and renumbering, output guards (canary, markers), load protection, hot-swappable index snapshots, JSON logs |
+| Widget | `web/` (`widget.js`, `embed.html`, `embed.js`, `embed-core.mjs`, `embed.css`, `demo/index.html`) | The loader, the iframe chat app and the demo page |
+| Eval | `eval/` (`questions.md`, `questions.py`, `run.py`, `report.py`, `results/`) | The 94-row question table, the runner (deterministic checks, LLM judge, retrieval-only), the README tables, every measured result |
+| Deploy | `Dockerfile`, `deploy/` (`deploy.sh`, `env.yaml`, `ngrok.sh`), `.do/app.yaml` | The image, Cloud Run (primary), DigitalOcean App Platform (fallback), an ngrok tunnel (emergency), the smoke checks |
+| Checks | `tests/`, `scripts/verify.sh` | Unit tests per area, the e2e test on local ollama, the verifier's gate |
+
+## Design choices and trade-offs
+
+| Decision | Alternatives considered | Why |
+|---|---|---|
+| Hybrid BM25 + dense (RRF k=60), no reranker, top 10 chunks to the LLM | BM25 only; dense only; a cross-encoder rerank; an agentic tool loop; long-context stuffing | Exact config keys need lexical match and paraphrases need dense. On this index the hybrid gets MRR@10 0.854 and hit@10 0.988 over 82 rows (`eval/results/retrieval-baseline.json`). FlashRank TinyBERT over the fused top 20 lowered MRR@10 to 0.814 at the same hit@10 (`eval/results/retrieval-tinybert.json`). One LLM call keeps latency and cost low |
+| Local embeddings: fastembed `BAAI/bge-small-en-v1.5`, ONNX on CPU | A provider's embedding API; bge-base | Works with any LLM provider, costs nothing per query, has no rate limit and is deterministic. Embedding a query takes milliseconds: `/debug/retrieve` answers in 33 ms p50 for the whole retrieval (`eval/results/retrieval-baseline.json`). The container idles at 222 MiB RSS (local `docker stats`, see Latency). bge-base was not better enough to pay 3.3x the embedding time (POC: hybrid MRR@10 0.745 vs 0.736, `poc/results/retrieval-canonical.json`) |
+| Vectors in process (numpy) | A vector database | 2,434 chunks x 384 dims is 3.7 MB; one less service to run |
+| Rendered HTML of the docs pages | Raw MDX from the docs repo | The canonical URL comes as is, and MDX components hide content on 22 of 124 pages (research.md §3.1) |
+| Structure-aware chunks: 300-token target, 450 hard max, a context header `title \| product > breadcrumbs > headings [tab path]` | Fixed-size windows; 600-token chunks | Never splits a code fence or a table (oversized tables repeat their header row), never mixes two tab panels, keeps headings with their content. 600-token chunks scored lower on every POC config (`poc/results/retrieval-canonical.json`) |
+| Fact cards with per-section citations | Relying on pages that never state a negative | "Does OLake support Oracle CDC?" needs a page that says no. 6 cards, each fact checked against its cited pages (`index/factcheck.py`); each section cites only the pages its facts come from |
+| Canonical URLs in `sources`, deep links in the UI | Anchored URLs in `sources` | Robust matching for graders, precise navigation for people |
+| Three logged abstain triggers: the off-topic gate, the model's NO_ANSWER / OUT_OF_SCOPE, no valid citation | A prompt-only "say I don't know" | Measurable and tunable. The gate alone, at the calibrated 0.6894, catches 5 of the 12 must-abstain rows with no false abstain (`eval/results/retrieval-baseline.json`); the model and citation validation do the rest |
+| Outside pages (Iceberg, Amoro, Postgres, MySQL, MongoDB, Kafka, catalogs), labelled, ranked below first-party pages | No outside pages | Without them MRR@10 drops 0.854 to 0.834, and no gate score changes (`eval/results/retrieval-no-outside.json`) |
+| Loader plus iframe widget | A Shadow DOM widget | Needs no host-page CORS or connect-src change, and styles are isolated |
+| Exact-match cache only | A semantic cache | Two similar questions can need different answers |
+| Incremental refresh on the sitemap ETag plus content hashes, and git SHAs | Full rebuilds; HTTP ETags as content signals | olake.io ETags change on every site deploy, so the ETag only decides whether to re-fetch; content hashes decide what to re-chunk and re-embed. `git ls-remote` uses no API quota. A quiet poll takes 1.6 s |
+
+## Evaluation
+
+**Method.** `eval/run.py` follows the "Scoring method" in [eval/questions.md](eval/questions.md):
+
+- It posts every question to `POST /ask` with `X-Request-ID: eval-<ID>` and `Cache-Control: no-cache`.
+- It runs the deterministic checks:
+  - **schema**: HTTP 200 and exactly `{answer, sources}`;
+  - **contract**: also on 422 and 503;
+  - **abstain detection**: empty sources, or a don't-know pattern, each recorded with an `abstain_kind`;
+  - **behaviour** by question type;
+  - **lenient source match**;
+  - **a prompt-leak canary**;
+  - **latency**.
+- An optional LLM judge scores must-mention fact coverage, the BEHAVIOR checks and contradictions.
+
+`--retrieval-only` measures hit@k and MRR@10 through `POST /debug/retrieve`, without an LLM.
+
+**The set.** 94 rows (types answerable 69, negative 5, false-premise 4, adversarial 4, out-of-scope 6,
+unanswerable 6). They cover 12 categories, from source-config (18) to security (1). 82 rows have expected sources;
+12 must abstain. Research agents wrote the rows, an adversarial verifier checked them, and the lead curated them
+before any of this code existed ([docs/eval-questions.md](docs/eval-questions.md)).
+
+**Retrieval** (no LLM; 82 rows with expected sources; `uv run python -m eval.report <file>`):
+
+| Config | hit@1 | hit@3 | hit@5 | hit@10 | MRR@10 | File |
+|---|---|---|---|---|---|---|
+| Hybrid, RERANK=off (shipped) | 0.780 | 0.890 | 0.939 | 0.988 | 0.854 | `eval/results/retrieval-baseline.json` |
+| Hybrid + TinyBERT@20 | 0.707 | 0.902 | 0.915 | 0.988 | 0.814 | `eval/results/retrieval-tinybert.json` |
+| Hybrid, no outside tier | 0.756 | 0.878 | 0.915 | 0.988 | 0.834 | `eval/results/retrieval-no-outside.json` |
+
+**End to end:** TBD(final-eval). This table is filled from `uv run python -m eval.report eval/results/<final>.json`.
+
+| Metric | Value |
+|---|---|
+| Schema valid / contract failures | TBD(final-eval) |
+| Behaviour correct | TBD(final-eval) |
+| Source hit rate | TBD(final-eval) |
+| Fact coverage / BEHAVIOR pass (judge) | TBD(final-eval) |
+| Abstain recall (12 rows) | TBD(final-eval) |
+| False abstain: answerable (69) / all must-answer (82) | TBD(final-eval) |
+| Latency p50 / p95 | TBD(final-eval) |
+
+A 5-row smoke through the LLM (`eval/results/smoke-5.json`) had 0 contract failures and 4 of 5 rows behaving
+correctly. ADV-03 obeyed an injected "no citations" request and so abstained for lack of a citation.
+
+**Caveats.**
+- **Local model.** The numbers come from local ollama `qwen3:32b` (reasoning off). They say nothing about a hosted
+  model's quality or speed.
+- **Same-model judge.** The judge was the same model as the generator, and LLM judges favour their own outputs. The
+  results files flag it; treat fact coverage and BEHAVIOR passes as optimistic.
+- **Lenient URL matching.** Source matching drops the scheme, fragment, query, `www.` and the trailing slash, and the
+  git ref of GitHub URLs. The organizers' rule is unknown.
+- **Pattern-based abstain detection.** It is a regex. Every abstain records its `abstain_kind` (`empty_sources` or
+  `pattern:<phrase>`), so an honest partial answer ("... no release date is mentioned in the docs") can be told
+  apart from a real abstain.
+
+## Latency and cost
+
+Measured on the laptop (Apple M5 Max, 18 cores; local ollama `qwen3:32b`):
+
+| What | Value | Source |
+|---|---|---|
+| Retrieval (`/debug/retrieve`, BM25 + dense + ranking) | p50 33 ms, p95 45 ms; 86 ms p50 with TinyBERT | `eval/results/retrieval-baseline.json`, `retrieval-tinybert.json` |
+| `/ask` end to end, local 32B model | p50 12.5 s, p95 18.5 s over 5 rows | `eval/results/smoke-5.json` |
+| Container: time to `/readyz` | 1.3 s after `docker run` | local `docker run` of `ask-olake:local` |
+| Container memory | 222 MiB idle, 224 MiB after one answer | `docker stats` |
+| Image | 765 MB unpacked (arm64); the amd64 build works | `docker build`, `docker buildx --platform linux/amd64` |
+| Index build | 55.7 s with every chunk embedded (1,647 chunks), 23.8 s on a rebuild that reuses the vectors | `uv run python -m index.build` output |
+
+Hosted estimates, **not measured**:
+- **Tokens.** About 3.3k prompt and 170 completion tokens per answer (the POC's k=10 run:
+  `poc/results/eval_run-canonical-combined.json`).
+- **Cost.** At the candidate models' list prices that is $0.0004-0.0045 per answer (research.md §5.2), so 1,000
+  answers cost under $5.
+- **Latency.** The target p50 is 3 s and p95 6 s with a fast hosted model.
+- **Idle hosting.** Cloud Run with min-instances 1 idles at about $0.65 a day at 2 GiB (research.md §5.5).
+
+## Freshness
+
+**What is indexed** (`data/index/CURRENT`, manifest `20261016T2259Z`, docs `lastmod` up to 2026-10-15):
+
+| Source | Pages | Chunks |
+|---|---|---|
+| docs (`olake.io/docs/`, minus 16 denylisted stub pages) | 82 | 1,206 |
+| release notes on olake.io | 26 | 69 |
+| GitHub releases (last 10 per repo; olake v0.12.1, olake-ui v0.7.1, olake-helm v0.4.0, olake-fusion v0.1.4) | 34 | 52 |
+| product FAQs (`/olake-go/`, `/olake-fusion/`) | 2 | 16 |
+| fact cards | 6 | 37 |
+| repo files (Tier A allowlist, at olake d20c68e, olake-ui 56826cf, olake-helm c63f10c, olake-fusion 15ca160) | 32 | 294 |
+| curated issues | 10 | 10 |
+| curated outside pages | 23 | 750 |
+
+**How it refreshes:**
+- **Entry points.** `uv run python -m index.refresh [--check]`, or the in-app poller every `REFRESH_INTERVAL_MIN`
+  minutes, which hot-swaps the new version.
+- **Docs.** A conditional GET of `sitemap.xml` with `If-None-Match`; a 304 ends it. After a site deploy every page is
+  re-fetched and hashed, and only new or changed pages are re-chunked. Removed URLs are tombstoned.
+- **Repos.** `git ls-remote` HEAD; on a new SHA, the compare API lists the changed files, and only the allowlisted
+  ones are fetched at the new SHA.
+- **Releases.** When `git ls-remote --tags` shows new tags, the releases API.
+- **Embeddings.** Only chunks whose hash is new are re-embedded.
+- **Writes.** A new version is written, and `CURRENT` swapped atomically, only when content changed.
+- **The container.** The image has no git, so ls-remote uses the same HTTP request git would make.
+
+`GET /healthz` shows the index version, build time, docs `lastmod` and the repo SHAs; the widget's footer shows them
+too.
+
+## Production readiness
+
+- **Contract.** `/ask` always answers `{answer, sources}`, also on 422 (bad input: an empty question, or more than
+  2,000 characters) and 503. It never returns an HTML 500.
+- **Load protection, never a 429 or 5xx.** A bounded wait for a concurrency slot (`QUEUE_WAIT_S`), a whole-request
+  bound (`ASK_TIMEOUT_S`), a per-client token bucket and a daily token budget. Each falls back to the degraded answer:
+  the most relevant pages, sources set.
+- **LLM calls.** A per-call timeout (`LLM_TIMEOUT_S`) and one retry. The provider chain fails over before the first
+  streamed byte, on 429, 5xx, timeouts, connection errors and provider-level 4xx. `max_tokens` is set on every call.
+- **Honesty and safety.**
+  - Answers need a valid `[n]` citation, or they become "I don't know".
+  - A per-deploy canary and system-prompt fragments are scrubbed from answers, also across stream tokens.
+  - Injected instructions in questions are ignored by prompt rules.
+- **Ops.**
+  - Logs are one JSON object per line, with keys and the canary redacted.
+  - `X-Request-ID` and `Server-Timing` come on every answer.
+  - `/healthz` is liveness and `/readyz` readiness: models loaded and one warm-up retrieval done.
+  - CORS is `*` without credentials.
+
+## Run locally
+
+```bash
+uv sync --frozen --extra rerank                      # Python 3.12; the rerank extra is optional (RERANK=tinybert)
+cp .env.example .env                                 # fill the LLM_* keys (or the local-ollama block at its end)
+uv run python -m index.validate                      # the committed index is valid ("valid")
+uv run --env-file .env uvicorn app.main:app --port 8000
+curl -s -X POST http://127.0.0.1:8000/ask -H 'content-type: application/json' \
+  -d '{"question":"Does OLake support Oracle CDC?"}'
+```
+
+- Open `http://127.0.0.1:8000/` for the demo page with the widget.
+- Without an LLM key, `/ask` returns the degraded answer (the most relevant pages).
+
+```bash
+uv run pytest -q -m "not e2e"                        # unit tests (no network, no LLM)
+bash scripts/verify.sh --allow-dirty                 # the verifier's gate: tests, hygiene, e2e on local ollama, docker build
+uv run python -m index.build                         # optional: rebuild the index from the live sources (~25 s with cached vectors)
+uv run python -m index.refresh --check               # what changed upstream since the index was built
+uv run python -m index.probe "REST catalog configuration"    # BM25 top 5 for a question
+uv run python -m eval.run --base-url http://127.0.0.1:8000 --ids SET-01,SRC-08 --out eval/results/local.json
+DEBUG=1 uv run uvicorn app.main:app --port 8000 &    # then a retrieval-only eval, no LLM needed:
+uv run python -m eval.run --base-url http://127.0.0.1:8000 --retrieval-only --out eval/results/retrieval-local.json
+uv run python -m eval.report eval/results/retrieval-local.json
+```
+
+## Deploy
+
+[WAKEUP.md](WAKEUP.md) has the operator's steps in order, from keys and a per-key smoke test to the Cloud Run deploy,
+the post-deploy checks, the eval against the public URL, gate recalibration, the DigitalOcean fallback, the ngrok
+emergency path, and rollback. In short:
+
+```bash
+deploy/deploy.sh secrets                              # once: service account + Secret Manager secrets
+deploy/deploy.sh primary                              # Cloud Run asia-south1, built remotely from the Dockerfile
+deploy/deploy.sh smoke "$URL"                         # /healthz, /readyz, /ask contract, CORS, SSE (SMOKE_BURST=50)
+```
+
+## Deviations from the plan (with data)
+
+- **No reranker (`RERANK=off`).** The plan kept TinyBERT@20 as a conditional upgrade, needing +0.02 MRR@10 and no
+  hit@10 loss.
+  - On this index it moved MRR@10 0.854 to 0.814 and hit@1 0.780 to 0.707, with hit@10 flat (`eval/results/retrieval-tinybert.json`
+    vs `eval/results/retrieval-baseline.json`).
+  - The POC's corpus v2 had shown +0.034 (0.744 to 0.778, `poc/results/retrieval-v2.json`). That gain did not
+    reproduce here.
+- **The outside tier is kept.** Removing it costs 0.020 MRR@10 and changes none of the 12 must-abstain gate scores
+  (`eval/results/retrieval-no-outside.json`). The remaining risk is in generation: outside chunks reach the context
+  of near-domain off-topic rows (OOS-05 has 4 in its top 10).
+- **Additive I1 metadata.** Approved as an additive extension of contract I1:
+  - `product` on release-gh chunks: olake-fusion is fusion; olake, olake-ui and olake-helm are go.
+  - `repo` on release-gh and issue chunks; `lines` null on spec.json chunks (converted tables have no source lines).
+  - In the manifest: `embed_query_prefix`, `sitemap_etag`, `denylist_skipped`, and `sources` / `build` bookkeeping
+    for the refresher.
+  - Fact-card chunks carry only the cite_urls of their own card section.
+  - /docs/fusion/release/ pages are source_type `release` with product fusion.
+- **Fact-card cite cap of 2.** A cited fact card adds at most 2 of its cite_urls to `sources`, the connector page
+  named in the question first (`app/retrieval.py`, `MAX_CARD_SOURCES`), out of 5 sources at most. Otherwise a
+  6-page card could fill the source list.
+- **API deviations.** TBD(api): api's list, including the failover changes.
+- **D2: ported, not rebuilt.** The `poc/` modules were ported (ingest, chunker, retrieval, eval) instead of rewritten
+  at the event. The operator approved this, and is not competing for prizes.
+- **The LLM and the judge are local.** All end-to-end numbers come from ollama `qwen3:32b` on the laptop. It is also
+  the judge (see Caveats).
+- **The index is committed to git.** `data/index/` is versioned, so the image and DigitalOcean (which builds from
+  GitHub) ship the index the eval measured. The corpus is never embedded in the Docker build or at container start.
+- **Curated text the plan left open.**
+  - The 10 issues are cited with key facts written from each thread (`index/issues/`), worded "Known issue #N
+    (closed; fixed in vX)". The version is given only where the thread names one.
+  - The newest GitHub release per repo carries a "latest ... when this index was built" line.
+- **Measured, not hand-tuned.** The eval runner records `abstain_kind`, and `--rescore` re-applies the
+  deterministic checks to a saved run without asking again.
+
+## Built with
+
+- **Service and index.** FastAPI and uvicorn; httpx and httpx2; the openai SDK (any OpenAI-compatible provider);
+  BeautifulSoup with lxml; tiktoken (o200k_base); bm25s with PyStemmer; fastembed (ONNX); FlashRank (optional);
+  numpy; PyYAML.
+- **Tooling.** pytest; uv; Docker.
+- **Models.** `BAAI/bge-small-en-v1.5` for embeddings; `ms-marco-TinyBERT-L-2-v2`, measured and left off; `qwen3:32b`
+  via ollama for the local runs and the judge. The answer model in production is whatever the provider chain in
+  `.env` names.
+- **AI tooling.** Claude Code agent teams: a lead, the `ingest` and `api` teammates working in one shared worktree,
+  and a verifier that runs `scripts/verify.sh` at each milestone.
+
+## Disclosure
+
+**Prepared before the build:**
+- the research, the plan, the agent briefs and the 94-row eval set ([docs/](docs/));
+- the measurement code ([poc/](poc/)).
+
+**Built with Claude Code agent teammates:**
+- Teammates wrote the product code (`ingest/`, `index/`, `app/`, `web/`, `eval/`, `deploy/`) and the docs, porting
+  the POC modules (decision D2: port).
+- The operator approved the plan and the decisions, and is not competing for prizes.
+
+## Research and planning
+
+This repo started as the research and planning repo for the "Ask OLake" challenge at Hacktoberfest Hack Day Bengaluru
+x OLake ([event page](https://events.mlh.com/events/15468-hacktoberfest-hack-day-bengaluru-x-olake),
 [challenges page](https://www.mlh.com/events/lakehouse-bot-day-hacktoberfest-bengaluru-x-olake/challenges)).
-The product is a cited docs assistant with a public `POST /ask` and an embeddable chat UI. It is built at the event, in a
-separate repo. This repo holds the research, the event runbook, and the measurement code that checks the plan.
-
-## Docs
 
 | Doc | Contents |
 |---|---|
-| [docs/plan.md](docs/plan.md) | The event runbook: architecture, fixed interfaces, preparation before Sunday, the 10:30-14:30 timeline, agent-team prompts and briefs, checkpoints, cut lines, the patch loop, the freeze checklist, the demo script and contingencies |
-| [docs/open-questions.md](docs/open-questions.md) | Questions for the organizers at kickoff, ordered by impact, and the operator's decisions with deadlines |
-| [docs/research.md](docs/research.md) | Findings, comparisons, and the decisions with their reasons, plus the measurement table |
-| [docs/eval-questions.md](docs/eval-questions.md) | The eval question table and how it is scored |
-| [docs/reports/](docs/reports/) | Sanitized copies of the research agents' outputs (docs site, repos, OLake domain, stack, architecture and prior art, eval sets and their verifiers): the evidence behind the numbers in research.md |
+| [docs/plan.md](docs/plan.md) | The runbook: architecture, the fixed interfaces I1-I4, the briefs, checkpoints and contingencies |
+| [docs/research.md](docs/research.md) | Findings, comparisons and decisions with their reasons, plus the measurement table |
+| [docs/open-questions.md](docs/open-questions.md) | Kickoff questions and the operator's decisions D1-D12 |
+| [docs/eval-questions.md](docs/eval-questions.md) | The eval set and how it is scored (copied to `eval/questions.md`) |
+| [docs/reports/](docs/reports/) | The research agents' sanitized reports |
+| [poc/](poc/) | The measurement code behind the research numbers, with its results in `poc/results/` |
 
-## POC
+## License
 
-`poc/` holds measurement scripts, not the product. They measure the corpus, chunking, freshness signals, retrieval and the
-eval scorer, and write their numbers to `poc/results/*.json`. The docs cite those files. To run them you need uv and
-Python 3.12. Set `ASK_OLAKE_CACHE` to a scratch directory outside the repo, then follow [poc/README.md](poc/README.md) for
-the steps and commands.
+Apache License 2.0, see [LICENSE](LICENSE).
