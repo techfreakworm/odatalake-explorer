@@ -909,7 +909,18 @@ dependencies = [
 One-paragraph pitch. Live demo: <URL>/ · API: POST <URL>/ask · Repo license: <license>
 ## Embed it (one line)
 ## Architecture (diagram)
-## Design choices and trade-offs (decision | alternatives | why)
+## Design choices and trade-offs
+| Decision | Alternatives considered | Why |
+|---|---|---|
+| Hybrid BM25 + dense (RRF k=60), then a cross-encoder rerank | BM25 only; dense only; an agentic tool loop; long-context stuffing | Exact config keys need lexical match, paraphrases need dense, and the rerank sharpens the top results. One LLM call keeps latency and cost low |
+| Local embeddings and reranker (fastembed, ONNX on CPU) | A provider's embedding API | Works with any provider, costs nothing per query, has no rate limit, and is deterministic |
+| Vectors in process (numpy) | A vector database | A few thousand chunks; one less service to run |
+| Rendered HTML of the docs pages | Raw MDX from the docs repo | The canonical URL comes as is, and MDX components can hide content |
+| Canonical URLs in `sources`, deep links in the UI | Anchored URLs in `sources` | Robust matching for graders, precise navigation for people |
+| Three logged abstain triggers | A prompt-only "say I don't know" | Measurable and tunable on the eval set |
+| Loader plus iframe widget | A Shadow DOM widget | Needs no host-page CORS or connect-src change, and styles are isolated |
+| Exact-match cache only | A semantic cache | Two similar questions can need different answers |
+| Incremental refresh on sitemap lastmod + content hash, and git SHAs | Full rebuilds; HTTP ETags | olake.io ETags change on every site deploy, and `git ls-remote` uses no API quota |
 ## Evaluation (method, question set, results table, each with its eval/results file)
 ## Latency and cost (p50/p95, tokens per answer, cost per answer, caching)
 ## Freshness (what is indexed, how it refreshes, the /healthz manifest)

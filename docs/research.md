@@ -236,7 +236,20 @@ latency and cost per answer).
 
 ## 7. Prior art and what judges probe
 
+### 7.1 Prior art
 PENDING(arch-prior-art report).
+
+### 7.2 What the rubric lets judges probe
+
+Derived from the rubric text ([challenges page][ch]). These are the checks we should expect, not reports of what these judges did.
+
+| Criterion (weight) | Likely probe | Our evidence |
+|---|---|---|
+| Answer accuracy (35) | Setup, configuration and troubleshooting questions across both products, including Fusion | Eval table by category; config blocks copied verbatim from cited chunks |
+| Citations and honesty (15) | Do the sources support the answer? Unanswerable, out-of-scope and false-premise questions | Gate 2 citation validation; abstain triggers logged; abstain recall and false-abstain rate measured (§6) |
+| Production readiness (20) | Bad input, bursts of requests, a slow or failing LLM, prompt injection, health endpoints, logs | 422 with an error shape; a queue instead of rejection; timeout, retry and fallback provider; injection rules; `/healthz` and `/readyz`; JSON logs with request IDs |
+| UX and easy embedding (15) | Embedding on a foreign page with one line, mobile, keyboard use, readable citations | The loader plus iframe on any origin; demo page; source cards; mobile full screen |
+| Engineering (15) | Index age, latency, cost per answer | `/healthz` manifest and UI footer; p50 and p95; tokens and cost per answer in logs; exact-match cache |
 
 ## 8. Risks and mitigations
 
