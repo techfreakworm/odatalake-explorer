@@ -242,9 +242,17 @@ class AskService:
         retried = False
         if not leak and (truncated or _unparseable(text)) and deadline - loop.time() > MIN_RETRY_S:
             retried = True
+            if truncated:
+                retry_messages = [*messages[:-1], {"role": "user",
+                                                   "content": messages[-1]["content"] + "\n\n" + prompts.RETRY_SHORTER}]
+            elif text.strip():  # an answer without any [n]: show it back and ask for the citations
+                retry_messages = [*messages, {"role": "assistant", "content": text},
+                                  {"role": "user", "content": prompts.RETRY_ADD_CITATIONS}]
+            else:
+                retry_messages = messages
             try:
                 async with asyncio.timeout_at(deadline - 0.25):
-                    res2, broken2 = await self._call(messages, deadline - 0.25, None, run)
+                    res2, broken2 = await self._call(retry_messages, deadline - 0.25, None, run)
                 truncated2 = broken2 or res2.finish_reason == "length"
                 if not _unparseable(res2.text) and (not truncated2 or truncated):
                     text, truncated = res2.text, truncated2
