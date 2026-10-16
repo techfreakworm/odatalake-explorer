@@ -112,7 +112,7 @@ Chunk fields. The names follow the POC chunker (`poc/chunking/chunker.py`) so it
 | `GET /readyz` | none | `200 {"ready": true}` or `503 {"ready": false, "reason": "..."}` | Ready only after the index and models are loaded and one warm-up query has run |
 | `POST /feedback` | `{"request_id": "...", "rating": "up" or "down", "comment": "<≤1000 chars, optional>"}` | `204` | Logged as a structured event |
 | `GET /widget.js` | none | `application/javascript` loader | Embed with `<script src="https://HOST/widget.js" data-api="https://HOST" async></script>` |
-| `GET /embed` | `?theme=auto` (or `light`, `dark`) | `text/html` chat app (the iframe target) | Sent with `Content-Security-Policy: frame-ancestors *` and no `X-Frame-Options`, so any docs site can frame it [[csp-fa]] |
+| `GET /embed` | `?theme=auto` (or `light`, `dark`) | `text/html` chat app (the iframe target) | Sent with the HTTP header `Content-Security-Policy: frame-ancestors *` and no `X-Frame-Options`, so any docs site can frame it. The directive does not work in a `<meta>` tag [[csp-fa]] |
 | `GET /` | none | Demo page: a docs-style page with the widget embedded, plus copy-paste snippets | Used in the judges' demo |
 
 SSE events from `/ask/stream`, in order. The format follows the [SSE spec][sse-spec]. Each `data:` line is one JSON object.
@@ -433,8 +433,8 @@ STEPS (in order; each step leaves a working server)
    tokens in and out, cache hit, abstain_reason, top score, top-5 doc_urls), the Server-Timing header,
    a global asyncio.Semaphore(MAX_CONCURRENCY) that queues rather than rejects, a per-IP rate limit of RATE_LIMIT_PER_MIN
    (high enough that a scorer never sees 429), and CORS * without credentials.
-9. Serve web/: /widget.js -> web/widget.js, /embed -> web/embed.html (header Content-Security-Policy:
-   frame-ancestors *), / -> web/demo/index.html, /static -> web/.
+9. Serve web/: /widget.js -> web/widget.js, /embed -> web/embed.html (HTTP header Content-Security-Policy:
+   frame-ancestors *; a <meta> tag cannot carry frame-ancestors), / -> web/demo/index.html, /static -> web/.
 10. Graceful degradation: if the LLM fails after retry and fallback, return 200 with "I couldn't generate an answer right
     now. These pages are the most relevant:" plus a list of the top 3 pages, and sources = those pages.
 11. Optional, local only (DEBUG=1): POST /debug/retrieve returns the ranked chunks with scores, for eval triage.

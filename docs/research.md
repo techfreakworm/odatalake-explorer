@@ -204,7 +204,17 @@ Verified so far:
 A loader script injects a launcher and an iframe from our origin, so styles are isolated and the host page's CORS and
 `connect-src` do not apply. `/embed` sends `Content-Security-Policy: frame-ancestors *` so any site can frame it [[csp-fa]].
 Docusaurus can add the loader through its `scripts` config, which inserts tags into `<head>` [[docusaurus]].
-The alternative is a Shadow DOM widget on the host page. PENDING(stack report: comparison).
+The alternative is a Shadow DOM widget on the host page, which is what the POC built (`poc/api/static/widget.js`).
+
+| | Loader plus iframe (chosen) | Shadow DOM widget (POC) |
+|---|---|---|
+| Style isolation | A separate document | Styles scoped to the shadow tree in both directions [[shadow-dom]] |
+| What the host page's CSP must allow | `script-src` for `widget.js`, and our origin in `frame-src`, which falls back to `child-src` and then `default-src` [[frame-src]]. A plain iframe snippet needs only `frame-src` | `script-src` for `widget.js`, and our API origin in `connect-src`, because `fetch()` is governed by `connect-src`, which falls back to `default-src` [[connect-src]] |
+| CORS | Not needed by the UI: the iframe calls its own origin | Needed: the host page calls our API from another origin |
+| Access to the host page | None: messages only through `postMessage` | Runs in the host page's JavaScript context |
+
+The POC ships a strict-CSP test page (`poc/api/demo/csp.html`, `connect-src 'self'`). There the Shadow DOM widget is
+expected to render, but its API calls are expected to fail. PENDING(POC: the observed result).
 
 ### 5.7 Production basics
 Pydantic validation (1-2000 characters), JSON errors, a 20 s LLM timeout with one jittered retry on 429/5xx, graceful
@@ -273,6 +283,9 @@ PENDING(arch-prior-art report).
 [hf-overview]: https://huggingface.co/docs/hub/spaces-overview
 [hf-docker]: https://huggingface.co/docs/hub/spaces-sdks-docker
 [gcloud-deploy]: https://docs.cloud.google.com/sdk/gcloud/reference/run/deploy
+[shadow-dom]: https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM
+[frame-src]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-src
+[connect-src]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/connect-src
 
 - Event page: <https://events.mlh.com/events/15468-hacktoberfest-hack-day-bengaluru-x-olake>
 - Challenges page: <https://www.mlh.com/events/lakehouse-bot-day-hacktoberfest-bengaluru-x-olake/challenges>
@@ -286,4 +299,7 @@ PENDING(arch-prior-art report).
 - Hugging Face Spaces overview: <https://huggingface.co/docs/hub/spaces-overview>
 - Hugging Face Docker Spaces: <https://huggingface.co/docs/hub/spaces-sdks-docker>
 - `gcloud run deploy` reference: <https://docs.cloud.google.com/sdk/gcloud/reference/run/deploy>
+- MDN, Using shadow DOM: <https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM>
+- MDN CSP `frame-src`: <https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-src>
+- MDN CSP `connect-src`: <https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/connect-src>
 - POC measurements: `poc/results/corpus.json`, `poc/results/chunks.json`, `poc/results/freshness.json`; POC code `poc/chunking/chunker.py`, `poc/eval/questions.py`, `poc/eval/score.py`
