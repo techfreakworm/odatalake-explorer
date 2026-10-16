@@ -9,7 +9,8 @@ The runbook that carries out these decisions is [plan.md](plan.md). Open items a
 1. **Deliverable**: a public `POST /ask` (`{"question"}` in, `{"answer", "sources"}` out), an embeddable chat UI, and a repo
    with a README on architecture and design choices ([challenges page][ch]).
 2. **Corpus**: all 124 `/docs/` pages from the rendered HTML, including release notes; the 4 datazip-inc repos through a file
-   allowlist; blog posts as a lower tier (decision D4); no issues or discussions in v1 (§3).
+   allowlist; blog posts and upstream Amoro docs (olake-fusion `docs/`) as lower tiers (decisions D4, D11); no issues or
+   discussions in v1 (§3).
 3. **Citations**: `sources` holds canonical sitemap URLs (trailing slash, no anchor) and branch-form GitHub blob URLs.
    Deep links with anchors or line ranges appear only in the UI (§3.4).
 4. **Architecture**: hybrid retrieval (BM25 plus local dense embeddings, RRF k=60), a local cross-encoder rerank, then one
@@ -45,6 +46,7 @@ The doc-writer opened both pages on 2026-10-16. The lead verified them on the sa
 | Judges | Sachin Garg (Tech Lead, Airbnb) and Brihati Jain (Co-Founder, Conqur AI) | [challenges page][ch] |
 | Side prizes | "Best Use of Gemma 4" (Google DeepMind; Gemma 4 through the Gemini API). "Best Open-Source AI Project" (DigitalOcean): meaningful use of open-source or open-weight AI, a public GitHub repo under an open-source license; a harness entry must be new or significantly changed. Its reward is a DEV badge plus an MLH swag bag | [challenges page][ch] |
 | Not specified | Latency or timeout limits, scorer concurrency, how sources are matched, the "don't know" format, submission mechanics, whether the endpoint must stay up after the freeze, test-set size and grading method, and a pre-existing-code policy for Ask OLake | [event page][ev], [challenges page][ch]; listed as K1-K14 in [open-questions.md](open-questions.md) |
+| Default rules (MLH) | The event pages publish no event-specific rules. MLH's standard hackathon rules, which organizers may adopt or modify, say: all project work happens during the hackathon; an earlier idea is fine but its code and other project materials may not be re-used; libraries and open-source code are fine, but a project built beforehand and open-sourced just to use at the event is not; stop at time-up, with small fixes allowed and no new features; code must be public and stay public; AI coding tools are allowed but must be disclosed. The MLH organizer guide also asks for frameworks to be listed in the README | [MLH rules][mlh], [MLH organizer guide][mlh-guide]; see K5, K6 and D2 in [open-questions.md](open-questions.md) |
 
 Implication (inference, not stated anywhere): scoring runs after 14:30 and before the 15:30 top-10 announcement, against
 the live endpoint. So the service must stay up, warm and rate-limit-tolerant in that window and through the demos until 17:00.
@@ -57,10 +59,10 @@ the live endpoint. So the service must stay up, warm and rate-limit-tolerant in 
 |---|---|---|
 | Sitemap URLs | 275 in total: 124 under `/docs/`, 86 under `/blog/` (85 posts plus the `/blog/` index), 65 others (community, company pages). 231 carry `lastmod`. All 275 end with `/` | The doc-writer fetched [the sitemap][sitemap] at 2026-10-16T17:14Z and counted `<loc>` by path prefix. It matches `poc/results/corpus.json` (`sitemap_urls`: 275) |
 | Release notes | 24 pages under `/docs/release/` plus 2 under `/docs/fusion/release/` | Same sitemap count. `poc/results/corpus.json` (`by_section`) |
-| Docs size | 124 pages, 263,614 tokens (o200k_base), 830 code blocks, 182 tables, 80 tab groups, 342 admonitions. The median page has 1,152 tokens, the largest 30,229 (`/docs/writers/iceberg/catalog/rest/`). 13 pages have under 100 tokens | `poc/results/corpus.json` |
+| Docs size | 124 pages, 263,614 tokens (o200k_base), 830 code blocks, 182 tables, 80 tab groups, 342 admonitions. The median page has 1,152 tokens, the largest 30,229 (`/docs/writers/iceberg/catalog/rest/`). 13 pages have under 100 tokens, 7 of them among the 23 `/docs/fusion/` pages, so the Fusion docs are thin | `poc/results/corpus.json` (`pages_under_100_tokens`, `by_section`) |
 | Blog size | 85 posts, 446,137 tokens. The median post has 4,175 tokens | `poc/results/corpus.json` |
-| Fetch cost | 209 pages (docs plus blog) fetched in 12.77 s at concurrency 4, with a per-page p50 of 0.243 s. HTML-to-Markdown extraction took 3.49 s | `poc/results/corpus.json` |
-| Hosting | olake.io answers with `server: GitHub.com` and `cache-control: max-age=600` | `poc/results/freshness.json` |
+| Fetch cost | The 124 docs pages took 7.52 s at concurrency 4. All 209 pages (docs plus blog) took 12.77 s, with a per-page p50 of 0.243 s. HTML-to-Markdown extraction took 3.49 s | `poc/results/corpus.json` |
+| Hosting | GitHub Pages behind a Varnish CDN cache: `server: GitHub.com`, `via: 1.1 varnish`, `x-served-by: cache-maa…`, `x-cache: HIT`, `cache-control: max-age=600`, and both `ETag` and `Last-Modified` are set | Response headers of the sitemap, checked by the doc-writer 2026-10-16; `poc/results/freshness.json` |
 
 Decision: ingest the **rendered HTML** of every `/docs/` page and extract the article to Markdown, keeping heading anchors,
 code fences, tables and tabs. Reasons: (1) the sitemap URL is the canonical citation URL as is, so no path-to-slug
@@ -82,6 +84,14 @@ Decision: an allowlist only (READMEs and other Markdown, Helm `values.yaml` and 
 configs, CLI flag definitions and driver config structs). Docs plus allowlisted repo files total 208 documents and
 407,210 tokens (`poc/results/corpus.json`). PENDING(repos report: the exact globs, default branches, licenses, release cadence).
 GitHub issues and discussions stay out of v1 (decision D5). PENDING(repos report: their volume and noise).
+
+All five datazip-inc repos (the four above plus olake-docs) are Apache-2.0 with `master` as the default branch, and none
+is marked as a fork (GitHub API `repos/datazip-inc/<repo>`, fields `license.spdx_id`, `default_branch`, `fork`, checked
+2026-10-16). Even so, the olake-fusion codebase is Apache Amoro's: its top-level modules are named `amoro-*`, and its Helm chart is
+`charts/amoro` ([olake-fusion repo][fusion-repo]; [Apache Amoro][amoro]). Its `docs/` folder holds upstream Amoro docs that
+do not mention OLake (`poc/README.md`). The OLake Fusion pages on the docs site are thin (7 of 23 under 100 tokens, §3.1). So the
+plan adds an optional, down-weighted `fusion-upstream` tier for that folder (decision D11). The final call waits on the POC's
+Fusion retrieval numbers. PENDING(POC).
 
 ### 3.3 Outside sources
 
@@ -171,7 +181,7 @@ PENDING(stack report) for every subsection. The memo's starting position is belo
 Any OpenAI-compatible endpoint, configured by `LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL`, plus a fallback trio. The event's
 credits provider is not named ([event page][ev]). The resource links on the challenges page point to Gemma 4 and the
 Gemini API ([challenges page][ch]). The Gemini API has an OpenAI-compatible base URL,
-`https://generativelanguage.googleapis.com/v1beta/openai/`, and supports streaming. Its OpenAI-library support is
+`https://generativelanguage.googleapis.com/v1beta/openai/` (an API base URL, not a web page), and supports streaming. Its OpenAI-library support is
 described as beta [[gemini-openai]]. PENDING(stack report: models, prices, rate limits, Gemma 4 availability).
 
 ### 5.2 Cost per answer
@@ -261,7 +271,7 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Over-abstaining or under-abstaining | Accuracy or honesty points lost | Three logged triggers and a threshold tuned on the eval set (§4.3) |
 | Venue Wi-Fi | Slow builds and deploys | Pre-cached wheels, models, repos and base image; remote builds; phone hotspot (plan section 11) |
 | A teammate edits another track's files | Lost work | One owner per path (plan section 0.3) |
-| Unclear pre-existing-code policy | Disqualification | Bring only documents to the event, write code there, disclose (K6, D2) |
+| Pre-existing code | Disqualification. MLH's standard rules forbid re-using code or project materials and put all work inside the event ([MLH rules][mlh]) | Build fresh from the briefs; `poc/` is a reference for numbers only; disclose the preparation and the AI tools in the README (K6, D2) |
 
 ## 9. Appendix: measurement table
 
@@ -299,6 +309,10 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 [shadow-dom]: https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM
 [frame-src]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-src
 [connect-src]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/connect-src
+[mlh]: https://github.com/MLH/mlh-policies/blob/main/standard-hackathon-rules.md
+[mlh-guide]: https://guide.mlh.com/general-information/judging-and-submissions/rules-for-your-hackathon
+[fusion-repo]: https://github.com/datazip-inc/olake-fusion
+[amoro]: https://amoro.apache.org/
 
 - Event page: <https://events.mlh.com/events/15468-hacktoberfest-hack-day-bengaluru-x-olake>
 - Challenges page: <https://www.mlh.com/events/lakehouse-bot-day-hacktoberfest-bengaluru-x-olake/challenges>
@@ -315,4 +329,8 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 - MDN, Using shadow DOM: <https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM>
 - MDN CSP `frame-src`: <https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-src>
 - MDN CSP `connect-src`: <https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/connect-src>
+- MLH standard hackathon rules: <https://github.com/MLH/mlh-policies/blob/main/standard-hackathon-rules.md>
+- MLH organizer guide, rules for your hackathon: <https://guide.mlh.com/general-information/judging-and-submissions/rules-for-your-hackathon>
+- olake-fusion repo: <https://github.com/datazip-inc/olake-fusion>
+- Apache Amoro: <https://amoro.apache.org/>
 - POC measurements: `poc/results/corpus.json`, `poc/results/chunks.json`, `poc/results/freshness.json`; POC code `poc/chunking/chunker.py`, `poc/eval/questions.py`, `poc/eval/score.py`
