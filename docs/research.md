@@ -122,8 +122,13 @@ which domains count with K7.
 | GitHub REST API | Unauthenticated: 60 requests per hour, and each conditional request still costs 1. Authenticated: 5,000 per hour, and a 304 costs 0 | `poc/results/freshness.json` |
 | `git ls-remote` | One repo's HEAD check takes 714-1005 ms and uses no API quota | `poc/results/freshness.json` |
 
-Decision: incremental refresh keyed on the sitemap `lastmod` plus a content hash per page, and on `git ls-remote` HEAD SHAs
-per repo. A new index version is built and swapped in atomically. The manifest (build time, docs `lastmod` max, repo SHAs)
+`lastmod` is date-only, and most pages share one bulk date, so it is a weak per-page signal. The POC therefore recommends
+using a conditional GET on `sitemap.xml` as the cheap trigger: a 304 means no site deploy since the last check. After a
+deploy, re-fetch all docs pages (the 124 pages took 7.52 s, `poc/results/corpus.json`), diff the sha256 of each page's extracted Markdown, and
+re-embed only the chunks that changed (`poc/README.md`, Findings 2).
+
+Decision: incremental refresh keyed on a content hash per page, triggered by the sitemap's conditional GET and using `lastmod`
+as a hint, plus `git ls-remote` HEAD SHAs per repo. A new index version is built and swapped in atomically. The manifest (build time, docs `lastmod` max, repo SHAs)
 appears in `/healthz` and the UI footer. PENDING(eval-ops report: in-app refresher vs a scheduled GitHub Action, and
 host CPU behaviour for background work).
 
@@ -158,10 +163,27 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
 
 - **Chunking.** Split at headings and tab markers. Never split inside a code fence or table. Every chunk gets a
   `title › section` header. YAML and JSON split at keys, and Go at top-level declarations (`poc/chunking/chunker.py`). Measured
-  sizes are in §9. PENDING(POC retrieval eval: target 300 or 600 tokens).
+  sizes are in §9. At a 600-token target, 556 of 951 chunks exceed the 512-WordPiece input limit of the bge embedders and get
+  truncated. At 300 only 79 of 1,861 do (`poc/results/retrieval.json`), so 300 suits dense retrieval. PENDING(lead: confirm 300/450).
 - **Retrieval.** BM25 (bm25s) and dense (fastembed) candidates fused with RRF, k=60 [[rrf]]. Then a cross-encoder
   rerank. Then small-to-big: the neighbouring chunk or parent section within about 4k context tokens, with at most 3 chunks
-  per page. PENDING(POC: recall@k for BM25, dense, hybrid and hybrid+rerank).
+  per page. POC results on the 14 seed questions that have expected sources (`poc/results/retrieval.json`; 300-token chunks;
+  fuse top 50, rerank top 20; latency is retrieval only, on an 18-core arm64 laptop with all ONNX threads):
+
+  | Config | hit@1 | hit@5 | hit@10 | MRR@10 | p50 ms |
+  |---|---|---|---|---|---|
+  | BM25 | 0.286 | 0.714 | 0.857 | 0.451 | 0.24 |
+  | Dense bge-small-en-v1.5 | 0.214 | 0.714 | 0.857 | 0.463 | 5.12 |
+  | Dense bge-base-en-v1.5 | 0.357 | 0.786 | 0.929 | 0.567 | 12.16 |
+  | Hybrid (RRF) bge-small | 0.357 | 0.714 | 0.929 | 0.511 | 5.79 |
+  | Hybrid (RRF) bge-base | 0.429 | 0.786 | 0.857 | 0.581 | 13.53 |
+  | Hybrid bge-base + rerank ms-marco-MiniLM-L-6-v2 | 0.429 | 0.786 | 0.929 | 0.590 | 431.29 |
+  | Hybrid bge-base + rerank bge-reranker-base | 0.429 | 0.929 | 0.929 | 0.645 | 1786.92 |
+  | BM25 + rerank ms-marco-MiniLM-L-6-v2 | 0.429 | 0.786 | 0.786 | 0.574 | 382.10 |
+
+  With 14 questions, one question moves a hit rate by about 0.07, so differences of that size are noise. The best MRR
+  (hybrid + bge-reranker-base) costs about 1.8 s per query on this machine. PENDING(lead: which embedder and reranker, and
+  the rerank depth).
 - **Grounding.** One system prompt (plan section 4.3): answer only from numbered passages, cite `[n]` per claim, and copy
   configs exactly. Fixed `NO_ANSWER` and `OUT_OF_SCOPE` markers. Prompt injection is treated as data.
 - **Abstain.** Three triggers, each logged: (1) the top rerank score is below the threshold after one rewrite; (2) the
@@ -191,7 +213,19 @@ token counts).
 ### 5.3 Embeddings and reranker
 Local fastembed (ONNX on CPU), baked into the image. It does not depend on the provider, adds no marginal cost or rate limits,
 is deterministic and works offline. API embeddings are the alternative if image size or host CPU becomes a problem.
-PENDING(stack report / POC: model IDs, dimensions, sizes, CPU latency).
+Measured in the POC (`poc/results/retrieval.json`, `poc/results/latency_threads.json`). With 2 ONNX threads, a stand-in for a
+2-vCPU host, measured on the laptop:
+
+| Model | Dim | Query embed p50 (2 threads) | Rerank p50, top 10 / top 20 (2 threads) | Full-corpus embed (1,861 chunks, all cores) |
+|---|---|---|---|---|
+| BAAI/bge-small-en-v1.5 | 384 | 5.4 ms | | 69.09 s |
+| BAAI/bge-base-en-v1.5 | 768 | 15.8 ms | | 229.79 s |
+| Xenova/ms-marco-MiniLM-L-6-v2 (reranker) | | | 205.9 / 546.4 ms (358.2 ms for top 20 with passages cut to 1,000 chars) | |
+| BAAI/bge-reranker-base (reranker) | | | 922.3 / 2,119.7 ms | |
+
+Memory, as process RSS after loading each model in turn (2 threads): 245 MB after bge-small, 713 MB after MiniLM-L6, and
+2,282 MB after bge-reranker-base (`poc/results/latency_threads.json`). So the larger reranker adds about 1.5 GB.
+PENDING(stack report: image size and host CPU).
 
 ### 5.4 Vector store
 None. Vectors stay in process as numpy brute force: 951-1,861 chunks without the blog, depending on chunk size
@@ -233,7 +267,9 @@ JSON logs, `Server-Timing`, a non-root container user, and secrets only in env.
 
 ### 5.8 Latency and cost targets
 **Targets** (unmeasured): `/ask` p50 ≤ 3 s and p95 ≤ 6 s with a Flash-class model; stream time to first token ≤ 1.2 s;
-retrieval plus rerank ≤ 150 ms on 2 vCPU. PENDING(POC latency measurements).
+retrieval plus rerank ≤ 150 ms on 2 vCPU. Measured: no reranker meets the 150 ms **target** at 2 threads. MiniLM-L6 needs
+205.9 ms p50 for the top 10 alone. Hybrid retrieval without a rerank takes 13.53 ms p50 on all cores, and its bge-base
+query embedding alone takes 15.8 ms p50 at 2 threads (§4.3, §5.3). PENDING(POC end-to-end latency with the LLM).
 
 ## 6. Evaluation
 
@@ -290,7 +326,13 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Conditional GET to olake.io (304) | ≈ 12 ms | `poc/results/freshness.json` |
 | `git ls-remote` per repo | 714-1005 ms | `poc/results/freshness.json` |
 | GitHub API limit (unauthenticated, authenticated) | 60 per hour, 5,000 per hour | `poc/results/freshness.json` |
-| Retrieval recall@k, accuracy, abstain, latency, cost | PENDING | POC steps 3-6 |
+| Chunks over the bge 512-WordPiece limit | 79 of 1,861 (target 300); 556 of 951 (target 600) | `poc/results/retrieval.json` |
+| Retrieval MRR@10 / hit@5, 300-token chunks, 14 seed questions | BM25 0.451 / 0.714; hybrid bge-base 0.581 / 0.786; + MiniLM-L6 rerank 0.590 / 0.786; + bge-reranker-base 0.645 / 0.929 | `poc/results/retrieval.json` |
+| Retrieval p50 (all cores) | hybrid bge-base 13.53 ms; + MiniLM-L6 rerank 431.29 ms; + bge-reranker-base 1,786.92 ms | `poc/results/retrieval.json` |
+| Rerank p50 at 2 threads, top 10 | MiniLM-L6 205.9 ms; bge-reranker-base 922.3 ms | `poc/results/latency_threads.json` |
+| Query embedding p50 at 2 threads | bge-small 5.4 ms; bge-base 15.8 ms | `poc/results/latency_threads.json` |
+| Full-corpus embedding (1,861 chunks) | bge-small 69.09 s; bge-base 229.79 s | `poc/results/retrieval.json` |
+| End-to-end accuracy, abstain, latency, cost | PENDING | POC steps 5-6 |
 
 ## Sources
 

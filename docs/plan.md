@@ -381,6 +381,9 @@ STEPS
 3. ingest/html2md.py: extract the Docusaurus article only (selectors in CLAUDE.md). Write Markdown that keeps
    headings with their anchor ids, fenced code with its language, tables, and admonitions as blockquotes. Render each tab
    as a "**Tab: <label>**" line before its content. Drop the navbar, sidebar, TOC, footer, edit links and pagination.
+   Known traps (from the POC): every tab panel is in the static HTML and tab groups nest, so take only panels whose
+   nearest .tabs-container is the current one, or panels get emitted twice. Strip the zero-width-space hash link inside
+   headings. Code blocks sit in a custom olake-code wrapper with a filename title.
 4. index/chunk.py: split at headings and tab markers. Never split inside a code fence or a table (if a single block is
    too big, split code at line boundaries and re-open the fence, and split tables at row boundaries with the header repeated).
    Prefix every chunk with "title › section › subsection". YAML/JSON split at the shallowest keys with comments
@@ -388,8 +391,10 @@ STEPS
 5. index/embed.py: fastembed with the model in CLAUDE.md. Rows are float32 and L2-normalized. Write embeddings.npy.
 6. index/build.py: write chunks.jsonl, embeddings.npy and manifest.json into data/index/<UTC version>/, then write
    data/index/CURRENT atomically (temp file plus os.replace). Command: uv run python -m index.build
-7. index/refresh.py: compare sitemap lastmod plus content hash, and git ls-remote HEAD SHAs, against the manifest. Rebuild
-   only what changed, write a new version, and swap CURRENT. Also expose refresh_once() for the api teammate.
+7. index/refresh.py: trigger with a conditional GET on sitemap.xml (a 304 means no site deploy). On a change, re-fetch all
+   docs pages, hash each page's extracted Markdown, and re-embed only the chunks whose page hash changed (lastmod is
+   date-only and mostly one bulk date, so treat it only as a hint). For repos, compare git ls-remote HEAD SHAs with the
+   manifest. Write a new version and swap CURRENT. Also expose refresh_once() for the api teammate.
    Command: uv run python -m index.refresh [--check]
 
 ACCEPTANCE CHECKS (paste the output to the lead)
@@ -561,7 +566,9 @@ D2 (11:00-11:30) eval/run.py, following the "Scoring method" section of eval/que
    --base-url with X-Request-ID eval-<ID>, run the deterministic checks, and use the optional --judge LLM judge.
    Flags: --ids, --types, --limit, --concurrency (default 4), --out. Print a summary by Type and Category, plus p50/p95.
    Exit code 1 on any contract failure.
-D3 (11:35-12:00) First real deploy (index from data/index/ baked into the image). Smoke test from the phone.
+D3 (11:35-12:00) First real deploy (index from data/index/ baked into the image). Smoke test from the phone. Build the
+   index on the laptop and COPY data/index/ into the image. Never embed during the Docker build or at container start:
+   the full-corpus embedding took 69 s (bge-small) or 230 s (bge-base) on an 18-core laptop (poc/results/retrieval.json).
 D4 (12:00-12:30) Full eval on $URL -> eval/results/<HHMM>.json. README skeleton with the architecture diagram.
 D5 (12:30-13:30) Load test (--concurrency 8). p50/p95, cost per answer from the logged tokens and the provider price,
    README design-choices table and numbers, each number with its eval/results file.
@@ -789,8 +796,11 @@ Judging: accuracy 35, citations and honesty 15, production readiness 20, UX and 
 - After a change, run your brief's acceptance checks. Never break the /ask contract.
 
 ## Parameters (set by the lead; change only through the lead)
-- Chunk target / hard max (tokens, o200k_base): PENDING(POC) / PENDING(POC)
-- Embedding model (fastembed): PENDING(POC). Reranker (fastembed cross-encoder): PENDING(POC)
+- Chunk target / hard max (tokens, o200k_base): 300 / 450 (provisional. At 600, 556 of 951 chunks exceed bge's 512-WordPiece
+  limit; poc/results/retrieval.json). PENDING(lead confirm)
+- Embedding model (fastembed): BAAI/bge-base-en-v1.5 (768-dim; best dense MRR in the POC) or BAAI/bge-small-en-v1.5 (384-dim,
+  about 3x faster to embed). Reranker: Xenova/ms-marco-MiniLM-L-6-v2 on the top 10 (205.9 ms p50 at 2 threads), or
+  BAAI/bge-reranker-base (best MRR, but 922.3 ms p50 at 2 threads for the top 10 and about 1.5 GB more RAM). PENDING(lead decision)
 - RRF k = 60; candidates 30 (default, tune); final context ≈ 4k tokens; max 3 chunks per page
 - Blog and fusion-upstream rank penalty: PENDING(retrieval eval, decisions D4 and D11)
 - ABSTAIN_THRESHOLD default: PENDING(POC)
