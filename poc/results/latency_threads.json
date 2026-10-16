@@ -1,0 +1,127 @@
+{
+  "target": 300,
+  "n_queries": 8,
+  "rss_mb_after_bm25": 61,
+  "by_threads": {
+    "2": {
+      "rss_mb_after_bge_small": 245,
+      "query_embed_bge_small_ms": {
+        "p50": 5.4,
+        "p95": 6.6,
+        "n": 16
+      },
+      "query_embed_bge_base_ms": {
+        "p50": 15.8,
+        "p95": 19.8,
+        "n": 16
+      },
+      "rss_mb_after_ms-marco-MiniLM-L-6-v2": 713,
+      "rerank_ms-marco-MiniLM-L-6-v2_top10_ms": {
+        "p50": 205.9,
+        "p95": 305.2,
+        "n": 8
+      },
+      "rerank_ms-marco-MiniLM-L-6-v2_top20_ms": {
+        "p50": 546.4,
+        "p95": 607.0,
+        "n": 8
+      },
+      "rerank_ms-marco-MiniLM-L-6-v2_top20_trunc1000chars_ms": {
+        "p50": 358.2,
+        "p95": 397.2,
+        "n": 8
+      },
+      "rss_mb_after_bge-reranker-base": 2282,
+      "rerank_bge-reranker-base_top10_ms": {
+        "p50": 922.3,
+        "p95": 1108.4,
+        "n": 8
+      },
+      "rerank_bge-reranker-base_top20_ms": {
+        "p50": 2119.7,
+        "p95": 2632.4,
+        "n": 8
+      }
+    },
+    "4": {
+      "rss_mb_after_bge_small": 1276,
+      "query_embed_bge_small_ms": {
+        "p50": 3.9,
+        "p95": 4.7,
+        "n": 16
+      },
+      "query_embed_bge_base_ms": {
+        "p50": 10.3,
+        "p95": 12.8,
+        "n": 16
+      },
+      "rss_mb_after_ms-marco-MiniLM-L-6-v2": 1555,
+      "rerank_ms-marco-MiniLM-L-6-v2_top10_ms": {
+        "p50": 122.4,
+        "p95": 187.5,
+        "n": 8
+      },
+      "rerank_ms-marco-MiniLM-L-6-v2_top20_ms": {
+        "p50": 331.2,
+        "p95": 399.7,
+        "n": 8
+      },
+      "rerank_ms-marco-MiniLM-L-6-v2_top20_trunc1000chars_ms": {
+        "p50": 207.3,
+        "p95": 233.2,
+        "n": 8
+      },
+      "rss_mb_after_bge-reranker-base": 4239,
+      "rerank_bge-reranker-base_top10_ms": {
+        "p50": 547.3,
+        "p95": 686.0,
+        "n": 8
+      },
+      "rerank_bge-reranker-base_top20_ms": {
+        "p50": 1356.1,
+        "p95": 1427.1,
+        "n": 8
+      }
+    },
+    "default(all cores)": {
+      "rss_mb_after_bge_small": 1282,
+      "query_embed_bge_small_ms": {
+        "p50": 3.8,
+        "p95": 4.6,
+        "n": 16
+      },
+      "query_embed_bge_base_ms": {
+        "p50": 9.6,
+        "p95": 12.4,
+        "n": 16
+      },
+      "rss_mb_after_ms-marco-MiniLM-L-6-v2": 1562,
+      "rerank_ms-marco-MiniLM-L-6-v2_top10_ms": {
+        "p50": 117.0,
+        "p95": 153.0,
+        "n": 8
+      },
+      "rerank_ms-marco-MiniLM-L-6-v2_top20_ms": {
+        "p50": 287.2,
+        "p95": 307.3,
+        "n": 8
+      },
+      "rerank_ms-marco-MiniLM-L-6-v2_top20_trunc1000chars_ms": {
+        "p50": 186.0,
+        "p95": 205.4,
+        "n": 8
+      },
+      "rss_mb_after_bge-reranker-base": 4240,
+      "rerank_bge-reranker-base_top10_ms": {
+        "p50": 568.4,
+        "p95": 724.8,
+        "n": 8
+      },
+      "rerank_bge-reranker-base_top20_ms": {
+        "p50": 1475.2,
+        "p95": 2075.8,
+        "n": 8
+      }
+    }
+  }
+}
