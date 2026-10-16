@@ -1,0 +1,221 @@
+{
+  "probed_at": "2026-10-16T17:06:00.340100+00:00",
+  "docs_page": {
+    "url": "https://olake.io/docs/connectors/postgres/",
+    "first": {
+      "status": 200,
+      "bytes": 130332,
+      "ms": 64.9,
+      "etag": "W/\"6ad1ef6f-1fd1c\"",
+      "last_modified": "Fri, 16 Oct 2026 09:33:35 GMT",
+      "cache_control": "max-age=600",
+      "age": "236",
+      "x_cache": "HIT",
+      "server": "GitHub.com"
+    },
+    "if_none_match": {
+      "status": 304,
+      "bytes": 0,
+      "ms": 12.0
+    },
+    "if_modified_since": {
+      "status": 304,
+      "bytes": 0,
+      "ms": 12.2
+    },
+    "stale_etag": {
+      "status": 200,
+      "bytes": 130332,
+      "ms": 14.8
+    },
+    "etag_decoded": {
+      "mtime_utc": "2026-10-16T09:33:35+00:00",
+      "size_bytes": 130332
+    }
+  },
+  "sitemap": {
+    "url": "https://olake.io/sitemap.xml",
+    "first": {
+      "status": 200,
+      "bytes": 42075,
+      "ms": 237.0,
+      "etag": "W/\"6ad1ef6f-a45b\"",
+      "last_modified": "Fri, 16 Oct 2026 09:33:35 GMT",
+      "cache_control": "max-age=600",
+      "age": "0",
+      "x_cache": "HIT",
+      "server": "GitHub.com"
+    },
+    "if_none_match": {
+      "status": 304,
+      "bytes": 0,
+      "ms": 13.2
+    },
+    "if_modified_since": {
+      "status": 304,
+      "bytes": 0,
+      "ms": 11.9
+    },
+    "stale_etag": {
+      "status": 200,
+      "bytes": 42075,
+      "ms": 12.7
+    },
+    "etag_decoded": {
+      "mtime_utc": "2026-10-16T09:33:35+00:00",
+      "size_bytes": 42075
+    }
+  },
+  "github_unauthenticated": {
+    "authenticated": false,
+    "rate_before": {
+      "limit": 60,
+      "remaining": 56,
+      "used": 4
+    },
+    "first": {
+      "status": 200,
+      "ms": 348.9,
+      "etag": "W/\"73e7685a50413248cea561c1dd619c87c5aa493423dda8e274735452cfde5cf4\"",
+      "x_ratelimit_remaining_header": "55"
+    },
+    "rate_after_200": {
+      "limit": 60,
+      "remaining": 55,
+      "used": 5
+    },
+    "conditional_requests": [
+      {
+        "status": 304,
+        "ms": 40.7,
+        "x_ratelimit_remaining_header": "54"
+      },
+      {
+        "status": 304,
+        "ms": 41.6,
+        "x_ratelimit_remaining_header": "53"
+      },
+      {
+        "status": 304,
+        "ms": 40.8,
+        "x_ratelimit_remaining_header": "52"
+      }
+    ],
+    "rate_after_3x_conditional": {
+      "limit": 60,
+      "remaining": 52,
+      "used": 8
+    },
+    "conditional_cost": 3,
+    "sha_media_type": {
+      "status": 200,
+      "ms": 314.2,
+      "body": "d20c68ed98ced12293cd621ac04136a946ba4290"
+    }
+  },
+  "github_authenticated": {
+    "authenticated": true,
+    "rate_before": {
+      "limit": 5000,
+      "remaining": 4895,
+      "used": 105
+    },
+    "first": {
+      "status": 200,
+      "ms": 418.9,
+      "etag": "W/\"0439f0b4d62cc1d4cde7c599817e0533821a7f2872c92b0ca81be11302c63859\"",
+      "x_ratelimit_remaining_header": "4894"
+    },
+    "rate_after_200": {
+      "limit": 5000,
+      "remaining": 4894,
+      "used": 106
+    },
+    "conditional_requests": [
+      {
+        "status": 304,
+        "ms": 521.9,
+        "x_ratelimit_remaining_header": "4894"
+      },
+      {
+        "status": 304,
+        "ms": 413.9,
+        "x_ratelimit_remaining_header": "4894"
+      },
+      {
+        "status": 304,
+        "ms": 463.6,
+        "x_ratelimit_remaining_header": "4894"
+      }
+    ],
+    "rate_after_3x_conditional": {
+      "limit": 5000,
+      "remaining": 4894,
+      "used": 106
+    },
+    "conditional_cost": 0,
+    "sha_media_type": {
+      "status": 200,
+      "ms": 371.0,
+      "body": "d20c68ed98ced12293cd621ac04136a946ba4290"
+    }
+  },
+  "git_ls_remote": {
+    "olake": {
+      "ms": 773.7,
+      "head": "d20c68ed98ced12293cd621ac04136a946ba4290",
+      "indexed_sha": "d20c68ed98ced12293cd621ac04136a946ba4290",
+      "changed_since_index": false
+    },
+    "olake-ui": {
+      "ms": 1004.8,
+      "head": "56826cf172a4c10e80a2276d0a2095313ec5b667",
+      "indexed_sha": "56826cf172a4c10e80a2276d0a2095313ec5b667",
+      "changed_since_index": false
+    },
+    "olake-helm": {
+      "ms": 762.6,
+      "head": "c63f10c48cd4dc2cbe3a130c6190ccedf0dafa83",
+      "indexed_sha": "c63f10c48cd4dc2cbe3a130c6190ccedf0dafa83",
+      "changed_since_index": false
+    },
+    "olake-fusion": {
+      "ms": 713.6,
+      "head": "15ca160b298bf038f78f6639ec7aae67e4d4e33a",
+      "indexed_sha": "15ca160b298bf038f78f6639ec7aae67e4d4e33a",
+      "changed_since_index": false
+    }
+  },
+  "sitemap_diff": {
+    "cached_vs_live": {
+      "added": [],
+      "removed": [],
+      "lastmod_changed": []
+    },
+    "synthetic_check": {
+      "added": [
+        "https://olake.io/docs/new-page/"
+      ],
+      "removed": [
+        "https://olake.io/docs/api/olake-ui-api/"
+      ],
+      "lastmod_changed": [
+        "https://olake.io/docs/"
+      ]
+    }
+  },
+  "observations": {
+    "docs_pages_by_http_last_modified": {
+      "Fri, 16 Oct 2026 09:33:35 GMT": 124
+    },
+    "docs_pages_by_sitemap_lastmod": {
+      "2026-10-06": 100,
+      "2026-10-15": 16,
+      "2026-10-09": 3,
+      "2026-10-08": 2,
+      "2025-06-23": 1,
+      "2026-10-07": 1,
+      "2026-10-12": 1
+    }
+  }
+}
