@@ -88,7 +88,7 @@ The file `data/index/CURRENT` holds the active version name and is swapped atomi
 |---|---|
 | `chunks.jsonl` | One JSON object per line. Line *i* matches row *i* of `embeddings.npy`. Fields are listed below. |
 | `embeddings.npy` | `float32`, shape `[n_chunks, dim]`, rows L2-normalized, so cosine similarity is a dot product. |
-| `manifest.json` | `version`, `built_at`, `embed_model`, `dim`, `chunker` (`target`, `hard_max`), `counts` (pages and chunks per `source_type`), `docs` (`sitemap`, `lastmod_max`, and per page `{url: {lastmod, hash}}`), `repos` (per repo `{branch, commit, commit_date}`). |
+| `manifest.json` | `version`, `built_at`, `embed_model`, `dim`, `chunker` (`target`, `hard_max`), `counts` (pages and chunks per `source_type`), `docs` (`sitemap`, `lastmod_max`, and per page `{url: {lastmod, hash}}`), `repos` (per repo `{branch, commit, commit_date}`), `releases` (per repo `{tag, published_at}`, for the index-facts line). |
 
 Chunk fields. The names follow the POC chunker (`poc/chunking/chunker.py`) so its logic carries over.
 
@@ -854,8 +854,9 @@ Judging: accuracy 35, citations and honesty 15, production readiness 20, UX and 
   BAAI/bge-reranker-base (best MRR, but 922.3 ms p50 at 2 threads for the top 10 and about 1.5 GB more RAM). PENDING(lead decision)
 - RRF k = 60; candidates 30 (default, tune); final context ≈ 4k tokens; max 3 chunks per page
 - Blog rank weight when BLOG=on: PENDING(A/B on the eval set at the event, decision D4)
-- ABSTAIN_THRESHOLD default: PENDING(POC; on the seed set the top MiniLM-L6 rerank score ranged 2.2 to 8.7 on answerable
-  questions and -11.2 to -3.9 on out-of-scope, unanswerable and adversarial ones, so a threshold near 0 separated them)
+- ABSTAIN_THRESHOLD default: -0.891, provisional and valid only for the MiniLM-L6 reranker's score scale. On the 18 seed
+  questions this gate on the top rerank score abstained on all 3 should-abstain questions and on none of the 14
+  should-answer ones (poc/results/answer.json). Re-tune on the curated set at 12:35.
 - Zero valid citations after generation (decision D8): abstain or low-confidence answer: PENDING(POC)
 - Docusaurus extraction: docs article = `.theme-doc-markdown`, blog post = `#__blog-post-container`; headings keep their
   `id` as the anchor (drop the `.hash-link`); tabs = `.tabs-container` with `[role="tab"]` labels and `[role="tabpanel"]`
@@ -944,7 +945,8 @@ text ("title | product > breadcrumbs > heading path [tab label]" header + Markdo
 lines, lastmod, hash.
 embeddings.npy: float32 [n_chunks, dim], L2-normalized, row i = line i.
 manifest.json: version, built_at, embed_model, dim, chunker{target, hard_max}, counts{pages, chunks, by source_type},
-docs{sitemap, lastmod_max, pages{url: {lastmod, hash}}}, repos{name: {branch, commit, commit_date}}.
+docs{sitemap, lastmod_max, pages{url: {lastmod, hash}}}, repos{name: {branch, commit, commit_date}},
+releases{name: {tag, published_at}}.
 
 ### I2 HTTP
 POST /ask {"question": 1-2000 chars} -> 200 {"answer": markdown, "sources": [doc_url, ...]} EXACTLY these keys.
