@@ -1,0 +1,20 @@
+# Upload set for `gcloud run deploy --source .` (Cloud Build builds the Dockerfile remotely).
+# data/index/ must stay in: the image bakes in the prebuilt index.
+.gcloudignore
+.cache/
+.env
+.env.*
+.canary
+.git/
+.github/
+.claude/
+logs/
+.venv/
+poc/
+docs/
+eval/results/
+tests/
+deploy/*.deploy.yaml
+__pycache__/
+*.pyc
+.DS_Store

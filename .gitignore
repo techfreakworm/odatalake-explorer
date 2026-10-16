@@ -1,6 +1,6 @@
 .env
 .canary
-deploy/env.deploy.yaml
+deploy/*.deploy.yaml
 .cache/
 logs/
 .venv/

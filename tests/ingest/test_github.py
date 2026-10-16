@@ -129,3 +129,33 @@ def test_issue_urls():
     assert parse_issue_url("https://github.com/datazip-inc/olake-ui/issues/93") == ("olake-ui", 93, None)
     with pytest.raises(ValueError):
         parse_issue_url("https://github.com/other/olake/issues/1")
+
+
+# ----------------------------------------------------------------------------- ls-remote without git
+FIXTURES = __import__("pathlib").Path(__file__).parent / "fixtures"
+
+
+def test_ref_advertisement_parses_like_git_ls_remote():
+    from ingest.github import parse_ref_advertisement
+    refs = parse_ref_advertisement((FIXTURES / "info-refs-olake-helm.bin").read_bytes())
+    assert len(refs["HEAD"]) == 40 and refs["HEAD"] == refs["refs/heads/master"]
+    tags = [r for r in refs if r.startswith("refs/tags/")]
+    assert tags and all(len(refs[t]) == 40 for t in tags)
+    assert not any("\0" in r or " " in r for r in refs)  # capabilities were dropped
+
+
+def test_ls_remote_uses_http_without_git(monkeypatch):
+    import httpx
+    from ingest import github as gh
+    data = (FIXTURES / "info-refs-olake-helm.bin").read_bytes()
+    monkeypatch.setattr(gh.shutil, "which", lambda name: None)
+    real = httpx.Client
+
+    def client(*a, **kw):
+        kw["transport"] = httpx.MockTransport(lambda req: httpx.Response(200, content=data))
+        return real(*a, **kw)
+    monkeypatch.setattr(gh.httpx, "Client", client)
+    head = gh.ls_remote("olake-helm", ["HEAD"])
+    assert list(head) == ["HEAD"]
+    tags = gh.ls_remote_tags("olake-helm")
+    assert tags and not any(t.endswith("^{}") for t in tags)

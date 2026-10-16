@@ -209,9 +209,52 @@ def clone_repo(repo: str, *, offline: bool = False, root: Path | None = None) ->
     return clone_info(dest, repo)
 
 
+def parse_ref_advertisement(data: bytes) -> dict[str, str]:
+    """{ref: sha} from a git smart-HTTP ref advertisement (pkt-lines; capabilities after a NUL are dropped)."""
+    refs: dict[str, str] = {}
+    i = 0
+    while i + 4 <= len(data):
+        n = int(data[i:i + 4], 16)
+        if n == 0:  # flush-pkt
+            i += 4
+            continue
+        line = data[i + 4:i + n].rstrip(b"\n")
+        i += n
+        if line.startswith(b"#"):
+            continue
+        sha, _, ref = line.split(b"\0", 1)[0].partition(b" ")
+        if len(sha) == 40 and ref:
+            refs[ref.decode()] = sha.decode()
+    return refs
+
+
+def ls_remote_http(repo: str, *, client: httpx.Client | None = None) -> dict[str, str]:
+    """What `git ls-remote` fetches, without a git binary (the slim container): one GET of the smart-HTTP ref
+    advertisement, info/refs?service=git-upload-pack. No REST API quota."""
+    own = client is None
+    client = client or httpx.Client(timeout=config.HTTP_TIMEOUT_S, follow_redirects=True)
+    try:
+        r = client.get(f"https://github.com/{config.GITHUB_ORG}/{repo}.git/info/refs",
+                       params={"service": "git-upload-pack"}, headers={"User-Agent": config.USER_AGENT})
+    finally:
+        if own:
+            client.close()
+    if r.status_code != 200:
+        raise GitHubError(f"ls-remote {repo}: HTTP {r.status_code}")
+    return parse_ref_advertisement(r.content)
+
+
+def _match_ref(ref: str, pattern: str) -> bool:
+    return fnmatch.fnmatchcase(ref, pattern) or ref == pattern
+
+
 def ls_remote(repo: str, refs: list[str] | None = None) -> dict[str, str]:
-    """{ref: sha} from `git ls-remote` (no REST quota)."""
-    out = run_git(["ls-remote", remote_url(repo), *(refs or ["HEAD"])], timeout=60)
+    """{ref: sha} for the refs matching the patterns (default HEAD): `git ls-remote` when git is installed, else the
+    same advertisement over HTTP. Neither uses REST quota."""
+    patterns = refs or ["HEAD"]
+    if shutil.which("git") is None:
+        return {r: s for r, s in ls_remote_http(repo).items() if any(_match_ref(r, p) for p in patterns)}
+    out = run_git(["ls-remote", remote_url(repo), *patterns], timeout=60)
     res = {}
     for line in out.splitlines():
         sha, _, ref = line.partition("\t")

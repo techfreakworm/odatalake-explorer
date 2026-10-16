@@ -1,0 +1,18 @@
+# Build context for the image: code, dependencies and the prebuilt index only.
+.cache
+.env
+.env.*
+.canary
+.git
+.github
+.claude
+logs
+.venv
+poc
+docs
+eval/results
+tests
+deploy/*.deploy.yaml
+**/__pycache__
+**/*.pyc
+**/.DS_Store

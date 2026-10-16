@@ -1,0 +1,29 @@
+# DigitalOcean App Platform spec: the fallback host (BLR), sized like Cloud Run (1 vCPU, 2 GB).
+# `deploy/deploy.sh fallback` fills the ${...} placeholders and writes the envs list (the non-secret values
+# from deploy/env.yaml, a fresh CANARY and GIT_SHA, the LLM keys as type SECRET) into a gitignored copy, then
+# runs doctl with it. Never put a key in this file.
+# Sizes: apps-s-1vcpu-2gb (default), apps-s-1vcpu-1gb (minimum), apps-d-1vcpu-4gb (bge-base or a reranker).
+name: ${DO_APP_NAME}
+region: blr
+services:
+  - name: web
+    github:
+      repo: ${DO_REPO}
+      branch: ${DO_BRANCH}
+      deploy_on_push: false
+    dockerfile_path: Dockerfile
+    http_port: 8080
+    instance_size_slug: ${DO_SIZE}
+    instance_count: 1
+    health_check:
+      http_path: /readyz
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 2
+      failure_threshold: 12
+    liveness_health_check:
+      http_path: /healthz
+      period_seconds: 30
+      timeout_seconds: 2
+    envs:
+#ENVS#
