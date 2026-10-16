@@ -84,14 +84,14 @@ Generated from `results/*.json` by `uv run python -I -m common.results_table`. R
 | Docs pages fetched / errors | 124 / 0 | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
 | Docs fetch wall time (4 concurrent) | 7.52 s for 124 pages; extraction 3.49 s for all 209 pages; whole run incl. blog 16.64 s | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
 | Docs HTML → Markdown | 11.2 MB → 1.11 MB | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
-| Docs tokens (o200k) | 263,614 (p50 1,152/page, max 30,229) | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
+| Docs tokens (o200k) | 264,265 (p50 1,152/page, max 30,421) | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
 | Docs code blocks / tables / tab groups / admonitions | 830 / 182 / 80 / 342 | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
 | Docs stub pages (<100 tokens) | 13 | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
-| Repo files kept (allowlist) / tokens | 84 / 143,596 | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
-| Repo shallow clones wall time | 3.36 s (4 in parallel) | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
-| Blog posts / tokens (optional, separate) | 85 / 446,137 | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
-| Chunks @ target 300 (hard max 450) | 1861 chunks; tokens p50 235, p95 420, max 501; 4 over hard max | `chunking.chunker --target 300` |
-| Chunks @ target 600 (hard max 900) | 951 chunks; tokens p50 470, p95 815, max 881; 0 over hard max | `chunking.chunker --target 600` |
+| Repo files kept (allowlist) / tokens | 38 / 80,176 | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
+| Repo shallow clones wall time | 4.01 s (4 in parallel) | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
+| Blog posts / tokens (optional, separate) | 85 / 446,275 | `ingest.docs --blog`, `ingest.repos`, `ingest.stats` |
+| Chunks @ target 300 (hard max 450) | 1742 chunks; tokens p50 226, p95 420, max 501; 3 over hard max | `chunking.chunker --target 300` |
+| Chunks @ target 600 (hard max 900) | 961 chunks; tokens p50 420, p95 796, max 891; 0 over hard max | `chunking.chunker --target 600` |
 | Retrieval eval set (seed) | 14 questions with expected sources | `retrieval.bench` (see Steps) |
 | BM25 index build @ 300 | 0.097 s for 1861 chunks | `retrieval.bench` (see Steps) |
 | Embed bge-small-en-v1.5 @ 300 | 50 chunks 1.56 s; full 69.09 s (26.9 chunks/s); 79 chunks > 512 WordPiece tokens | `retrieval.bench` (see Steps) |
@@ -141,6 +141,27 @@ Generated from `results/*.json` by `uv run python -I -m common.results_table`. R
 | [canonical] @600 hybrid:BAAI/bge-small-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2 | hit@1 0.573, hit@5 0.829, hit@10 0.89, MRR 0.679 | `retrieval.bench` (see Steps) `--questions ../docs/eval-questions.md --repeat 0 --reuse-embeddings` |
 | [canonical] @600 hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2 | hit@1 0.585, hit@5 0.841, hit@10 0.902, MRR 0.689 | `retrieval.bench` (see Steps) `--questions ../docs/eval-questions.md --repeat 0 --reuse-embeddings` |
 | [canonical] @600 bm25+rerank:Xenova/ms-marco-MiniLM-L-6-v2 | hit@1 0.585, hit@5 0.805, hit@10 0.927, MRR 0.686 | `retrieval.bench` (see Steps) `--questions ../docs/eval-questions.md --repeat 0 --reuse-embeddings` |
+| [canonical, corpus v2] embed bge-small | 1742 chunks in 41.46 s (42.0 chunks/s) | `retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --out results/retrieval-v2.json` |
+| [canonical, corpus v2] @300 bm25 | MRR 0.679, hit@1 0.549, hit@5 0.878, hit@6 0.878, hit@10 0.902; query p50 0.15 ms | `retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --out results/retrieval-v2.json` |
+| [canonical, corpus v2] @300 dense:bge-small | MRR 0.702, hit@1 0.585, hit@5 0.866, hit@6 0.89, hit@10 0.902; query p50 5.11 ms | `retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --out results/retrieval-v2.json` |
+| [canonical, corpus v2] @300 hybrid:bge-small | MRR 0.744, hit@1 0.634, hit@5 0.878, hit@6 0.878, hit@10 0.939; query p50 9.08 ms | `retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --out results/retrieval-v2.json` |
+| [canonical, corpus v2] @300 hybrid:bge-small+rerank:TinyBERT-L-2-v2@10 | MRR 0.749, hit@1 0.634, hit@5 0.89, hit@6 0.915, hit@10 0.939; rerank p50 13.96 ms | `retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --out results/retrieval-v2.json` |
+| [canonical, corpus v2] @300 hybrid:bge-small+rerank:TinyBERT-L-2-v2@20 | MRR 0.778, hit@1 0.683, hit@5 0.902, hit@6 0.902, hit@10 0.939; rerank p50 28.14 ms | `retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --out results/retrieval-v2.json` |
+| [canonical, corpus v2] @300 hybrid:bge-small+rerank:MiniLM-L-6-v2@10 | MRR 0.731, hit@1 0.634, hit@5 0.866, hit@6 0.902, hit@10 0.939; rerank p50 150.82 ms | `retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --out results/retrieval-v2.json` |
+| [canonical, corpus v2] @300 hybrid:bge-small+rerank:MiniLM-L-6-v2@20 | MRR 0.742, hit@1 0.646, hit@5 0.841, hit@6 0.878, hit@10 0.939; rerank p50 339.68 ms | `retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --out results/retrieval-v2.json` |
+| [canonical, corpus v2] @300 hybrid:bge-small+rerank:BAAI/bge-reranker-base@10 | MRR 0.682, hit@1 0.549, hit@5 0.866, hit@6 0.878, hit@10 0.939; rerank p50 911.0 ms | `retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --out results/retrieval-v2.json` |
+| [canonical, corpus v2] @300 hybrid:bge-small+rerank:BAAI/bge-reranker-base@20 | MRR 0.649, hit@1 0.5, hit@5 0.866, hit@6 0.878, hit@10 0.915; rerank p50 1646.25 ms | `retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --out results/retrieval-v2.json` |
+| [canonical, corpus v2] @300 hybrid:bge-small+blog@1.0 | MRR 0.63, hit@10 0.866; blog chunks in top 6: 2.28 | `retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --out results/retrieval-v2.json` |
+| [canonical, corpus v2] @300 hybrid:bge-small+blog@0.5 | MRR 0.743, hit@10 0.939; blog chunks in top 6: 0.33 | `retrieval.bench --questions ../docs/eval-questions.md --target 300 --reranker flashrank:ms-marco-TinyBERT-L-2-v2 --reranker Xenova/ms-marco-MiniLM-L-6-v2 --reranker BAAI/bge-reranker-base --rerank-n 10 --rerank-n 20 --blog-weight 1.0 --blog-weight 0.5 --repeat 1 --out results/retrieval-v2.json` |
+| [canonical] gate signal bm25_max | recall 0.0 at 0 false abstains (threshold 2.716); AUC 0.863; p50 0.54 ms | `retrieval.gate_signals --questions ../docs/eval-questions.md` |
+| [canonical] gate signal dense_max_cos | recall 0.583 at 0 false abstains (threshold 0.7126); AUC 0.861; p50 7.78 ms | `retrieval.gate_signals --questions ../docs/eval-questions.md` |
+| [canonical] gate signal minilm_top@10 | recall 0.333 at 0 false abstains (threshold -6.3606); AUC 0.864; p50 141.15 ms | `retrieval.gate_signals --questions ../docs/eval-questions.md` |
+| [canonical] gate signal minilm_top@20 | recall 0.333 at 0 false abstains (threshold -6.3606); AUC 0.864; p50 378.29 ms | `retrieval.gate_signals --questions ../docs/eval-questions.md` |
+| [canonical] gate signal tinybert_top@10 | recall 0.417 at 0 false abstains (threshold 0.0137); AUC 0.883; p50 13.04 ms | `retrieval.gate_signals --questions ../docs/eval-questions.md` |
+| [canonical] gate signal tinybert_top@20 | recall 0.333 at 0 false abstains (threshold 0.0153); AUC 0.878; p50 31.93 ms | `retrieval.gate_signals --questions ../docs/eval-questions.md` |
+| [canonical] rewrite cost (local qwen3:32b, reasoning off) | p50 1174.8 ms, p95 1817.8 ms; 191.7 prompt + 11.9 completion tokens; NONE on 4 must-abstain / 0 must-answer rows | `answer.rewrite_probe --questions ../docs/eval-questions.md` |
+| [canonical] gate dense_max_cos < 0.71 → one rewrite → decline | rewrite fires 7/94; recall 0.5; false declines 0 []; gate alone: recall 0.583, false declines 0 | `answer.rewrite_probe --questions ../docs/eval-questions.md` |
+| [canonical] gate tinybert_top@10 < 0.3 → one rewrite → decline | rewrite fires 11/94; recall 0.583; false declines 1 ['ADV-02']; gate alone: recall 0.667, false declines 3 | `answer.rewrite_probe --questions ../docs/eval-questions.md` |
 | Query-time latency, onnx threads=2 | query_embed_bge_small p50 5.4; query_embed_bge_base p50 15.8; rerank_ms-marco-MiniLM-L-6-v2_top10 p50 205.9; rerank_ms-marco-MiniLM-L-6-v2_top20 p50 546.4; rerank_ms-marco-MiniLM-L-6-v2_top20_trunc1000chars p50 358.2; rerank_bge-reranker-base_top10 p50 922.3; rerank_bge-reranker-base_top20 p50 2119.7 | `retrieval.latency` |
 | Query-time latency, onnx threads=4 | query_embed_bge_small p50 3.9; query_embed_bge_base p50 10.3; rerank_ms-marco-MiniLM-L-6-v2_top10 p50 122.4; rerank_ms-marco-MiniLM-L-6-v2_top20 p50 331.2; rerank_ms-marco-MiniLM-L-6-v2_top20_trunc1000chars p50 207.3; rerank_bge-reranker-base_top10 p50 547.3; rerank_bge-reranker-base_top20 p50 1356.1 | `retrieval.latency` |
 | Query-time latency, onnx threads=default(all cores) | query_embed_bge_small p50 3.8; query_embed_bge_base p50 9.6; rerank_ms-marco-MiniLM-L-6-v2_top10 p50 117.0; rerank_ms-marco-MiniLM-L-6-v2_top20 p50 287.2; rerank_ms-marco-MiniLM-L-6-v2_top20_trunc1000chars p50 186.0; rerank_bge-reranker-base_top10 p50 568.4; rerank_bge-reranker-base_top20 p50 1475.2 | `retrieval.latency` |
@@ -163,6 +184,11 @@ Generated from `results/*.json` by `uv run python -I -m common.results_table`. R
 | [canonical] judge fact coverage / BEHAVIOR pass / contradictions | 0.573 / 0.75 / 4 | `eval.score --questions ../docs/eval-questions.md --out results/eval_run-canonical.json` |
 | [canonical] /ask latency p50 / p95 (local qwen3:32b, concurrency 4) | 105319.7 / 147428.2 ms | `eval.score --questions ../docs/eval-questions.md --out results/eval_run-canonical.json` |
 | [canonical] full run wall time | 2646.5 s (2201.9 s asks + 444.5 s judge) | `eval.score --questions ../docs/eval-questions.md --out results/eval_run-canonical.json` |
+| [canonical] combined policy /ask: schema / behaviour / source hit | 1.0 / 0.936 / 0.841 | API with `ASK_RERANKER=none ASK_GATE_SIGNAL=tinybert ASK_GATE_THRESHOLD=0.3 ASK_REWRITE=1 ASK_MAX_PASSAGES=10 ASK_PROMPT_VERSION=v3` + `eval.score --questions ../docs/eval-questions.md --out results/eval_run-canonical-combined.json` |
+| [canonical] combined policy: abstain recall (12) / false abstain answerable / all must-answer | 0.833 / 0.043 / 0.049 | API with `ASK_RERANKER=none ASK_GATE_SIGNAL=tinybert ASK_GATE_THRESHOLD=0.3 ASK_REWRITE=1 ASK_MAX_PASSAGES=10 ASK_PROMPT_VERSION=v3` + `eval.score --questions ../docs/eval-questions.md --out results/eval_run-canonical-combined.json` |
+| [canonical] combined policy: fact coverage / BEHAVIOR pass / contradictions | 0.603 / 0.85 / 4 | API with `ASK_RERANKER=none ASK_GATE_SIGNAL=tinybert ASK_GATE_THRESHOLD=0.3 ASK_REWRITE=1 ASK_MAX_PASSAGES=10 ASK_PROMPT_VERSION=v3` + `eval.score --questions ../docs/eval-questions.md --out results/eval_run-canonical-combined.json` |
+| [canonical] combined policy: server reasons; rewrite fired | {'answered': 80, 'unparseable': 2, 'model_unanswerable': 4, 'gate_after_rewrite': 8}; 11 | API with `ASK_RERANKER=none ASK_GATE_SIGNAL=tinybert ASK_GATE_THRESHOLD=0.3 ASK_REWRITE=1 ASK_MAX_PASSAGES=10 ASK_PROMPT_VERSION=v3` + `eval.score --questions ../docs/eval-questions.md --out results/eval_run-canonical-combined.json` |
+| [canonical] combined policy: latency p50 / p95; wall | 25707.5 / 48500.2 ms; 2984.9 s | API with `ASK_RERANKER=none ASK_GATE_SIGNAL=tinybert ASK_GATE_THRESHOLD=0.3 ASK_REWRITE=1 ASK_MAX_PASSAGES=10 ASK_PROMPT_VERSION=v3` + `eval.score --questions ../docs/eval-questions.md --out results/eval_run-canonical-combined.json` |
 | [canonical A/B subset, 35 rows] prompt v1 | behaviour correct 23/35; fact coverage 0.533; BEHAVIOR pass 15/20 | `ASK_PROMPT_VERSION=v2` API + `eval.score --ids <25 non-answerable + 10 answerable>` |
 | [canonical A/B subset, 35 rows] prompt v2 | behaviour correct 26/35; fact coverage 0.536; BEHAVIOR pass 16/20 | `ASK_PROMPT_VERSION=v2` API + `eval.score --ids <25 non-answerable + 10 answerable>` |
 | [seed] Scorer: schema valid / source hit / behaviour correct | 1.0 / 0.714 / 0.944 | `eval.score` |
@@ -260,6 +286,36 @@ has any margin.
 ```bash
 cd poc && export ASK_OLAKE_CACHE="$HOME/ask-olake-cache-$(date +%Y%m%d-%H%M)" && uv run python -I -m ingest.docs && uv run python -I -m ingest.manifest --out "results/docs-manifest-$(date +%F).json" && uv run python -I -m ingest.diff_manifest results/docs-manifest-2026-10-16.json "results/docs-manifest-$(date +%F).json"
 ```
+
+**Combined policy, end to end** (`results/eval_run-canonical-combined.json`, 94 rows; config stored in the file).
+
+Config:
+* hybrid bge-small, no ranking reranker, k = 10 passages;
+* TinyBERT@10 gate below 0.3, then one rewrite, decline if `NONE` or still below;
+* prompt v3, qwen3:32b with reasoning off, `max_tokens` 600.
+
+Results (v1 run in parentheses):
+* schema valid 1.0;
+* behaviour correct **0.936** (0.84);
+* source hit **0.841** (0.695);
+* judged fact coverage 0.603 (0.573);
+* judged BEHAVIOR pass 0.85 (0.75);
+* 4 contradictions; 0 5xx.
+
+Abstaining:
+* **Recall on the 12 must-abstain rows: 0.833** (target ≥ 0.90). 7 were declined after the
+  rewrite and 3 by the model. UNK-02 and UNK-04 were answered from loosely related pages.
+* **False abstains on the 82 must-answer rows: 4 (4.9%)**, of which 3 of 69 answerable (4.3%):
+  * SRC-03 and SYNC-03: unparseable JSON, one of them truncated at the cap;
+  * SYNC-12: the model returned `answerable=false`;
+  * ADV-02: declined after the injectable rewrite.
+* By type: negative 5/5 (2/5), false-premise 4/4 answered but judged BEHAVIOR only 2/4,
+  adversarial 3/4.
+
+Cost and timing:
+* The rewrite fired on 11/94 rows (11.7%): p50 1.27 s, about 196 tokens.
+* Generation: 3,294 prompt and 167 completion tokens on average; 1 answer hit the cap.
+* Local LLM p50 26 s (TTFT 13 s). The whole run took 2,985 s at concurrency 1.
 
 ## Canonical end-to-end run: exact config and abstain breakdown
 

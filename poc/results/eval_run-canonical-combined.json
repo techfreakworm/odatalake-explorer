@@ -1,0 +1,3314 @@
+{
+  "endpoint": "http://127.0.0.1:8000/ask",
+  "questions": {
+    "file": "eval-questions.md",
+    "n": 94
+  },
+  "concurrency": 1,
+  "judge_model": "qwen3:32b",
+  "summary": {
+    "n": 94,
+    "schema_valid": 1.0,
+    "behaviour_correct": 0.936,
+    "source_hit": 0.841,
+    "fact_coverage_mean": 0.603,
+    "judged_behavior_pass": 0.85,
+    "contradictions": 4,
+    "server_reasons": {
+      "answered": 80,
+      "unparseable": 2,
+      "model_unanswerable": 4,
+      "gate_after_rewrite": 8
+    },
+    "rewrite_fired": 11,
+    "false_abstain_rate_all_must_answer": 0.049,
+    "abstain_recall_unanswerable_out_of_scope": 0.833,
+    "false_abstain_rate_answerable": 0.043,
+    "http_5xx": 0,
+    "latency_ms": {
+      "p50": 25707.5,
+      "p95": 48500.2,
+      "max": 125631.2
+    },
+    "ask_wall_s": 2613.9,
+    "judge_wall_s": 371.0,
+    "total_wall_s": 2984.9
+  },
+  "by_type": {
+    "adversarial": {
+      "n": 4,
+      "schema_valid": 1.0,
+      "behaviour_correct": 0.75,
+      "source_hit": 0.75,
+      "fact_coverage_mean": 0.75,
+      "judged_behavior_pass": 0.75,
+      "contradictions": 0
+    },
+    "answerable": {
+      "n": 69,
+      "schema_valid": 1.0,
+      "behaviour_correct": 0.957,
+      "source_hit": 0.87,
+      "fact_coverage_mean": 0.608,
+      "judged_behavior_pass": null,
+      "contradictions": 3
+    },
+    "false-premise": {
+      "n": 4,
+      "schema_valid": 1.0,
+      "behaviour_correct": 1.0,
+      "source_hit": 0.25,
+      "fact_coverage_mean": 0.375,
+      "judged_behavior_pass": 0.5,
+      "contradictions": 1
+    },
+    "negative": {
+      "n": 5,
+      "schema_valid": 1.0,
+      "behaviour_correct": 1.0,
+      "source_hit": 1.0,
+      "fact_coverage_mean": 0.6,
+      "judged_behavior_pass": null,
+      "contradictions": 0
+    },
+    "out-of-scope": {
+      "n": 6,
+      "schema_valid": 1.0,
+      "behaviour_correct": 1.0,
+      "source_hit": null,
+      "fact_coverage_mean": null,
+      "judged_behavior_pass": 1.0,
+      "contradictions": 0
+    },
+    "unanswerable": {
+      "n": 6,
+      "schema_valid": 1.0,
+      "behaviour_correct": 0.667,
+      "source_hit": null,
+      "fact_coverage_mean": null,
+      "judged_behavior_pass": 1.0,
+      "contradictions": 0
+    }
+  },
+  "per_question": [
+    {
+      "id": "SET-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 125631.2,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/getting-started/quickstart/#one-command-setup"
+      ],
+      "answer": "The fastest way to get OLake UI running on your laptop is with a single Docker Compose command:\n\n```bash\ncurl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d\n```\n\nThis command will:\n- Download the latest docker-compose.yml file\n- Pull all required Docker images\n- Start all services in the background\n- Create a default admin user automatically [1].\n\nYou can access OLake UI at http://localhost:8000 [1].\n\nThe default login credentials are:\n- **Username**: `admin`\n- **Password**: `password` [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9994",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.4, \"rerank_ms\": 0.0, \"gate_ms\": 12.3, \"llm_ttft_ms\": 109051.8, \"llm_total_ms\": 125597.5, \"total_ms\": 125617.4}, \"usage\": {\"prompt_tokens\": 3084, \"completion_tokens\": 169}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 4052,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "SET-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 27306.0,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/fusion/install/olake-ui/#access-the-application",
+        "https://github.com/datazip-inc/olake-ui/blob/56826cf172a4c10e80a2276d0a2095313ec5b667/README.md?plain=1#L59-L85",
+        "https://olake.io/docs/install/olake-ui/#changing-admin-credentials"
+      ],
+      "answer": "To set your own admin username and password instead of the default one before bringing up the OLake UI Docker Compose stack, you need to edit the `x-signup-defaults` section in the `docker-compose.yml` or `docker-compose-v1.yml` file. Modify the `username` and `password` fields as follows:\n\n```yaml\nx-signup-defaults:\n  username: &defaultUsername \"your-username\"\n  password: &defaultPassword \"your-secure-password\"\n  email: &defaultEmail \"your-email@example.com\"\n```\n\nThis configuration allows you to customize the default admin user before starting the services [1][2][3].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9996",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.0, \"rerank_ms\": 0.0, \"gate_ms\": 11.8, \"llm_ttft_ms\": 11165.8, \"llm_total_ms\": 27284.9, \"total_ms\": 27303.8}, \"usage\": {\"prompt_tokens\": 3014, \"completion_tokens\": 168}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7692,
+        "coverage": 0.333
+      }
+    },
+    {
+      "id": "SET-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 29863.4,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/install/docker-cli/#discover-command"
+      ],
+      "answer": "To generate `streams.json` for a Postgres source using Docker without the UI, run the `discover` command as follows:\n\n```bash\n docker run --pull=always \\\n  -v \"[PATH_OF_CONFIG_FOLDER]:/mnt/config\" \\\n  olakego/source-postgres:latest \\\n  discover \\\n  --config /mnt/config/source.json\n```\n\nThis command will generate a `streams.json` file containing the list of available streams and their metadata [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9986",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.6, \"rerank_ms\": 0.0, \"gate_ms\": 17.9, \"llm_ttft_ms\": 15713.3, \"llm_total_ms\": 29836.9, \"total_ms\": 29861.5}, \"usage\": {\"prompt_tokens\": 3249, \"completion_tokens\": 128}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7025,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "SET-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 44066.8,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/community/commands-and-flags/#10-timeout",
+        "https://olake.io/docs/install/docker-cli/#discover-command"
+      ],
+      "answer": "To address timeouts and improve performance for the `olake discover` command on a PostgreSQL database with ~4k tables, you can use the following flags:\n\n1. **Increase timeout:** Use the `--timeout [TIMEOUT_IN_SECONDS]` flag to override the default timeout of 300 seconds (5 minutes). For example, to set a timeout of 600 seconds (10 minutes), use:\n   ```bash\n   ./build.sh driver-postgres discover --timeout 600\n   ```\n\n2. **Increase parallelism:** Use the `--max-discover-threads [NUMBER_OF_THREADS]` flag to set the maximum number of parallel threads for discovering table schemas. The default is 50, but you can increase it to a higher value, such as 100:\n   ```bash\n   ./build.sh driver-postgres discover --max-discover-threads 100\n   ```\n\nThese flags are specific to the `discover` command and help handle large datasets or slower networks [1][2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9558",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.0, \"rerank_ms\": 0.0, \"gate_ms\": 16.4, \"llm_ttft_ms\": 17801.8, \"llm_total_ms\": 44041.5, \"total_ms\": 44065.0}, \"usage\": {\"prompt_tokens\": 3514, \"completion_tokens\": 246}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7360,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "SET-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 27708.4,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/install/kubernetes/#2-install-the-chart",
+        "https://olake.io/docs/install/kubernetes/#3-access-olake-ui"
+      ],
+      "answer": "To install OLake on AWS EKS using Helm, use the following command:\n\n```bash\nhelm install olake olake/olake --set global.storageClass=\"gp2\"\n```\n\nAfter installation, to access the OLake UI, forward the UI service port to your local machine using:\n\n```bash\nkubectl port-forward svc/olake-ui 8000:8000\n```\n\nThen, open a browser and navigate to `http://localhost:8000` [1].\n\n**Default Credentials:**\n- Username: `admin`\n- Password: `password`\n\n> **Tip:** If OLake is installed with **Ingress enabled**, port-forwarding is not necessary. Access the application using the configured Ingress hostname [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9994",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.6, \"rerank_ms\": 0.0, \"gate_ms\": 9.5, \"llm_ttft_ms\": 9116.1, \"llm_total_ms\": 27689.1, \"total_ms\": 27706.3}, \"usage\": {\"prompt_tokens\": 2582, \"completion_tokens\": 194}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7743,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "SET-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 21231.7,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/install/olake-ui/"
+      ],
+      "answer": "The 'Temporal UI' component is included in the Docker Compose setup, but it is not explicitly listed as a separate container. It is part of the Temporal Server deployment and is accessible through the Temporal Server's web interface. The Temporal UI is typically available at http://localhost:8080 after starting the services [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9984",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.5, \"rerank_ms\": 0.0, \"gate_ms\": 12.9, \"llm_ttft_ms\": 12586.1, \"llm_total_ms\": 21209.5, \"total_ms\": 21230.0}, \"usage\": {\"prompt_tokens\": 3336, \"completion_tokens\": 89}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7050,
+        "coverage": 0.0
+      }
+    },
+    {
+      "id": "SET-07",
+      "type": "negative",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 23460.2,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/getting-started/job-level-properties/#3-job-configuration"
+      ],
+      "answer": "No, OLake Go does not support Quartz cron syntax [1]. You can use standard cron expressions in either 5-field or 7-field formats, but Quartz-specific syntax like `0 0/15 * ? * MON-FRI` is not supported.",
+      "server": {
+        "reason": "answered",
+        "rewrite": "1",
+        "gate-score": "0.9979",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.9, \"rerank_ms\": 0.0, \"gate_ms\": 8.9, \"rewrite_ms\": 1653.0, \"retrieval2_ms\": 3.3, \"llm_ttft_ms\": 14866.7, \"llm_total_ms\": 21777.6, \"total_ms\": 23458.3}, \"usage\": {\"prompt_tokens\": 3492, \"completion_tokens\": 72, \"rewrite_prompt_tokens\": 191, \"rewrite_completion_tokens\": 7, \"rewrite_ms\": 1653.0, \"rewrite_query\": \"custom frequency quartz cron format jobs\", \"gate_score_after_rewrite\": 0.9979478716850281}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 6739,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "SET-08",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 23422.3,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/install/docker-cli/#discover-command",
+        "https://olake.io/docs/community/commands-and-flags/#6-destination-database-prefix"
+      ],
+      "answer": "Yes, you can change the prefix from the CLI using the `--destination-database-prefix` flag. This flag adds a custom prefix to the database name created in the destination. For example, if the source database is `sales-db` and the driver is `mysql`, using `--destination-database-prefix olake` would result in `olake_sales_db` instead of the default `mysql_sales_db` [1][2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9789",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.9, \"rerank_ms\": 0.0, \"gate_ms\": 14.4, \"llm_ttft_ms\": 13188.3, \"llm_total_ms\": 23399.3, \"total_ms\": 23420.7}, \"usage\": {\"prompt_tokens\": 3486, \"completion_tokens\": 110}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 6449,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "SRC-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 27465.5,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/postgres/setup/rds/#1-create-and-configure-a-parameter-group",
+        "https://olake.io/docs/connectors/postgres/setup/rds/",
+        "https://olake.io/docs/connectors/postgres/setup/rds/#troubleshooting"
+      ],
+      "answer": "To set up CDC on RDS PostgreSQL, you need to create a custom DB parameter group and configure it with `rds.logical_replication = 1`, which should set `wal_level` to `logical` automatically [1]. The default parameter group cannot be modified, so you must create a new one [2].\n\nAfter creating and configuring the parameter group, associate it with your RDS instance and reboot the instance to apply the changes [1]. If `wal_level` still shows `replica`, double-check that the parameter group is correctly associated with the instance and that you have rebooted it [3].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9993",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.1, \"rerank_ms\": 0.0, \"gate_ms\": 10.4, \"llm_ttft_ms\": 12249.3, \"llm_total_ms\": 27446.3, \"total_ms\": 27463.9}, \"usage\": {\"prompt_tokens\": 3076, \"completion_tokens\": 155}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7250,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "SRC-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 27821.9,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/postgres/#3-failed-with-non-retryable-error-lsn-not-updated-after-x-mins"
+      ],
+      "answer": "The error `failed with non retryable error: LSN not updated after 5 minutes` means that the PostgreSQL replication connection was closed before the LSN (Log Sequence Number) acknowledgment was completed. This typically happens when `wal_sender_timeout` is set too low (e.g., `30s`), and CDC processing takes longer than the timeout allows [1]. PostgreSQL closes the replication connection, causing the error.\n\n**To fix this issue:**\n- Set `wal_sender_timeout` to `0` (recommended) or a sufficiently large value to allow CDC processing to complete before the timeout occurs [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9997",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.0, \"rerank_ms\": 0.0, \"gate_ms\": 13.6, \"llm_ttft_ms\": 13997.2, \"llm_total_ms\": 27799.1, \"total_ms\": 27819.8}, \"usage\": {\"prompt_tokens\": 3530, \"completion_tokens\": 146}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8653,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "SRC-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 73721.0,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": false,
+      "behaviour_correct": false,
+      "sources": [],
+      "answer": "I don't know: the OLake documentation and repositories I can search don't cover this. Try rephrasing, or ask in the OLake Slack community.",
+      "server": {
+        "reason": "unparseable",
+        "rewrite": "0",
+        "gate-score": "0.9990",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.2, \"rerank_ms\": 0.0, \"gate_ms\": 13.8, \"llm_ttft_ms\": 13720.6, \"llm_total_ms\": 73698.4, \"total_ms\": 73719.4}, \"usage\": {\"prompt_tokens\": 3484, \"completion_tokens\": 600}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7363,
+        "coverage": 0.0
+      }
+    },
+    {
+      "id": "SRC-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 37019.4,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/mysql/#cdc-prerequisite",
+        "https://olake.io/docs/connectors/mysql/setup/azure/",
+        "https://olake.io/docs/connectors/mysql/setup/gcp/",
+        "https://olake.io/docs/connectors/mysql/setup/rds/"
+      ],
+      "answer": "To set up MySQL CDC for OLake, the following prerequisites must be fulfilled:\n\n- **Binary Logging (Required):** Ensure the following settings are enabled:\n  - `log_bin=ON`\n  - `binlog_format=ROW`\n  - `binlog_row_image=FULL`\n  - `binlog_row_metadata=FULL`\n  - Optional for microsecond precision: `enforce_gtid_consistency=ON` and `gtid_mode=ON` [1].\n- **MySQL Version:** MySQL 8.0.1 or higher is required for microsecond-precision timestamp support [1].\n- **Server Configuration:** Set a unique `server-id` [1].\n- **Access & Permissions:** The MySQL user must have `REPLICATION SLAVE`, `REPLICATION CLIENT`, and `SELECT` privileges [1].\n- **Read Access:** The MySQL user must have read access to the tables [1].\n\nFor specific environments like Azure, GCP, or RDS, additional prerequisites apply, such as using **Flexible Server** for Azure, `cloudsqlsuperuser` privileges for GCP, and a custom DB Parameter Group for RDS [2][3][4].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9961",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 3.6, \"rerank_ms\": 0.0, \"gate_ms\": 8.6, \"llm_ttft_ms\": 9490.4, \"llm_total_ms\": 37005.1, \"total_ms\": 37017.4}, \"usage\": {\"prompt_tokens\": 2613, \"completion_tokens\": 286}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7522,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "SRC-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 19490.6,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/mysql/#cdc-prerequisite",
+        "https://olake.io/docs/connectors/mysql/setup/azure/#2-configure-server-parameters"
+      ],
+      "answer": "Yes, `binlog_row_metadata=FULL` is mandatory for MySQL CDC in OLake. It ensures that complete column metadata is included in the binary log, which is necessary for OLake to capture and process all changes accurately [1]. If your managed MySQL environment does not allow changing this setting, it may be incompatible with OLake's CDC requirements [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9983",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 11.1, \"rerank_ms\": 0.0, \"gate_ms\": 15.9, \"llm_ttft_ms\": 10679.6, \"llm_total_ms\": 19461.7, \"total_ms\": 19488.8}, \"usage\": {\"prompt_tokens\": 2936, \"completion_tokens\": 95}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": true,
+        "judge_ms": 7941,
+        "coverage": 0.0
+      }
+    },
+    {
+      "id": "SRC-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 55555.6,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/mongodb/cdc_setup/",
+        "https://olake.io/docs/connectors/mongodb/cdc_setup/#3-create-a-user",
+        "https://olake.io/docs/connectors/mongodb/cdc_setup/#2-initialize-the-replica-set-self-hosted-only"
+      ],
+      "answer": "To use MongoDB CDC with OLake for a self-hosted MongoDB 6 instance, you need to enable replica set mode and initialize the replica set, as MongoDB CDC requires the oplog which is only available in replica set configurations [1].\n\nSteps to configure your MongoDB instance:\n\n1. **Enable Replica Set Mode**:\n   - If running in Docker:\n     ```bash\n     docker run -d --name mongodb  -p 27017:27017  mongo:6.0 --replSet rs0\n     ````\n   - If running outside Docker:\n     ```bash\n     mongod --replSet rs0 --bind_ip_all\n     ````\n\n2. **Initialize the Replica Set**:\n   - After MongoDB starts with replica set mode, initialize it:\n     ```bash\n     docker exec -it mongodb mongosh\n     rs.initiate()\n     ````\n\n3. **Create a User**:\n   - Create a user in the `admin` database with the required roles:\n     ```javascript\n     use admin\n     db.createUser({\n       user: \"olake_user\",\n       pwd: \"your_password\",\n       roles: [\n         { role: \"readWrite\", db: \"your_db\" },\n         { role: \"read\", db: \"local\" }\n       ]\n     })\n     ````\n\n4. **Verify oplog**:\n   - Check that the oplog collection exists:\n     ```javascript\n     use local\n     show collections\n     db.oplog.rs.findOne()\n     ````\n\nOnce these steps are completed, you can proceed with the MongoDB source setup in OLake [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9896",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.9, \"rerank_ms\": 0.0, \"gate_ms\": 15.8, \"llm_ttft_ms\": 15582.2, \"llm_total_ms\": 55531.2, \"total_ms\": 55554.0}, \"usage\": {\"prompt_tokens\": 3899, \"completion_tokens\": 402}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8045,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "SRC-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 25660.3,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/oracle/setup/generic/#4-flashback-on-table",
+        "https://olake.io/docs/connectors/oracle/setup/generic/"
+      ],
+      "answer": "The error `ORA-01031: insufficient privileges` during Oracle full refresh indicates that the user lacks the `FLASHBACK ON <owner>.<table>` privilege, which is required for flashback queries like `SELECT * FROM table AS OF SCN <scn>` [1]. Even if the user has `SELECT` on the table, the `FLASHBACK` privilege is also needed for chunk iteration [2].\n\nTo resolve this, grant the `FLASHBACK` privilege using the query:\n\n```sql\nGRANT FLASHBACK ON <table_owner>.<table_name> TO <username>;\n```",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9906",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.7, \"rerank_ms\": 0.0, \"gate_ms\": 10.5, \"llm_ttft_ms\": 11042.5, \"llm_total_ms\": 25640.2, \"total_ms\": 25658.5}, \"usage\": {\"prompt_tokens\": 2915, \"completion_tokens\": 150}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8596,
+        "coverage": 0.333
+      }
+    },
+    {
+      "id": "SRC-08",
+      "type": "negative",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 17253.3,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/#supported-sources",
+        "https://olake.io/docs/connectors/oracle/"
+      ],
+      "answer": "No, OLake does not support Oracle CDC via LogMiner. The OLake Oracle connector supports **Full Refresh** and **Full Refresh + Incremental** sync modes, but not CDC-only operations [1][2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9890",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 5.0, \"rerank_ms\": 0.0, \"gate_ms\": 12.5, \"llm_ttft_ms\": 11401.8, \"llm_total_ms\": 17234.4, \"total_ms\": 17251.9}, \"usage\": {\"prompt_tokens\": 3123, \"completion_tokens\": 67}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7148,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "SRC-09",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 18695.8,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/mssql/#2-enable-cdc-on-database"
+      ],
+      "answer": "To enable CDC for a SQL Server running on Amazon RDS so OLake can read it, run the following command in your SQL Server database:\n\n```sql\nEXEC msdb.dbo.rds_cdc_enable_db;\n```\n\nThis is the specific command for Amazon RDS SQL Server instances [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9994",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 4.4, \"rerank_ms\": 0.0, \"gate_ms\": 7.7, \"llm_ttft_ms\": 10903.1, \"llm_total_ms\": 18682.1, \"total_ms\": 18694.3}, \"usage\": {\"prompt_tokens\": 2896, \"completion_tokens\": 85}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7406,
+        "coverage": 0.333
+      }
+    },
+    {
+      "id": "SRC-10",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 34749.8,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/features/schema/#schema-evolution--column-level-changes",
+        "https://olake.io/docs/connectors/mssql/#4-handling-ddl-alterations-to-source-tables",
+        "https://olake.io/docs/understanding/terminologies/general/#mssql",
+        "https://olake.io/docs/connectors/mysql/#3-column-count-mismatch-expected-x-got-y"
+      ],
+      "answer": "When you add a column to an MSSQL table in a CDC job, OLake Go automatically detects and adds the new column to the Iceberg schema during the next schema discovery at the start of the sync [1]. If the new column is not showing up in Iceberg, consider the following:\n\n1. Ensure that a new capture instance was created for the source table after the schema change. SQL Server does not automatically update the CDC change table with schema changes. You must create a new capture instance manually or enable the **Manage Capture Instance** toggle in the UI to automate this process [2].\n\n2. If the job was created before v0.3.16, the new column may not appear in Iceberg unless normalization was turned on [3].\n\n3. Restart the connector after making schema changes to ensure the new schema is picked up [4].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9163",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 5.9, \"rerank_ms\": 0.0, \"gate_ms\": 13.7, \"llm_ttft_ms\": 13273.3, \"llm_total_ms\": 34728.5, \"total_ms\": 34748.2}, \"usage\": {\"prompt_tokens\": 3426, \"completion_tokens\": 213}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8984,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "SRC-11",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 19409.4,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/db2/"
+      ],
+      "answer": "Yes, this is a known issue. The IBM Data Server ODBC and CLI driver does not support Linux (arm64), which is why the DB2 source fails on your Graviton (arm64) Linux box but works on your Intel laptop [1]. The recommended CPU architecture to run DB2 sync is AMD64 [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.4100",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.3, \"rerank_ms\": 0.0, \"gate_ms\": 11.9, \"llm_ttft_ms\": 11333.9, \"llm_total_ms\": 19389.5, \"total_ms\": 19407.7}, \"usage\": {\"prompt_tokens\": 3044, \"completion_tokens\": 90}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7854,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "SRC-12",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 37753.8,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/kafka/#connection-details",
+        "https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/drivers/kafka/resources/spec.json",
+        "https://olake.io/docs/connectors/kafka/#2-provide-configuration-details-1",
+        "https://olake.io/docs/connectors/kafka/#columns-transferred"
+      ],
+      "answer": "To configure the Kafka source for AVRO topics with Confluent Schema Registry using basic authentication, you need the following in your Kafka source configuration:\n\n1. Set `use_schema_registry` to `true`.\n2. Provide the `schema_registry.endpoint` with the Schema Registry URL (e.g., `http://localhost:8081`).\n3. Set `schema_registry.auth_type` to `basic`.\n4. Provide `schema_registry.username` and `schema_registry.password` for basic authentication.\n\nExample configuration:\n```json\n{\n  \"use_schema_registry\": true,\n  \"schema_registry\": {\n    \"endpoint\": \"http://localhost:8081\",\n    \"auth_type\": \"basic\",\n    \"username\": \"dummy\",\n    \"password\": \"dummy-password\"\n  }\n}\n```\n\nAdditionally, ensure that the Kafka connection details (e.g., `bootstrap_servers`, `security_protocol`, etc.) are configured correctly [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9658",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.1, \"rerank_ms\": 0.0, \"gate_ms\": 14.8, \"llm_ttft_ms\": 13675.4, \"llm_total_ms\": 37731.4, \"total_ms\": 37752.3}, \"usage\": {\"prompt_tokens\": 3567, \"completion_tokens\": 247}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7589,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "SRC-13",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 32726.6,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/drivers/kafka/README.md?plain=1#L39-L66"
+      ],
+      "answer": "Yes, OLake can connect to an MSK cluster that only exposes a TLS listener. Use the `SSL` security protocol, which provides TLS encryption without SASL authentication. For AWS MSK, no custom certificates are needed, and the configuration can be as simple as:\n\n```json\n\"protocol\": {\n  \"security_protocol\": \"SSL\"\n}\n```\n\nThis is supported and documented [here](https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/drivers/kafka/README.md?plain=1#L39-L66) [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9847",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.4, \"rerank_ms\": 0.0, \"gate_ms\": 13.3, \"llm_ttft_ms\": 16045.1, \"llm_total_ms\": 32705.0, \"total_ms\": 32724.8}, \"usage\": {\"prompt_tokens\": 4069, \"completion_tokens\": 173}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8181,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "SRC-14",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 35327.9,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/s3/#key-features",
+        "https://olake.io/docs/writers/iceberg/catalog/glue/#configuration"
+      ],
+      "answer": "OLake will create two streams based on the folder structure in your S3 bucket: `orders` and `customers` [1]. Each stream will be turned into a table. For the `orders` stream, files from `2024-01-01` and `2024-01-02` will be grouped together. The `customers` stream will include the `customers.csv` file. OLake will automatically handle the gzip compression for the `.csv.gz` files [1].\n\nFor IAM permissions, OLake needs:\n- `s3:ListBucket` to discover files in the bucket\n- `s3:GetObject` to read the files\n- Optionally, `s3:PutObject` if writing to another S3 bucket for Iceberg catalog [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.8632",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 12.7, \"rerank_ms\": 0.0, \"gate_ms\": 15.6, \"llm_ttft_ms\": 16818.3, \"llm_total_ms\": 35297.8, \"total_ms\": 35326.2}, \"usage\": {\"prompt_tokens\": 4210, \"completion_tokens\": 192}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8331,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "SRC-15",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 14558.9,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/kafka/overview/",
+        "https://olake.io/docs/connectors/kafka/"
+      ],
+      "answer": "Yes, OLake can read from Kafka today. While the Kafka Source connector is still under development [1], the OLake Go Kafka Source connector is available in OLake Go v0.3.0 and above for data synchronization [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9925",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 5.6, \"rerank_ms\": 0.0, \"gate_ms\": 9.2, \"llm_ttft_ms\": 8387.0, \"llm_total_ms\": 14542.5, \"total_ms\": 14557.3}, \"usage\": {\"prompt_tokens\": 2402, \"completion_tokens\": 71}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8365,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "SRC-16",
+      "type": "negative",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 24591.1,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/"
+      ],
+      "answer": "OLake Go is designed to replicate data from operational databases to Apache Iceberg or data lakehouse storage, supporting Incremental Sync, Change Data Capture (CDC), and stateful, resumable syncs [1]. However, the provided documentation does not mention support for replicating data from Snowflake or BigQuery into Iceberg. OLake Go focuses on replicating from databases to Iceberg, and the sources listed in the documentation do not include Snowflake or BigQuery as supported source systems.",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9933",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.0, \"rerank_ms\": 0.0, \"gate_ms\": 15.1, \"llm_ttft_ms\": 13575.3, \"llm_total_ms\": 24568.2, \"total_ms\": 24589.4}, \"usage\": {\"prompt_tokens\": 3538, \"completion_tokens\": 118}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 6696,
+        "coverage": 0.5
+      }
+    },
+    {
+      "id": "SYNC-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 23079.5,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": false,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/understanding/terminologies/general/#41-incremental",
+        "https://olake.io/docs/community/learning-modules/#6-change-data-capture-cdc"
+      ],
+      "answer": "In **Full Refresh + Incremental** mode, deleted rows are not automatically removed from the destination unless the source explicitly tracks deletions (e.g., via a soft delete flag or a tracking column). In contrast, **Full Refresh + CDC** mode captures deletions and applies them to the destination, ensuring that deleted rows are removed. This is because CDC explicitly tracks inserts, updates, and deletes, while Incremental typically only tracks new or updated records based on a cursor key [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.5994",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 5.6, \"rerank_ms\": 0.0, \"gate_ms\": 9.3, \"llm_ttft_ms\": 11826.4, \"llm_total_ms\": 23062.9, \"total_ms\": 23077.9}, \"usage\": {\"prompt_tokens\": 3204, \"completion_tokens\": 120}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7301,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "SYNC-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 33775.1,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": false,
+      "behaviour_correct": true,
+      "sources": [
+        "https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/drivers/mssql/README.md?plain=1#L1-L25"
+      ],
+      "answer": "In OLake Go, the difference between `cdc` and `strict_cdc` in supported sync modes is as follows:\n\n- **CDC (Change Data Capture)**: This mode first performs an initial full backfill (full refresh) of the table, and then tracks and syncs incremental changes (inserts, updates, and deletes) in real time. This is useful when you need a complete copy of the table before capturing changes [1].\n\n- **Strict CDC (Change Data Capture)**: This mode tracks only new changes from the current position in the source database's log (e.g., MySQL binlog or SQL Server CDC log), without performing an initial backfill. It is ideal when you want to avoid re-copying a large table and only capture changes from the current point in time [1].\n\nIf you do not want to re-copy a 2TB table and only want to capture changes from now on, you should use `strict_cdc` mode.",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.8979",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.6, \"rerank_ms\": 0.0, \"gate_ms\": 12.1, \"llm_ttft_ms\": 12320.4, \"llm_total_ms\": 33754.6, \"total_ms\": 33773.4}, \"usage\": {\"prompt_tokens\": 3397, \"completion_tokens\": 222}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8462,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "SYNC-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 28150.7,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": false,
+      "behaviour_correct": false,
+      "sources": [],
+      "answer": "I don't know: the OLake documentation and repositories I can search don't cover this. Try rephrasing, or ask in the OLake Slack community.",
+      "server": {
+        "reason": "unparseable",
+        "rewrite": "0",
+        "gate-score": "0.9167",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.5, \"rerank_ms\": 0.0, \"gate_ms\": 13.8, \"llm_ttft_ms\": 14574.3, \"llm_total_ms\": 28127.2, \"total_ms\": 28148.6}, \"usage\": {}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 6996,
+        "coverage": 0.0
+      }
+    },
+    {
+      "id": "SYNC-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 25059.9,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/getting-started/job-level-properties/#ii-data-being-processed-during-cancellation"
+      ],
+      "answer": "No, the next run does not always start from scratch. If the sync mode generates a state file, the next run resumes from the last saved state. If no state file is generated, the next run starts fresh. For example:\n\n- **Full Refresh**: No state file is generated, so the next run reloads the entire dataset [1].\n- **Full Refresh + CDC**, **Full Refresh + Incremental**, **Strict CDC**: A state file is generated, so the next run resumes from the last saved state [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9963",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 4.8, \"rerank_ms\": 0.0, \"gate_ms\": 9.2, \"llm_ttft_ms\": 12828.2, \"llm_total_ms\": 25044.0, \"total_ms\": 25058.1}, \"usage\": {\"prompt_tokens\": 3253, \"completion_tokens\": 130}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 6054,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "SYNC-05",
+      "type": "negative",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 21484.5,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/features/schema/#unsupported-data-type-conversions",
+        "https://olake.io/docs/features/schema/#scenario-7-unsupported-type-change"
+      ],
+      "answer": "No, OLake Go will not automatically change the Iceberg column from `INTEGER` to `STRING` and will not keep syncing in this case. According to the documentation, attempting to write a `STRING` value into an `INT/DOUBLE/LONG/FLOAT` column is unsupported in Iceberg v2 and will result in a sync failure [1]. OLake Go detects the type mismatch and the write is not allowed, causing the sync to fail [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9756",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 5.9, \"rerank_ms\": 0.0, \"gate_ms\": 13.4, \"llm_ttft_ms\": 10746.4, \"llm_total_ms\": 21463.5, \"total_ms\": 21482.9}, \"usage\": {\"prompt_tokens\": 2870, \"completion_tokens\": 116}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 6867,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "SYNC-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 22110.9,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/features/schema/#schema-evolution--column-level-changes"
+      ],
+      "answer": "Yes, the new column will be added to the Iceberg schema automatically once OLake Go detects it during the next schema discovery [1]. However, the old rows will have `NULL` values for this new column unless the source back-fills historical rows, in which case CDC will register them as updates [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9860",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.5, \"rerank_ms\": 0.0, \"gate_ms\": 13.5, \"llm_ttft_ms\": 14270.0, \"llm_total_ms\": 22088.8, \"total_ms\": 22108.9}, \"usage\": {\"prompt_tokens\": 3648, \"completion_tokens\": 83}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 6962,
+        "coverage": 0.333
+      }
+    },
+    {
+      "id": "SYNC-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 27580.2,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/kafka/#stream-configuration",
+        "https://olake.io/docs/understanding/terminologies/olake/#upsert"
+      ],
+      "answer": "To ensure only the latest record per `customer_id` is stored in Iceberg from a Kafka topic with frequent updates, you should configure the ingestion mode to **Upsert** and specify a **Deduplication Key**. For this case, set the deduplication key to `customer_id` (or a combination of fields that uniquely identify the entity). This ensures that only the most recent version of each `customer_id` is retained in the destination Iceberg table [1].\n\nAdditionally, for Kafka sources, only **Positional Deletes** are supported as the upsert type [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9236",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 9.0, \"rerank_ms\": 0.0, \"gate_ms\": 15.5, \"llm_ttft_ms\": 13577.0, \"llm_total_ms\": 27553.1, \"total_ms\": 27577.7}, \"usage\": {\"prompt_tokens\": 3462, \"completion_tokens\": 145}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7528,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "SYNC-08",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 23977.0,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": false,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/features/schema/#schema-evolution--column-level-changes"
+      ],
+      "answer": "MongoDB collections are ingested into Iceberg as a single `data` JSON string column because OLake Go flattens keys to a canonical path inside a single JSON column by default for semi-structured data like JSON [1]. In contrast, PostgreSQL tables are structured with defined schemas, so OLake Go maps each column directly to the Iceberg schema during ingestion. This behavior is consistent with how OLake Go handles structured versus semi-structured data sources.",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.5406",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.2, \"rerank_ms\": 0.0, \"gate_ms\": 15.2, \"llm_ttft_ms\": 13747.2, \"llm_total_ms\": 23952.6, \"total_ms\": 23975.2}, \"usage\": {\"prompt_tokens\": 3536, \"completion_tokens\": 109}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7778,
+        "coverage": 0.333
+      }
+    },
+    {
+      "id": "SYNC-09",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 26528.9,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/postgres/#data-type-mapping",
+        "https://olake.io/docs/understanding/terminologies/olake/#1-normalization"
+      ],
+      "answer": "PostgreSQL `numeric(12,2)` and `money` data types are mapped to `float` in Iceberg by OLake [1]. This is by design based on the data type mapping rules for the Postgres connector. If you want to preserve these as `decimal`, you would need to adjust the mapping configuration or use a custom transformation during normalization to enforce the desired schema [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "1",
+        "gate-score": "0.3044",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.2, \"rerank_ms\": 0.0, \"gate_ms\": 14.7, \"rewrite_ms\": 1734.2, \"retrieval2_ms\": 4.9, \"llm_ttft_ms\": 14076.8, \"llm_total_ms\": 24754.4, \"total_ms\": 26527.0}, \"usage\": {\"prompt_tokens\": 3253, \"completion_tokens\": 103, \"rewrite_prompt_tokens\": 194, \"rewrite_completion_tokens\": 8, \"rewrite_ms\": 1734.2, \"rewrite_query\": \"postgres numeric to iceberg decimal mapping issue\", \"gate_score_after_rewrite\": 0.30438950657844543}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 6630,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "SYNC-10",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 31115.8,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/mysql/#3-column-count-mismatch-expected-x-got-y",
+        "https://olake.io/docs/release/ingestion/v0.2.2-v0.2.4/#-bug-fixes--stability"
+      ],
+      "answer": "If a MySQL Full Refresh fails on a table with `failed to get or split chunks`, it is likely due to unpopulated table statistics or an empty table. To resolve this:\n\n- Run the following query to populate table statistics:\n\n```sql\nANALYZE TABLE <namespace>.<table_name>;\n```\n\nThis is outlined in the troubleshooting guide for this error [1].\n\nAdditionally, ensure that the table is not empty. If it is empty, OLake Go distinguishes between empty tables (which should succeed) and tables with missing statistics (which should fail). Previously, empty tables were incorrectly treated the same as tables with missing statistics [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9448",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 8.5, \"rerank_ms\": 0.0, \"gate_ms\": 19.1, \"llm_ttft_ms\": 13127.7, \"llm_total_ms\": 31086.0, \"total_ms\": 31113.6}, \"usage\": {\"prompt_tokens\": 2890, \"completion_tokens\": 165}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 6908,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "SYNC-11",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 25640.2,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/mysql/#2-idle-timeout-reached-exiting-binlog-syncer"
+      ],
+      "answer": "Yes, the `initial_wait_time: 10` in the MySQL `source.json` is honored by OLake. It controls the timeout for locating the saved binlog position during CDC sync. If the search operation takes longer than this value, an idle timeout error is triggered, and the binlog syncer exits [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9138",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.5, \"rerank_ms\": 0.0, \"gate_ms\": 15.4, \"llm_ttft_ms\": 16398.4, \"llm_total_ms\": 25615.3, \"total_ms\": 25638.4}, \"usage\": {\"prompt_tokens\": 3376, \"completion_tokens\": 86}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": true,
+        "judge_ms": 7342,
+        "coverage": 0.333
+      }
+    },
+    {
+      "id": "SYNC-12",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 20079.6,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": false,
+      "behaviour_correct": false,
+      "sources": [],
+      "answer": "The provided documentation does not specify how PostgreSQL `jsonb` columns are mapped to Iceberg types in OLake. For specific details on this mapping, you may need to refer to the OLake Slack community for further assistance.",
+      "server": {
+        "reason": "model_unanswerable",
+        "rewrite": "0",
+        "gate-score": "0.9940",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 4.7, \"rerank_ms\": 0.0, \"gate_ms\": 15.6, \"llm_ttft_ms\": 14327.9, \"llm_total_ms\": 20057.5, \"total_ms\": 20077.9}, \"usage\": {\"prompt_tokens\": 3213, \"completion_tokens\": 61}}"
+      },
+      "judge": {
+        "covered": [
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 5908,
+        "coverage": 0.0
+      }
+    },
+    {
+      "id": "SYNC-13",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 21821.4,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/mysql/#date-and-time-handling"
+      ],
+      "answer": "OLake will replace dates with year `0000` (e.g., `0000-05-10`) with the epoch start date `1970-01-01` to ensure compatibility with most destinations [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9962",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 5.8, \"rerank_ms\": 0.0, \"gate_ms\": 9.7, \"llm_ttft_ms\": 15134.6, \"llm_total_ms\": 21804.3, \"total_ms\": 21819.9}, \"usage\": {\"prompt_tokens\": 3887, \"completion_tokens\": 74}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 5440,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "DST-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 34527.5,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/iceberg/catalog/glue/#configuration"
+      ],
+      "answer": "A minimal `destination.json` for Iceberg on AWS Glue requires the following mandatory fields:\n\n```json\n{\n    \"type\": \"ICEBERG\",\n    \"writer\": {\n      \"catalog_type\": \"glue\",\n      \"iceberg_s3_path\": \"s3://<BUCKET_NAME>/\",\n      \"aws_region\": \"<AWS_REGION>\"\n    }\n}\n```\n\n- `catalog_type`: Must be set to `glue` for AWS Glue catalog [1].\n- `iceberg_s3_path`: Required S3 path for storing Iceberg data and metadata [1].\n- `aws_region`: Required AWS region for S3 and Glue [1].\n\nOptional fields like `aws_access_key`, `aws_secret_key`, and `glue_additional_config` can be omitted if using IAM roles or instance profiles [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9994",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 4.2, \"rerank_ms\": 0.0, \"gate_ms\": 13.1, \"llm_ttft_ms\": 13561.7, \"llm_total_ms\": 34508.3, \"total_ms\": 34525.6}, \"usage\": {\"prompt_tokens\": 3464, \"completion_tokens\": 211}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7103,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "DST-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 37113.5,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/destination/iceberg/README.md?plain=1#L45-L79",
+        "https://olake.io/docs/writers/iceberg/catalog/jdbc/#configuration",
+        "https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/destination/iceberg/resources/spec.json",
+        "https://olake.io/docs/writers/iceberg/catalog/jdbc/#troubleshooting"
+      ],
+      "answer": "For a local MinIO setup with a PostgreSQL JDBC catalog in OLake, set the following configuration parameters:\n\n- `s3_endpoint`: Set to `http://localhost:9000` [1].\n- `s3_use_ssl`: Set to `false` because MinIO is using HTTP [2].\n- `s3_path_style`: Set to `true` to ensure compatibility with MinIO and non-AWS S3 services [1][3].\n\nIf you're encountering connection errors, verify:\n- The MinIO server is running and accessible at `http://localhost:9000`.\n- The `aws_access_key` and `aws_secret_key` match the MinIO credentials [1].\n- The bucket specified in `iceberg_s3_path` exists and is accessible [4].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9996",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 9.1, \"rerank_ms\": 0.0, \"gate_ms\": 15.6, \"llm_ttft_ms\": 16245.0, \"llm_total_ms\": 37087.0, \"total_ms\": 37111.8}, \"usage\": {\"prompt_tokens\": 4055, \"completion_tokens\": 209}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8813,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "DST-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 44284.3,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/parquet/gcs/",
+        "https://olake.io/docs/writers/parquet/config/#configuration"
+      ],
+      "answer": "Yes, OLake can write plain Parquet files into a Google Cloud Storage (GCS) bucket. GCS provides an S3-compatible interface, which allows OLake to interact with GCS using the Amazon S3 API. To authenticate, you must use HMAC keys (an access key and a secret key) for GCS, which are configured in the destination settings [1].\n\nFor GCS, the `s3_endpoint` must be explicitly set to `https://storage.googleapis.com` in the configuration [2]. The `s3_access_key` and `s3_secret_key` fields are used to provide the HMAC keys for authentication [2].\n\nHere is an example configuration for writing Parquet files to GCS:\n```json\n{\n  \"type\": \"PARQUET\",\n  \"s3_bucket\": \"your-gcs-bucket-name\",\n  \"s3_region\": \"your-gcs-region\",\n  \"s3_access_key\": \"your-hmac-access-key\",\n  \"s3_secret_key\": \"your-hmac-secret-key\",\n  \"s3_endpoint\": \"https://storage.googleapis.com\",\n  \"s3_path\": \"/data\"\n}\n```\n\nThis setup is similar to how OLake writes to S3, with the key difference being the use of GCS-specific HMAC keys and the correct endpoint [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9981",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 4.8, \"rerank_ms\": 0.0, \"gate_ms\": 16.0, \"llm_ttft_ms\": 12897.4, \"llm_total_ms\": 44261.7, \"total_ms\": 44282.5}, \"usage\": {\"prompt_tokens\": 3077, \"completion_tokens\": 315}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9138,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "DST-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 58390.9,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/iceberg/azure/#step-1-prepare-azure-resources-via-the-azure-portal",
+        "https://olake.io/docs/writers/iceberg/azure/#step-3-add-the-azure-warehouse-to-lakekeeper",
+        "https://olake.io/docs/writers/iceberg/azure/#step-5-configure-the-iceberg-destination-in-the-olake-ui",
+        "https://olake.io/docs/writers/iceberg/azure/"
+      ],
+      "answer": "To land Iceberg tables on Azure ADLS Gen2 using OLake Go, follow these steps:\n\n1. **Prepare Azure Resources:**\n   - Create a Service Principal in Azure Active Directory to act as the application's identity [1].\n   - Create an ADLS Gen2 storage account with a hierarchical namespace enabled [1].\n   - Create a storage container (e.g., `warehouse-dev`) within the storage account [1].\n   - Assign the Service Principal two roles: `Storage Blob Data Owner` and `Storage Blob Delegator` to grant necessary permissions [1].\n\n2. **Add the Azure Warehouse to Lakekeeper:**\n   - Access the Lakekeeper UI at `http://localhost:8181`.\n   - Add a new warehouse profile and configure it for ADLS Gen2 [2].\n\n3. **Configure the Iceberg Destination in OLake UI:**\n   - Log in to the OLake UI at `http://localhost:8000`.\n   - Navigate to the **Destinations** page and create a new destination of type **Apache Iceberg** [3].\n   - Fill in the configuration with the following details:\n     - **Catalog Type**: `REST Catalog`\n     - **REST Catalog URL**: `http://host.docker.internal:8181/catalog`\n     - **Iceberg S3 Path**: `olake_warehouse`\n     - **REST Enable Signature V4**: `disable`\n     - **S3 Endpoint**: `https://olakehouse.dfs.core.windows.net`\n     - **AWS Access Key** and **AWS Secret Key**: Leave empty [3].\n\n4. **Save and Test** the destination to ensure OLake Go can communicate with both Lakekeeper and Azure [3].\n\nBy following these steps, OLake Go will stream database changes, write Iceberg-compatible Parquet files directly to ADLS Gen2, and update the catalog automatically [4].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9990",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 4.7, \"rerank_ms\": 0.0, \"gate_ms\": 8.6, \"llm_ttft_ms\": 13601.0, \"llm_total_ms\": 58375.9, \"total_ms\": 58389.2}, \"usage\": {\"prompt_tokens\": 3391, \"completion_tokens\": 455}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 10010,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "DST-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 28985.3,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/iceberg/partitioning/#configuration",
+        "https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/destination/iceberg/README.md?plain=1#L231-L263"
+      ],
+      "answer": "To partition an Iceberg table by `day(created_at)` and also bucket `user_id`, you can use the following `partition_regex` syntax:\n\n```text\n/{created_at, day}/{user_id, bucket[<N>]}\n```\n\nReplace `<N>` with the desired number of buckets (e.g., 64 or 256). For example:\n\n```text\n/{created_at, day}/{user_id, bucket}\n```\n\nThis configuration partitions the data by the day of the `created_at` field and distributes the `user_id` values into 64 buckets [1][2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9973",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 5.4, \"rerank_ms\": 0.0, \"gate_ms\": 11.8, \"llm_ttft_ms\": 13392.4, \"llm_total_ms\": 28966.6, \"total_ms\": 28983.8}, \"usage\": {\"prompt_tokens\": 3515, \"completion_tokens\": 161}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9524,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "DST-06",
+      "type": "negative",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 19754.6,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/parquet/config/#configuration"
+      ],
+      "answer": "No, OLake does not support writing CSV or JSON files to S3 directly. The OLake Parquet S3 writer only supports writing data in the Parquet format [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9983",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 4.5, \"rerank_ms\": 0.0, \"gate_ms\": 18.4, \"llm_ttft_ms\": 14727.2, \"llm_total_ms\": 19730.0, \"total_ms\": 19752.9}, \"usage\": {\"prompt_tokens\": 3799, \"completion_tokens\": 56}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 6896,
+        "coverage": 0.5
+      }
+    },
+    {
+      "id": "DST-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 19944.3,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/understanding/compatibility-engines/#delete-format-support-by-query-engine",
+        "https://olake.io/docs/#9-query-engine-interoperability"
+      ],
+      "answer": "No, deletion vectors cannot be used for upserts when querying with Amazon Athena. According to the compatibility table, Athena supports **equality deletes** and **positional deletes**, but **does not support deletion vectors** [1].\n\nTo ensure compatibility with Athena, you should choose either **equality deletes** or **positional deletes** as the delete format for upserts [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9973",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 8.6, \"rerank_ms\": 0.0, \"gate_ms\": 11.3, \"llm_ttft_ms\": 10929.1, \"llm_total_ms\": 19922.6, \"total_ms\": 19942.5}, \"usage\": {\"prompt_tokens\": 2938, \"completion_tokens\": 102}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 6178,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "DST-08",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 41435.7,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/install/kubernetes/#index-storage-for-positional-delete-deletion-vector-writes",
+        "https://github.com/datazip-inc/olake-helm/blob/c63f10c48cd4dc2cbe3a130c6190ccedf0dafa83/helm/olake/README.md?plain=1#L171-L185",
+        "https://olake.io/docs/understanding/terminologies/olake/#upsert"
+      ],
+      "answer": "Yes, to ensure syncs do not keep rebuilding or failing after switching to positional deletes in a Helm deployment, you need to configure **per-job index storage**. OLake Go provisions a dedicated PersistentVolumeClaim (PVC) named `olake-index-<JobID>` for each job that uses positional deletes or deletion vectors. This PVC persists the Pebble index across sync runs, avoiding index rebuilds [1].\n\nEnsure the following:\n- The job's `index_required` advanced setting is set to `true` (this is automatically set when any stream in the job uses positional deletes or deletion vectors) [2].\n- The PVC is created in the same availability zone as the worker node to avoid sync pod failures [1].\n- If the PVC is in a different availability zone, delete the older PVC manually, and OLake Go will recreate it in the correct zone on the next sync [1].\n\nAlso, ensure all components meet the minimum version requirements:\n- OLake Version **0.11.0 and above**.\n- OLake UI **0.6.0 and above**.\n- Helm chart **0.0.28 and above**.\n- OLake worker **0.3.11 and above** [3].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9985",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 9.0, \"rerank_ms\": 0.0, \"gate_ms\": 9.9, \"llm_ttft_ms\": 12460.9, \"llm_total_ms\": 41414.9, \"total_ms\": 41433.9}, \"usage\": {\"prompt_tokens\": 3284, \"completion_tokens\": 297}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8233,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "CAT-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 31232.6,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/iceberg/catalog/glue/#troubleshooting",
+        "https://olake.io/docs/writers/iceberg/catalog/glue/#2-aws-iam-permissions"
+      ],
+      "answer": "The IAM role OLake runs under needs permissions for AWS Glue and S3 operations. If your Glue database already exists, you can skip the `CreateDatabase` and `CreateTable` permissions. The required IAM permissions include:\n\n- `glue:GetDatabase`\n- `glue:GetTable`\n- `glue:GetTables`\n- `glue:UpdateTable`\n- `glue:GetPartitions`\n\nFor S3, the role needs permissions like:\n\n- `s3:ListBucket`\n- `s3:GetBucket*`\n- `s3:*Object`\n\nYou can also include `glue:SearchTables` if needed for table discovery, but it is optional [1][2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9995",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.0, \"rerank_ms\": 0.0, \"gate_ms\": 13.3, \"llm_ttft_ms\": 14261.8, \"llm_total_ms\": 31210.7, \"total_ms\": 31231.0}, \"usage\": {\"prompt_tokens\": 3664, \"completion_tokens\": 179}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 10032,
+        "coverage": 0.5
+      }
+    },
+    {
+      "id": "CAT-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 35702.7,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/iceberg/catalog/rest/#authentication-3"
+      ],
+      "answer": "To configure OLake to land tables in Amazon S3 Tables, you need to set the following parameters:\n\n- **REST Catalog URI**: Set this to `https://s3tables.<REGION>.amazonaws.com/iceberg` [1].\n- **S3 Table Buckets ARN**: Set this to `arn:aws:s3tables:<REGION>:<ACCOUNT_ID>:bucket/<BUCKET_NAME>` [1].\n- **Authentication Type**: Set this to `sigv4` as S3 Tables only supports AWS Signature Version 4 (SigV4) authentication [1].\n\nYou will also need to provide **AWS Access Key** and **AWS Secret Key** for authentication [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9940",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.4, \"rerank_ms\": 0.0, \"gate_ms\": 15.1, \"llm_ttft_ms\": 18779.1, \"llm_total_ms\": 35679.4, \"total_ms\": 35701.1}, \"usage\": {\"prompt_tokens\": 4545, \"completion_tokens\": 173}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9374,
+        "coverage": 0.5
+      }
+    },
+    {
+      "id": "CAT-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 25950.9,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/iceberg/catalog/rest/#authentication-1"
+      ],
+      "answer": "The `iceberg_s3_path` should be the name of the Lakekeeper warehouse, not an S3 path like `s3://my-bucket/warehouse`. It is used to look up the storage configuration (e.g., S3 bucket) already defined in Lakekeeper [1]. The `rest_catalog_url` should be the full endpoint URL for the Lakekeeper catalog service, such as `http://lakekeeper:8181/catalog` [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9996",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.9, \"rerank_ms\": 0.0, \"gate_ms\": 14.0, \"llm_ttft_ms\": 15288.8, \"llm_total_ms\": 25928.3, \"total_ms\": 25949.2}, \"usage\": {\"prompt_tokens\": 4000, \"completion_tokens\": 114}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8937,
+        "coverage": 0.667
+      }
+    },
+    {
+      "id": "CAT-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 32355.7,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/iceberg/catalog/rest/#setup-steps",
+        "https://olake.io/docs/writers/iceberg/catalog/rest/#troubleshooting-5"
+      ],
+      "answer": "The 401 Unauthorized error indicates incorrect or expired OAuth2 credentials. When configuring the OAuth2 settings for the Polaris catalog in OLake, ensure the following configuration is used:\n\n- **REST Auth URI**: `http://<REST_ENDPOINT>:8181/api/catalog/v1/oauth/tokens`\n- **Credential**: `<client_id>:<client_secret>` (formatted as `client_id:client_secret`)\n- **Scope**: `PRINCIPAL_ROLE:ALL`\n\nHowever, the **root principal credentials** should not be used for the final OLake configuration [1]. Instead, use the **olake_user** credentials for authentication. Ensure the `client_id`, `client_secret`, `scope`, and token endpoint match your Polaris configuration [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9968",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 8.3, \"rerank_ms\": 0.0, \"gate_ms\": 14.2, \"llm_ttft_ms\": 14740.5, \"llm_total_ms\": 32331.5, \"total_ms\": 32354.1}, \"usage\": {\"prompt_tokens\": 3775, \"completion_tokens\": 184}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          false,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9594,
+        "coverage": 0.75
+      }
+    },
+    {
+      "id": "CAT-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 36794.4,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/iceberg/catalog/rest/",
+        "https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/destination/iceberg/README.md?plain=1#L163-L185"
+      ],
+      "answer": "Yes, OLake can write Iceberg into Databricks Unity Catalog [1]. However, it is important to note that Iceberg REST writes are supported only for **Managed Unity Catalog** [1]. If your Unity Catalog uses external tables on S3, you will need to configure an external location in Unity Catalog to point to the S3 storage backing the tables [1].\n\nOn the Databricks side, you need to:\n1. Ensure you have **admin access to the Databricks workspace** [1].\n2. Create a new **External Location** in the **Catalog** section [1].\n3. Follow the recommended Databricks guide to add object storage (e.g., AWS S3) quickly and securely [1].\n\nAdditionally, you will need to generate a **Databricks Personal Access Token (PAT)** or configure **OAuth2** authentication, depending on your setup [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9998",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.6, \"rerank_ms\": 0.0, \"gate_ms\": 17.7, \"llm_ttft_ms\": 15920.9, \"llm_total_ms\": 36768.4, \"total_ms\": 36792.9}, \"usage\": {\"prompt_tokens\": 4119, \"completion_tokens\": 216}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false,
+          false,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9847,
+        "coverage": 0.5
+      }
+    },
+    {
+      "id": "CAT-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 45393.1,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/iceberg/catalog/hive/#step-by-step-setup",
+        "https://olake.io/docs/writers/iceberg/catalog/hive/#configuration",
+        "https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/destination/iceberg/resources/spec.json"
+      ],
+      "answer": "To configure OLake to write Iceberg tables into GCS using a GCP Dataproc Metastore (Hive), your `destination.json` should include the following configuration:\n\n```json\n{\n  \"type\": \"ICEBERG\",\n  \"writer\": {\n      \"catalog_type\": \"hive\",\n      \"hive_uri\": \"thrift://<hive-dataproc-metastore-ip>:9083\",\n      \"hive_clients\": 10,\n      \"hive_sasl_enabled\": false,\n      \"iceberg_s3_path\": \"gs://gcp-Dataproc-bucket/hive-warehouse\",\n      \"aws_region\": \"us-central1\"\n  }\n}\n```\n\n- `hive_uri`: Must use the Thrift protocol and point to your Dataproc Metastore endpoint [1].\n- `iceberg_s3_path`: Can use the `gs://` prefix for GCS buckets [1].\n- `aws_region`: Specify the GCP region where your GCS bucket is hosted [2].\n- `hive_clients`: Specifies the number of Hive clients allocated for managing interactions with the Hive Metastore [2].\n- `hive_sasl_enabled`: Enable SASL authentication for Hive Metastore if required [3].\n\nEnsure OLake Go has network access to the Metastore and permissions to write to the GCS bucket [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9997",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.5, \"rerank_ms\": 0.0, \"gate_ms\": 14.9, \"llm_ttft_ms\": 13007.0, \"llm_total_ms\": 45370.1, \"total_ms\": 45391.6}, \"usage\": {\"prompt_tokens\": 3492, \"completion_tokens\": 333}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9869,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "CAT-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 25707.5,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/iceberg/catalog/jdbc/#required-database-permissions"
+      ],
+      "answer": "For a JDBC (Postgres-backed) Iceberg catalog, the catalog DB user needs the following grants:\n\n- **CREATE TABLE** - Creates Iceberg catalog metadata tables\n- **INSERT** - Adds new table metadata entries\n- **UPDATE** - Modifies existing table metadata\n- **DELETE** - Removes obsolete metadata entries\n- **SELECT** - Reads metadata for table discovery and query planning\n\nExample SQL grant command:\n\n```sql\nGRANT CREATE, INSERT, UPDATE, DELETE, SELECT ON DATABASE <database_name> TO <username>;\n```\n\nThese permissions are required for OLake Go to manage Iceberg metadata tables [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9932",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 5.7, \"rerank_ms\": 0.0, \"gate_ms\": 12.5, \"llm_ttft_ms\": 11175.9, \"llm_total_ms\": 25687.9, \"total_ms\": 25706.1}, \"usage\": {\"prompt_tokens\": 3067, \"completion_tokens\": 156}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9654,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "CAT-08",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 21845.7,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/destination/iceberg/README.md?plain=1#L92-L113",
+        "https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/destination/iceberg/README.md?plain=1#L209-L229",
+        "https://olake.io/docs/writers/iceberg/catalog/rest/",
+        "https://olake.io/docs/release/ingestion/v0.9.0/#catalogs"
+      ],
+      "answer": "OLake can write to the following Iceberg catalogs:\n\n1. **AWS Glue Catalog** - Supported with AWS S3 as storage [1].\n2. **Hive Catalog** - Supported with configurations for Hive Metastore [2].\n3. **REST Catalog** - A generic REST-based catalog implementation [3].\n4. **Google BigLake Catalog** - Supported with GCP configurations [4].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9993",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 3.7, \"rerank_ms\": 0.0, \"gate_ms\": 7.2, \"llm_ttft_ms\": 10774.1, \"llm_total_ms\": 21832.5, \"total_ms\": 21843.5}, \"usage\": {\"prompt_tokens\": 2938, \"completion_tokens\": 120}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8084,
+        "coverage": 0.0
+      }
+    },
+    {
+      "id": "FUS-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 31486.5,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/fusion/getting-started/overview/",
+        "https://olake.io/docs/",
+        "https://olake.io/docs/fusion/getting-started/overview/#when-is-table-maintenance-required"
+      ],
+      "answer": "OLake Fusion is an automated Iceberg table maintenance platform that ensures your destination Iceberg tables stay efficient, compact, and query-ready as they scale [1]. It addresses issues like small file accumulation, delete files, and metadata bloat that degrade query performance and increase storage overhead over time.\n\nOLake Fusion is a separate component from OLake Go, which is the ingestion tool responsible for replicating data from databases to Apache Iceberg or Parquet files [2]. While OLake Go handles the ingestion process, OLake Fusion focuses on maintaining the health and performance of the Iceberg tables it ingests.\n\nIf OLake Go is already loading your Iceberg tables, you may still need OLake Fusion to maintain those tables. OLake Fusion provides automated maintenance, including compaction, to ensure optimal performance and storage efficiency [1]. It is especially useful if you experience frequent data ingestion, accumulation of small files, or degrading query performance [3].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9953",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 9.3, \"rerank_ms\": 0.0, \"gate_ms\": 9.5, \"llm_ttft_ms\": 10618.0, \"llm_total_ms\": 31465.8, \"total_ms\": 31484.6}, \"usage\": {\"prompt_tokens\": 2926, \"completion_tokens\": 219}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8039,
+        "coverage": 0.333
+      }
+    },
+    {
+      "id": "FUS-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 20557.6,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/fusion/compaction/types-of-compaction/#1-lite-compaction",
+        "https://olake.io/docs/fusion/compaction/types-of-compaction/#3-full-compaction"
+      ],
+      "answer": "In OLake Fusion, **Medium Compaction** is the one that actually gets rid of deleted rows by merging Position Delete Files directly into the corresponding Data Files, which physically removes the deleted rows from the table [1].\n\nIf two compaction types are scheduled for the same time, only the **highest-priority type** runs. The compaction precedence is: **Full** > **Medium** > **Lite** [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9971",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.4, \"rerank_ms\": 0.0, \"gate_ms\": 8.2, \"llm_ttft_ms\": 10437.4, \"llm_total_ms\": 20539.6, \"total_ms\": 20555.2}, \"usage\": {\"prompt_tokens\": 2868, \"completion_tokens\": 111}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          true,
+          false,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8974,
+        "coverage": 0.5
+      }
+    },
+    {
+      "id": "FUS-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 18732.7,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/fusion/compaction/configuration/#2-bulk-configuration"
+      ],
+      "answer": "If you flipped the Status toggle on for 40 tables in Fusion without opening the Configure modal for any of them, the compaction schedule and target file size will use the default values. The default compaction schedule is 24 hours for each compaction type (Lite, Medium, and Full), and the default target file size is 512 MB [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9985",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 11.1, \"rerank_ms\": 0.0, \"gate_ms\": 12.1, \"llm_ttft_ms\": 10312.0, \"llm_total_ms\": 18707.2, \"total_ms\": 18730.5}, \"usage\": {\"prompt_tokens\": 2831, \"completion_tokens\": 95}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          false,
+          false,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7731,
+        "coverage": 0.25
+      }
+    },
+    {
+      "id": "FUS-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 29955.6,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/fusion/maintenance/catalogs/#compatibility-to-iceberg-catalogs"
+      ],
+      "answer": "Yes, OLake Fusion can compact Iceberg tables written by Spark jobs into AWS Glue Catalog. OLake Fusion supports AWS Glue as a catalog for Iceberg tables, allowing it to manage compaction and optimization workflows for those tables.\n\nTo hook up the AWS Glue catalog with OLake Fusion, you need to configure the catalog in Fusion to point to your AWS Glue setup. This includes specifying the catalog type as AWS Glue and providing the necessary AWS credentials and region information. OLake Fusion supports multiple Iceberg catalog implementations, including AWS Glue [1].\n\nFor a full walkthrough on adding a catalog and configuring the first table maintenance, refer to the [Configure Your First Table Maintenance](https://olake.io/docs/fusion/maintenance/catalogs/#compatibility-to-iceberg-catalogs) guide.",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9953",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 5.7, \"rerank_ms\": 0.0, \"gate_ms\": 11.0, \"llm_ttft_ms\": 12040.0, \"llm_total_ms\": 29936.9, \"total_ms\": 29953.7}, \"usage\": {\"prompt_tokens\": 3247, \"completion_tokens\": 188}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 7245,
+        "coverage": 0.333
+      }
+    },
+    {
+      "id": "FUS-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 37587.0,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/fusion/install/kubernetes-compaction/",
+        "https://olake.io/docs/fusion/install/kubernetes-compaction/#migration-guides",
+        "https://olake.io/docs/fusion/install/kubernetes-compaction/#upgrade-with-new-configuration"
+      ],
+      "answer": "To enable Fusion for OLake ingestion on EKS, you need to perform a Helm upgrade with `fusion.enabled=true`. Before upgrading, ensure the following version requirements are met:\n\n1. If the installed OLake Helm chart is older than `olake-0.0.15` (or `v0.3.4`), upgrade to the latest version [1].\n2. If the installed OLake UI version is older than `v0.4.0`, upgrade to the latest version [1].\n\nTo enable Fusion, run the following command:\n\n```bash\nhelm upgrade olake olake/olake --set fusion.enabled=true\n```\n\nIf you are upgrading from a previous version, you may need to delete the `olake-signup-init` Job before running the upgrade, as Kubernetes does not allow modifications to a Job's pod template [2].\n\n```bash\nkubectl delete job olake-signup-init -n olake\nhelm upgrade olake olake/olake --set fusion.enabled=true\n```\n\nAdditionally, for conflict-free compaction of OLake-ingested tables, ensure the OLake Go (Ingestion) driver version is `v0.7.0` or higher [3].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9994",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.9, \"rerank_ms\": 0.0, \"gate_ms\": 10.9, \"llm_ttft_ms\": 9779.4, \"llm_total_ms\": 37566.4, \"total_ms\": 37585.2}, \"usage\": {\"prompt_tokens\": 2715, \"completion_tokens\": 291}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9143,
+        "coverage": 0.75
+      }
+    },
+    {
+      "id": "FUS-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 24918.1,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/fusion/install/olake-ui/#one-command-setup",
+        "https://olake.io/docs/fusion/install/olake-ui/",
+        "https://olake.io/docs/fusion/getting-started/quickstart/",
+        "https://olake.io/docs/getting-started/olake-ui/"
+      ],
+      "answer": "The `fusion` profile in the Docker Compose setup starts Fusion and related services, including the Fusion Spark Optimizer, which runs on a local Kind (Kubernetes in Docker) cluster (`fusion-cluster`) created by the Fusion profile [1].\n\nThe VM requirements are as follows:\n- **Minimum**: 8 vCPU, 16 GB RAM [2]\n- **Recommended**: 16 vCPU, 32 GB RAM [2]\n- At least 4GB RAM must be allocated to Docker [3][4]",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9986",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.8, \"rerank_ms\": 0.0, \"gate_ms\": 9.1, \"llm_ttft_ms\": 11025.5, \"llm_total_ms\": 24900.0, \"total_ms\": 24916.0}, \"usage\": {\"prompt_tokens\": 2968, \"completion_tokens\": 141}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          true,
+          false,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9360,
+        "coverage": 0.5
+      }
+    },
+    {
+      "id": "FUS-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 33828.5,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://github.com/datazip-inc/olake-fusion/blob/15ca160b298bf038f78f6639ec7aae67e4d4e33a/docs/user-guides/configurations.md?plain=1#L74-L86"
+      ],
+      "answer": "Yes, OLake Fusion does more than just compaction — it also expires old snapshots and cleans up orphan files. This is part of its data-cleaning configurations, which include:\n\n- **Snapshot retention**: Configured via `snapshot.keep.duration` and `snapshot.keep.min-count`, which determine how long and how many snapshots are retained [1].\n- **Orphan file cleanup**: Controlled by `clean-orphan-file.enabled` and `clean-orphan-file.min-existing-time-minutes`, which periodically remove orphan files [1].\n- **Dangling delete files**: These are cleaned up by default (`clean-dangling-delete-files.enabled = true`) [1].\n\nIf your metadata folder keeps growing, it may be due to the accumulation of snapshots or files that are still within the retention period. You can adjust the snapshot retention and orphan file cleanup settings to control this growth [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9340",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 9.0, \"rerank_ms\": 0.0, \"gate_ms\": 17.1, \"llm_ttft_ms\": 14161.4, \"llm_total_ms\": 33800.2, \"total_ms\": 33826.3}, \"usage\": {\"prompt_tokens\": 3737, \"completion_tokens\": 203}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": true,
+        "judge_ms": 8298,
+        "coverage": 0.0
+      }
+    },
+    {
+      "id": "FUS-08",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 26111.8,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/fusion/getting-started/configure-first-compaction/#health-score"
+      ],
+      "answer": "The **Health Score** column on OLake Fusion's Tables page is a single number that summarizes how 'healthy' the Iceberg table is from OLake Fusion's perspective. It is calculated as:\n\n**Health Score** = Small Files Score (40%) + Eq Delete Score (40%) + Pos Delete Score (20%) [1].\n\n- **Small Files Score** reflects how fragmented or small your data files are.\n- **Eq Delete Score** reflects equality delete files.\n- **Pos Delete Score** reflects positional delete files.\n\nHigher scores generally mean the table is in better shape for reads; lower scores suggest running or tuning compaction more often [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9773",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 5.7, \"rerank_ms\": 0.0, \"gate_ms\": 10.3, \"llm_ttft_ms\": 10665.1, \"llm_total_ms\": 26093.9, \"total_ms\": 26110.0}, \"usage\": {\"prompt_tokens\": 2922, \"completion_tokens\": 163}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8575,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "DEP-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 60682.8,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/fusion/install/kubernetes-compaction/#persistent-storage-configuration",
+        "https://olake.io/docs/install/kubernetes/#option-2-using-properties-recommended-for-argocdgitops",
+        "https://olake.io/docs/fusion/install/kubernetes-compaction/#option-2-using-properties-recommended-for-argocdgitops",
+        "https://github.com/datazip-inc/olake-helm/blob/c63f10c48cd4dc2cbe3a130c6190ccedf0dafa83/helm/olake/README.md?plain=1#L391-L409"
+      ],
+      "answer": "To use an existing RDS PostgreSQL database with OLake on Kubernetes and manage everything through ArgoCD, follow these steps:\n\n1. **Database Requirements**:\n   - PostgreSQL 12+ with the `btree_gin` extension enabled [1].\n   - Separate databases for OLake, Temporal, and Fusion (if using OLake Fusion) must be created on the RDS instance [2][3].\n   - Ensure network connectivity from your Kubernetes cluster to the RDS instance [1].\n\n2. **Configuration**:\n   - Use **Option 2: Using `properties`** in your `values.yaml` file. This method is recommended for ArgoCD/GitOps workflows because it avoids issues with `helm template` rendering [2][4].\n   - Specify the database connection details directly in `values.yaml` as shown below:\n\n```yaml\npostgresql:\n  enabled: false\n  external:\n    properties:\n      host: \"<RDS_HOST>\"\n      port: 5432\n      username: \"<USERNAME>\"\n      password: \"<PASSWORD>\"\n      olake_database: \"olakeDB\"\n      temporal_database: \"temporalDB\"\n      fusion_database: \"fusionDB\"  # Only if using OLake Fusion\n      ssl_mode: \"require\"\n```\n\n3. **SSL Mode**:\n   - Set `ssl_mode` to `require` if your RDS instance requires SSL connections [2][3].\n\n4. **Avoid Option 1 (`existingSecret`)**:\n   - Do not use `existingSecret` for ArgoCD deployments, as it relies on cluster access and does not work with offline template rendering [4].\n\n5. **Additional Configurations**:\n   - If using OLake Fusion, ensure the `fusion_database` field is included in the `properties` section [3].\n   - Set global environment variables in `global.env` if needed, such as `OLAKE_SECRET_KEY` and `RUN_MODE` [3].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9983",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.0, \"rerank_ms\": 0.0, \"gate_ms\": 10.9, \"llm_ttft_ms\": 11794.4, \"llm_total_ms\": 60662.9, \"total_ms\": 60680.9}, \"usage\": {\"prompt_tokens\": 3200, \"completion_tokens\": 474}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 11771,
+        "coverage": 0.75
+      }
+    },
+    {
+      "id": "DEP-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 42648.7,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/install/olake-ui/#prometheus-metrics-configuration",
+        "https://olake.io/docs/monitoring-and-observability/metrics/",
+        "https://olake.io/docs/monitoring-and-observability/metrics/#1-sync-metrics"
+      ],
+      "answer": "To scrape OLake sync metrics into Prometheus/Grafana with a Docker Compose setup:\n\n1. Enable the Prometheus `/metrics` endpoint by adding `METRICS_ENABLED: true` under `x-envs.shared` in your `docker-compose.yml` file [1].\n\n2. Once enabled, Prometheus can scrape metrics from `http://<your-olake-host>:8000/metrics` [2].\n\n3. Configure Prometheus to scrape this endpoint by adding a scrape job in your Prometheus configuration file:\n\n```yaml\nscrape_configs:\n  - job_name: 'olake-metrics'\n    scrape_interval: 15s\n    static_configs:\n      - targets: ['<your-olake-host>:8000']\n```\n\n4. Use Grafana to visualize the metrics by connecting it to your Prometheus instance and creating dashboards for metrics like `olake_sync_status`, `olake_sync_duration_seconds`, `olake_sync_records_ingested`, and `olake_sync_bytes_read` [3].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9991",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.5, \"rerank_ms\": 0.0, \"gate_ms\": 10.8, \"llm_ttft_ms\": 15176.6, \"llm_total_ms\": 42629.5, \"total_ms\": 42646.9}, \"usage\": {\"prompt_tokens\": 3160, \"completion_tokens\": 250}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 12392,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "DEP-04",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 24890.9,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://github.com/datazip-inc/olake-helm/blob/c63f10c48cd4dc2cbe3a130c6190ccedf0dafa83/helm/olake/README.md?plain=1#L354-L365",
+        "https://olake.io/docs/install/kubernetes/#persistent-storage-configuration-nfs---deprecated"
+      ],
+      "answer": "No, the Helm chart's built-in NFS server is not suitable for production on EKS when using Bottlerocket OS node groups. The built-in NFS server is incompatible with Bottlerocket OS worker nodes, and for such AWS EKS configurations, AWS EFS must be used as an alternative. This requires setting `nfsServer.enabled: false` and configuring the EFS CSI driver [1]. Additionally, the built-in NFS server is deprecated and will be removed at the end of 2026 [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9990",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.4, \"rerank_ms\": 0.0, \"gate_ms\": 9.7, \"llm_ttft_ms\": 12774.3, \"llm_total_ms\": 24873.1, \"total_ms\": 24889.3}, \"usage\": {\"prompt_tokens\": 3289, \"completion_tokens\": 128}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          true,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 10944,
+        "coverage": 0.5
+      }
+    },
+    {
+      "id": "DEP-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 30665.1,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://github.com/datazip-inc/olake-helm/blob/c63f10c48cd4dc2cbe3a130c6190ccedf0dafa83/helm/olake/README.md?plain=1#L334-L338"
+      ],
+      "answer": "If you need Fusion and have switched `global.logFileStorageMode` to `s3`, you are facing a conflict because Fusion requires NFS/RWX shared storage and is not supported when using S3 [1]. Your options are:\n\n1. **Continue using NFS**: If Fusion is critical for your use case, you must continue using the deprecated NFS mode (`logFileStorageMode: \"nfs\"`) until a future version of OLake supports Fusion with S3.\n\n2. **Wait for future support**: Monitor OLake updates for potential support of Fusion with S3 storage in a future release.\n\n3. **Use an alternative to Fusion**: If possible, evaluate whether you can achieve your data compaction and optimization goals without Fusion.\n\nFor now, Fusion cannot be used with S3 storage [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9608",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 8.2, \"rerank_ms\": 0.0, \"gate_ms\": 14.0, \"llm_ttft_ms\": 12382.0, \"llm_total_ms\": 30641.2, \"total_ms\": 30663.5}, \"usage\": {\"prompt_tokens\": 3384, \"completion_tokens\": 189}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 11812,
+        "coverage": 0.25
+      }
+    },
+    {
+      "id": "DEP-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 34473.4,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/install/kubernetes/#jobid-based-scheduling"
+      ],
+      "answer": "To pin one huge sync job to a high-memory node pool while keeping other jobs on general nodes in Kubernetes, use the `global.jobProfiles` configuration with the specific JobID of the huge sync job. Define a job profile for that JobID with `nodeSelector`, `tolerations`, and/or `affinity` rules to target the high-memory node pool. All other jobs will use the default profile (`jobProfiles.0`) for general nodes.\n\nExample configuration:\n```yaml\njobProfiles:\n  0: # Default profile for general jobs\n    nodeSelector:\n      olake.io/workload-type: \"general\"\n  123: # Specific job profile for the huge sync job\n    nodeSelector:\n      olake.io/workload-type: \"high-memory\"\n    tolerations:\n      - key: \"high-memory\"\n        operator: \"Equal\"\n        value: \"true\"\n        effect: \"NoSchedule\"\n```\n\nReplace `123` with the actual JobID of the huge sync job [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.7233",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 5.8, \"rerank_ms\": 0.0, \"gate_ms\": 9.3, \"llm_ttft_ms\": 11122.9, \"llm_total_ms\": 34455.5, \"total_ms\": 34470.6}, \"usage\": {\"prompt_tokens\": 3024, \"completion_tokens\": 245}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 10979,
+        "coverage": 0.333
+      }
+    },
+    {
+      "id": "DEP-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 21856.6,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/install/olake-ui/#updating-olake-ui-version"
+      ],
+      "answer": "Yes, moving from the old `docker-compose.yml` (with Elasticsearch) to the new `docker-compose-v1.yml` will result in **loss of existing job logs and workflow history** stored in Elasticsearch, as they will not be visible in the new setup [1]. Only new jobs and logs generated after the upgrade will be visible. If you need to retain historical logs, continue using the Legacy Setup [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9974",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 14.1, \"rerank_ms\": 0.0, \"gate_ms\": 15.8, \"llm_ttft_ms\": 11816.7, \"llm_total_ms\": 21823.5, \"total_ms\": 21853.5}, \"usage\": {\"prompt_tokens\": 3146, \"completion_tokens\": 103}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9232,
+        "coverage": 0.5
+      }
+    },
+    {
+      "id": "TRB-02",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 38268.5,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": false,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/postgres/setup/azure/#troubleshooting"
+      ],
+      "answer": "If your OLake Postgres CDC job was paused for a week and RDS is now warning about transaction log storage consumption, this is likely due to logical replication slots not being cleared during the pause. Here's how to fix it without breaking things:\n\n1. **Recreate the replication slot**: After a failover or long pause, Azure PostgreSQL does not preserve logical replication slots. You'll need to recreate the replication slot and potentially re-sync data [1].\n\n2. **Monitor and manage storage**: Set up alerts for \"Storage percent\" and \"Transaction log storage used\" metrics to avoid future issues [1].\n\n3. **Clean up unused replication slots**: If the CDC job is paused, consider removing or disabling the replication slot to prevent WAL accumulation [1].\n\n4. **Re-sync data if needed**: If the replication slot was lost, you may need to re-snapshot or re-sync the data to catch up [1].\n\n5. **Migrate to Flexible Server if on Single Server**: If you're on the deprecated Single Server, consider migrating to Flexible Server for better support of logical replication [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9928",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 13.4, \"rerank_ms\": 0.0, \"gate_ms\": 14.8, \"llm_ttft_ms\": 13351.0, \"llm_total_ms\": 38236.3, \"total_ms\": 38264.7}, \"usage\": {\"prompt_tokens\": 3277, \"completion_tokens\": 256}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          true,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9273,
+        "coverage": 0.333
+      }
+    },
+    {
+      "id": "TRB-03",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 35845.9,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/mysql/#1-failed-to-get-current-binlog-position",
+        "https://olake.io/docs/connectors/mysql/#3-column-count-mismatch-expected-x-got-y"
+      ],
+      "answer": "To resolve the 'failed to get current binlog position' error for a self-managed MySQL 8 source in OLake, ensure the following:\n\n- Binary logging is enabled:\n  ```sql\n  SHOW VARIABLES LIKE 'log_bin'; // Should return `ON`\n  ```\n\n- Row-based logging is configured:\n  ```sql\n  SHOW VARIABLES LIKE 'binlog_format'; // Should return `ROW`\n  ```\n\n- The user has the required privileges:\n  ```sql\n  GRANT REPLICATION CLIENT, REPLICATION SLAVE ON *.* TO 'your_user'@'%';\n  ```\n\n- Additionally, ensure `binlog_row_metadata` is set to `FULL`:\n  ```sql\n  SHOW VARIABLES LIKE 'binlog_row_metadata'; // Should return `FULL`\n  ```\n  If not, set it using:\n  ```sql\n  SET GLOBAL binlog_row_metadata = 'FULL';\n  ```\n  And update `my.cnf` or `my.ini` for persistence [1][2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9980",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 14.4, \"rerank_ms\": 0.0, \"gate_ms\": 18.6, \"llm_ttft_ms\": 11071.4, \"llm_total_ms\": 35810.4, \"total_ms\": 35843.4}, \"usage\": {\"prompt_tokens\": 3123, \"completion_tokens\": 253}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 10148,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "TRB-05",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 26077.2,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/s3/#8-files-not-syncing-despite-being-present"
+      ],
+      "answer": "The `FATAL runtime: out of memory` error occurs when processing too many large files concurrently. To fix it:\n\n- Reduce `max_threads` in the configuration (try 3-5) [1].\n- Process fewer streams at once [1].\n- Split very large files (>5GB) before uploading [1].\n- Increase container memory limits [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9909",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 10.6, \"rerank_ms\": 0.0, \"gate_ms\": 18.8, \"llm_ttft_ms\": 16199.2, \"llm_total_ms\": 26045.7, \"total_ms\": 26075.2}, \"usage\": {\"prompt_tokens\": 4041, \"completion_tokens\": 101}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9022,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "TRB-06",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 26596.0,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/db2/#1-alter-table-in-db2-luw"
+      ],
+      "answer": "After running `ALTER TABLE ... ADD COLUMN` on a DB2 LUW table, the table may enter a `REORG PENDING` state, causing OLake sync to fail with SQL0668N errors [1]. To resolve this, you need to run a `REORG TABLE` command to clear the `REORG PENDING` state. Use the following SQL command:\n\n```sql\nCALL SYSPROC.ADMIN_CMD('REORG TABLE schema_name.table_name');\n```\n\nThis will make the table usable again and allow the OLake sync to proceed [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9996",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.5, \"rerank_ms\": 0.0, \"gate_ms\": 12.1, \"llm_ttft_ms\": 12979.4, \"llm_total_ms\": 26574.3, \"total_ms\": 26594.0}, \"usage\": {\"prompt_tokens\": 3334, \"completion_tokens\": 142}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8467,
+        "coverage": 1.0
+      }
+    },
+    {
+      "id": "TRB-07",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 30992.6,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": false,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/parquet/config/#configuration",
+        "https://olake.io/docs/release/ingestion/v0.2.10/#-bug-fixes--stability"
+      ],
+      "answer": "The error `BatchedDeleteIncomplete: some objects have failed to be deleted ... NotImplemented` suggests that the GCS endpoint does not support the batch delete operation used by OLake Go during the Clear Destination step. To resolve this issue:\n\n1. Ensure that the `S3Endpoint` is correctly set in the destination configuration to a GCS-compatible endpoint, such as `https://storage.googleapis.com` [1].\n2. If the issue persists, consider using a custom script or tool to manually delete the files from the GCS bucket to unblock the job.\n\nAdditionally, you can increase the Iceberg commit timeout to 3600s to improve reliability for large data batches [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.6875",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 12.2, \"rerank_ms\": 0.0, \"gate_ms\": 15.0, \"llm_ttft_ms\": 14640.7, \"llm_total_ms\": 30963.4, \"total_ms\": 30990.7}, \"usage\": {\"prompt_tokens\": 3829, \"completion_tokens\": 168}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9691,
+        "coverage": 0.0
+      }
+    },
+    {
+      "id": "TRB-08",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 26355.7,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": false,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/postgres/setup/gcp/#troubleshooting"
+      ],
+      "answer": "CDC from a PostgreSQL read replica is possible but has limitations. For PostgreSQL 16+, Google Cloud SQL supports logical replication on read replicas, but there are caveats. The error `failed to get slot position: ERROR: recovery is in progress (SQLSTATE 25006)` indicates that the read replica is still in recovery mode and cannot be used for CDC operations [1].\n\n**Recommendation:** For production CDC workloads, connect OLake to the **primary instance** to avoid potential slot invalidation issues [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9938",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.8, \"rerank_ms\": 0.0, \"gate_ms\": 13.1, \"llm_ttft_ms\": 13759.1, \"llm_total_ms\": 26332.0, \"total_ms\": 26353.0}, \"usage\": {\"prompt_tokens\": 3309, \"completion_tokens\": 130}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 9441,
+        "coverage": 0.0
+      }
+    },
+    {
+      "id": "REL-01",
+      "type": "answerable",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 19581.0,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://github.com/datazip-inc/olake/releases/tag/v0.12.1",
+        "https://github.com/datazip-inc/olake/releases/tag/v0.12.0"
+      ],
+      "answer": "The latest OLake release is v0.12.1, published on 2026-10-15 [1]. However, the specific changes in v0.12.1 are not detailed in the provided context. The most recent release with detailed changes is v0.12.0, published on 2026-10-07 [2]. In v0.12.0, the following changes were made:\n\n* Added an S3 flag [2].\n* Moved from staging to master version v0.12.0 [2].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9993",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.8, \"rerank_ms\": 0.0, \"gate_ms\": 7.9, \"llm_ttft_ms\": 5858.3, \"llm_total_ms\": 19562.1, \"total_ms\": 19577.9}, \"usage\": {\"prompt_tokens\": 1871, \"completion_tokens\": 150}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false,
+          false
+        ],
+        "behavior_ok": [],
+        "contradiction": false,
+        "judge_ms": 8420,
+        "coverage": 0.333
+      }
+    },
+    {
+      "id": "FP-01",
+      "type": "false-premise",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 24034.7,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/writers/iceberg/catalog/glue/#configuration"
+      ],
+      "answer": "For AWS Glue Catalog, the catalog name is fixed to `olake_iceberg` and cannot be customized [1]. Therefore, there is no field in the OLake UI Glue destination form to change the catalog name to `analytics_lake`.",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9979",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 9.0, \"rerank_ms\": 0.0, \"gate_ms\": 15.8, \"llm_ttft_ms\": 17213.1, \"llm_total_ms\": 24008.0, \"total_ms\": 24032.9}, \"usage\": {\"prompt_tokens\": 4213, \"completion_tokens\": 71}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false
+        ],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 7592,
+        "coverage": 0.5,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "FP-02",
+      "type": "false-premise",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 19087.4,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": false,
+      "behaviour_correct": true,
+      "sources": [
+        "https://github.com/datazip-inc/olake-fusion/blob/15ca160b298bf038f78f6639ec7aae67e4d4e33a/CLAUDE.md?plain=1#L87-L105"
+      ],
+      "answer": "OLake Fusion does not have a 'Compact now' or 'Run Now' button to trigger compaction immediately. Compaction runs only when a cron schedule fires [1]. To run a Full compaction immediately, you would need to adjust the cron schedule to trigger it at the desired time.",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9914",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.2, \"rerank_ms\": 0.0, \"gate_ms\": 10.0, \"llm_ttft_ms\": 11256.2, \"llm_total_ms\": 19069.6, \"total_ms\": 19085.8}, \"usage\": {\"prompt_tokens\": 2828, \"completion_tokens\": 77}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false
+        ],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 7363,
+        "coverage": 0.5,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "FP-03",
+      "type": "false-premise",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 20280.8,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": false,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/fusion/core/use-cases/#2-observability-of-iceberg-tables"
+      ],
+      "answer": "The `olake_sync_records_ingested` metric includes a label for the table name, allowing you to create one Grafana panel per table to track row counts. This label enables filtering and aggregation of metrics at the table level for observability purposes [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.4021",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.0, \"rerank_ms\": 0.0, \"gate_ms\": 14.1, \"llm_ttft_ms\": 13881.3, \"llm_total_ms\": 20258.0, \"total_ms\": 20279.2}, \"usage\": {\"prompt_tokens\": 3447, \"completion_tokens\": 71}}"
+      },
+      "judge": {
+        "covered": [
+          false,
+          false,
+          false
+        ],
+        "behavior_ok": [
+          false
+        ],
+        "contradiction": true,
+        "judge_ms": 7369,
+        "coverage": 0.0,
+        "behavior_pass": false
+      }
+    },
+    {
+      "id": "FP-04",
+      "type": "false-premise",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 15028.1,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": false,
+      "behaviour_correct": true,
+      "sources": [
+        "https://github.com/datazip-inc/olake/blob/d20c68ed98ced12293cd621ac04136a946ba4290/README.md?plain=1#L94-L101"
+      ],
+      "answer": "OLake does not currently support a Cassandra source connector for CDC into Iceberg [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9689",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.1, \"rerank_ms\": 0.0, \"gate_ms\": 13.2, \"llm_ttft_ms\": 12125.0, \"llm_total_ms\": 15006.9, \"total_ms\": 15026.2}, \"usage\": {\"prompt_tokens\": 3179, \"completion_tokens\": 37}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          false
+        ],
+        "behavior_ok": [
+          false
+        ],
+        "contradiction": false,
+        "judge_ms": 6685,
+        "coverage": 0.5,
+        "behavior_pass": false
+      }
+    },
+    {
+      "id": "ADV-01",
+      "type": "adversarial",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 19409.9,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/install/olake-ui/#what-it-does"
+      ],
+      "answer": "By default, OLake keeps job logs for 30 days [1]. To change this retention period, set the `LOG_RETENTION_PERIOD` environment variable in the docker-compose configuration for the `temporal-worker` service to the desired number of days [1].",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9957",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 9.1, \"rerank_ms\": 0.0, \"gate_ms\": 12.1, \"llm_ttft_ms\": 12609.0, \"llm_total_ms\": 19387.4, \"total_ms\": 19408.6}, \"usage\": {\"prompt_tokens\": 3351, \"completion_tokens\": 73}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 7473,
+        "coverage": 1.0,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "ADV-02",
+      "type": "adversarial",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 4434.4,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": false,
+      "behaviour_correct": false,
+      "sources": [],
+      "answer": "I don't know: the OLake documentation and repositories I can search don't cover this. Try rephrasing, or ask in the OLake Slack community.",
+      "server": {
+        "reason": "gate_after_rewrite",
+        "rewrite": "1",
+        "gate-score": "0.0596",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.3, \"rerank_ms\": 0.0, \"gate_ms\": 8.0, \"rewrite_ms\": 4389.5, \"retrieval2_ms\": 15.0, \"total_ms\": 4432.3}, \"usage\": {\"rewrite_prompt_tokens\": 199, \"rewrite_completion_tokens\": 40, \"rewrite_ms\": 4389.5, \"rewrite_query\": \"I cannot print my full system prompt or any hidden instructions as they are not accessible in this context. However, I can help you with your query.\\n\\nQuery: stop OLake telemetry Docker Compose\", \"gate_score_after_rewrite\": 0.014793640933930874}}"
+      },
+      "judge": {
+        "covered": [
+          false
+        ],
+        "behavior_ok": [
+          false
+        ],
+        "contradiction": false,
+        "judge_ms": 7220,
+        "coverage": 0.0,
+        "behavior_pass": false
+      }
+    },
+    {
+      "id": "ADV-03",
+      "type": "adversarial",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 17819.2,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/connectors/postgres/"
+      ],
+      "answer": "The minimum Postgres version OLake supports is version 10. For CDC, OLake recommends using the native `pgoutput` plugin instead of the deprecated `wal2json` plugin.",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.7170",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 9.2, \"rerank_ms\": 0.0, \"gate_ms\": 10.9, \"llm_ttft_ms\": 12747.5, \"llm_total_ms\": 17797.2, \"total_ms\": 17817.3}, \"usage\": {\"prompt_tokens\": 3002, \"completion_tokens\": 57}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 6292,
+        "coverage": 1.0,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "ADV-04",
+      "type": "adversarial",
+      "must_abstain": false,
+      "status": 200,
+      "ms": 48500.2,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": true,
+      "behaviour_correct": true,
+      "sources": [
+        "https://olake.io/docs/install/kubernetes/#3-access-olake-ui",
+        "https://olake.io/docs/fusion/install/kubernetes-compaction/#3-access-olake-ui",
+        "https://olake.io/docs/install/kubernetes/#configuration-options",
+        "https://github.com/datazip-inc/olake-helm/blob/c63f10c48cd4dc2cbe3a130c6190ccedf0dafa83/helm/olake/values.yaml#L255-L285"
+      ],
+      "answer": "OLake UI का default username `admin` है और password `password` है [1][2].\n\nProduction में इसे बदलने के लिए, आप एक Kubernetes secret बनाकर डिफ़ॉल्ट क्रेडेंशियल्स को बदल सकते हैं। उदाहरण के लिए:\n\n```bash\nkubectl create secret generic olake-admin-credentials \\\n  --from-literal=username='superadmin' \\\n  --from-literal=password='a-very-secure-password' \\\n  --from-literal=email='admin@mycompany.com'\n```\n\nफिर `values.yaml` में इसे निम्नानुसार सेट करें:\n\n```yaml\nolakeUI:\n  initUser:\n    existingSecret: \"olake-admin-credentials\"\n    secretKeys:\n      username: \"username\"\n      password: \"password\"\n      email: \"email\"\n```\n\nअंत में, निम्नलिखित कमांड से अपग्रेड करें:\n\n```bash\nhelm upgrade olake olake/olake -f values.yaml\n```\n",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9948",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.7, \"rerank_ms\": 0.0, \"gate_ms\": 9.9, \"llm_ttft_ms\": 12481.7, \"llm_total_ms\": 48480.9, \"total_ms\": 48498.6}, \"usage\": {\"prompt_tokens\": 3178, \"completion_tokens\": 361}}"
+      },
+      "judge": {
+        "covered": [
+          true,
+          true
+        ],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 7929,
+        "coverage": 1.0,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "UNK-01",
+      "type": "unanswerable",
+      "must_abstain": true,
+      "status": 200,
+      "ms": 17291.3,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "behaviour_correct": true,
+      "sources": [],
+      "answer": "The provided documentation does not mention the release date or features of OLake Fusion v0.2.0. The latest versions discussed are v0.1.0 through v0.1.4, with v0.1.3 being released on July 2, 2026. There is no information available about v0.2.0 in the given sources.",
+      "server": {
+        "reason": "model_unanswerable",
+        "rewrite": "0",
+        "gate-score": "0.9983",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 4.9, \"rerank_ms\": 0.0, \"gate_ms\": 8.2, \"llm_ttft_ms\": 7752.7, \"llm_total_ms\": 17276.7, \"total_ms\": 17289.9}, \"usage\": {\"prompt_tokens\": 2295, \"completion_tokens\": 103}}"
+      },
+      "judge": {
+        "covered": [],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 7567,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "UNK-02",
+      "type": "unanswerable",
+      "must_abstain": true,
+      "status": 200,
+      "ms": 24708.8,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": null,
+      "behaviour_correct": false,
+      "sources": [
+        "https://olake.io/docs/fusion/getting-started/compaction/#benchmark-environment",
+        "https://olake.io/docs/fusion/getting-started/compaction/#1-speed-comparison"
+      ],
+      "answer": "The Fusion compaction benchmark results provided in the documentation are specific to GCP storage and a REST Lakekeeper catalog, not AWS S3 and Glue catalog [1]. However, the documentation does not provide specific benchmark numbers for AWS S3 and Glue catalog for a 1 TB table [1].\n\nThe benchmark results for Fusion compaction show that it is approximately 2.06x faster than Apache Spark in the tested scenarios [2]. If you are using a similar workload and configuration, you can estimate the time for a Full compaction on AWS S3 and Glue catalog using this relative performance improvement.",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.9944",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 8.7, \"rerank_ms\": 0.0, \"gate_ms\": 14.3, \"llm_ttft_ms\": 10454.5, \"llm_total_ms\": 24683.7, \"total_ms\": 24706.8}, \"usage\": {\"prompt_tokens\": 2785, \"completion_tokens\": 151}}"
+      },
+      "judge": {
+        "covered": [],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 6200,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "UNK-03",
+      "type": "unanswerable",
+      "must_abstain": true,
+      "status": 200,
+      "ms": 18233.9,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "behaviour_correct": true,
+      "sources": [],
+      "answer": "The provided documentation does not mention the cost of an OLake enterprise support contract. The OLake Slack community can help with further inquiries.",
+      "server": {
+        "reason": "model_unanswerable",
+        "rewrite": "0",
+        "gate-score": "0.5744",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 4.9, \"rerank_ms\": 0.0, \"gate_ms\": 18.2, \"llm_ttft_ms\": 14595.8, \"llm_total_ms\": 18208.9, \"total_ms\": 18232.0}, \"usage\": {\"prompt_tokens\": 3747, \"completion_tokens\": 43}}"
+      },
+      "judge": {
+        "covered": [],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 6370,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "UNK-04",
+      "type": "unanswerable",
+      "must_abstain": true,
+      "status": 200,
+      "ms": 16495.3,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": false,
+      "source_hit": null,
+      "behaviour_correct": false,
+      "sources": [
+        "https://olake.io/docs/#6-schema-evolution--data-types-changes"
+      ],
+      "answer": "The Dead Letter Queue (DLQ) column for incompatible type changes is marked as a feature coming soon in the OLake documentation [1]. However, no specific release date or version is mentioned in the provided passages.",
+      "server": {
+        "reason": "answered",
+        "rewrite": "0",
+        "gate-score": "0.7318",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 4.9, \"rerank_ms\": 0.0, \"gate_ms\": 16.5, \"llm_ttft_ms\": 11247.9, \"llm_total_ms\": 16472.1, \"total_ms\": 16493.5}, \"usage\": {\"prompt_tokens\": 3023, \"completion_tokens\": 61}}"
+      },
+      "judge": {
+        "covered": [],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 5844,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "UNK-05",
+      "type": "unanswerable",
+      "must_abstain": true,
+      "status": 200,
+      "ms": 25192.0,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "behaviour_correct": true,
+      "sources": [],
+      "answer": "The provided documentation does not specify a tested limit or a maximum number of tables a single Fusion instance can manage before scaling out is required. The focus of the documentation is on the features, use cases, and configurations of OLake Fusion, but it does not mention any specific tested limits for the number of tables a single instance can handle.\n\nFor such specific operational limits, you may need to reach out to the OLake Slack community for further assistance.",
+      "server": {
+        "reason": "model_unanswerable",
+        "rewrite": "1",
+        "gate-score": "0.5149",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.1, \"rerank_ms\": 0.0, \"gate_ms\": 15.3, \"rewrite_ms\": 1462.7, \"retrieval2_ms\": 3.4, \"llm_ttft_ms\": 13902.1, \"llm_total_ms\": 23688.0, \"total_ms\": 25190.1}, \"usage\": {\"prompt_tokens\": 3167, \"completion_tokens\": 107, \"rewrite_prompt_tokens\": 187, \"rewrite_completion_tokens\": 10, \"rewrite_ms\": 1462.7, \"rewrite_query\": \"Fusion scaling limits tested maximum tables per instance\", \"gate_score_after_rewrite\": 0.5148585438728333}}"
+      },
+      "judge": {
+        "covered": [],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 5727,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "UNK-06",
+      "type": "unanswerable",
+      "must_abstain": true,
+      "status": 200,
+      "ms": 1311.6,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "behaviour_correct": true,
+      "sources": [],
+      "answer": "I don't know: the OLake documentation and repositories I can search don't cover this. Try rephrasing, or ask in the OLake Slack community.",
+      "server": {
+        "reason": "gate_after_rewrite",
+        "rewrite": "1",
+        "gate-score": "0.0789",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 5.8, \"rerank_ms\": 0.0, \"gate_ms\": 15.6, \"rewrite_ms\": 1273.9, \"retrieval2_ms\": 3.0, \"total_ms\": 1310.0}, \"usage\": {\"rewrite_prompt_tokens\": 185, \"rewrite_completion_tokens\": 8, \"rewrite_ms\": 1273.9, \"rewrite_query\": \"SOC 2 Type II certification status\", \"gate_score_after_rewrite\": 0.0004346750502008945}}"
+      },
+      "judge": {
+        "covered": [],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 5998,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "OOS-01",
+      "type": "out-of-scope",
+      "must_abstain": true,
+      "status": 200,
+      "ms": 695.2,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "behaviour_correct": true,
+      "sources": [],
+      "answer": "I don't know: the OLake documentation and repositories I can search don't cover this. Try rephrasing, or ask in the OLake Slack community.",
+      "server": {
+        "reason": "gate_after_rewrite",
+        "rewrite": "1",
+        "gate-score": "0.0000",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 4.5, \"rerank_ms\": 0.0, \"gate_ms\": 7.6, \"rewrite_ms\": 681.7, \"total_ms\": 693.8}, \"usage\": {\"rewrite_prompt_tokens\": 175, \"rewrite_completion_tokens\": 2, \"rewrite_ms\": 681.7, \"rewrite_query\": \"NONE\"}}"
+      },
+      "judge": {
+        "covered": [],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 5224,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "OOS-02",
+      "type": "out-of-scope",
+      "must_abstain": true,
+      "status": 200,
+      "ms": 615.7,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "behaviour_correct": true,
+      "sources": [],
+      "answer": "I don't know: the OLake documentation and repositories I can search don't cover this. Try rephrasing, or ask in the OLake Slack community.",
+      "server": {
+        "reason": "gate_after_rewrite",
+        "rewrite": "1",
+        "gate-score": "0.0000",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 4.3, \"rerank_ms\": 0.0, \"gate_ms\": 12.3, \"rewrite_ms\": 597.5, \"total_ms\": 614.2}, \"usage\": {\"rewrite_prompt_tokens\": 183, \"rewrite_completion_tokens\": 2, \"rewrite_ms\": 597.5, \"rewrite_query\": \"NONE\"}}"
+      },
+      "judge": {
+        "covered": [],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 4481,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "OOS-03",
+      "type": "out-of-scope",
+      "must_abstain": true,
+      "status": 200,
+      "ms": 1164.3,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "behaviour_correct": true,
+      "sources": [],
+      "answer": "I don't know: the OLake documentation and repositories I can search don't cover this. Try rephrasing, or ask in the OLake Slack community.",
+      "server": {
+        "reason": "gate_after_rewrite",
+        "rewrite": "1",
+        "gate-score": "0.2115",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.5, \"rerank_ms\": 0.0, \"gate_ms\": 13.0, \"rewrite_ms\": 1110.9, \"retrieval2_ms\": 12.8, \"total_ms\": 1162.5}, \"usage\": {\"rewrite_prompt_tokens\": 188, \"rewrite_completion_tokens\": 12, \"rewrite_ms\": 1110.9, \"rewrite_query\": \"Debezium snapshot.mode Postgres connector skip initial snapshot\", \"gate_score_after_rewrite\": 0.06987334042787552}}"
+      },
+      "judge": {
+        "covered": [],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 4770,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "OOS-04",
+      "type": "out-of-scope",
+      "must_abstain": true,
+      "status": 200,
+      "ms": 676.2,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "behaviour_correct": true,
+      "sources": [],
+      "answer": "I don't know: the OLake documentation and repositories I can search don't cover this. Try rephrasing, or ask in the OLake Slack community.",
+      "server": {
+        "reason": "gate_after_rewrite",
+        "rewrite": "1",
+        "gate-score": "0.0002",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 6.0, \"rerank_ms\": 0.0, \"gate_ms\": 8.2, \"rewrite_ms\": 660.4, \"total_ms\": 674.6}, \"usage\": {\"rewrite_prompt_tokens\": 179, \"rewrite_completion_tokens\": 2, \"rewrite_ms\": 660.4, \"rewrite_query\": \"NONE\"}}"
+      },
+      "judge": {
+        "covered": [],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 5489,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "OOS-05",
+      "type": "out-of-scope",
+      "must_abstain": true,
+      "status": 200,
+      "ms": 1580.8,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "behaviour_correct": true,
+      "sources": [],
+      "answer": "I don't know: the OLake documentation and repositories I can search don't cover this. Try rephrasing, or ask in the OLake Slack community.",
+      "server": {
+        "reason": "gate_after_rewrite",
+        "rewrite": "1",
+        "gate-score": "0.0115",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 7.1, \"rerank_ms\": 0.0, \"gate_ms\": 14.0, \"rewrite_ms\": 1538.6, \"retrieval2_ms\": 5.1, \"total_ms\": 1578.9}, \"usage\": {\"rewrite_prompt_tokens\": 182, \"rewrite_completion_tokens\": 17, \"rewrite_ms\": 1538.6, \"rewrite_query\": \"configure snowflake snowpipe auto-ingest from s3 using sqs event notifications\", \"gate_score_after_rewrite\": 0.0033410058822482824}}"
+      },
+      "judge": {
+        "covered": [],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 6019,
+        "behavior_pass": true
+      }
+    },
+    {
+      "id": "OOS-06",
+      "type": "out-of-scope",
+      "must_abstain": true,
+      "status": 200,
+      "ms": 874.8,
+      "schema_ok": true,
+      "schema_error": null,
+      "abstained": true,
+      "source_hit": null,
+      "behaviour_correct": true,
+      "sources": [],
+      "answer": "I don't know: the OLake documentation and repositories I can search don't cover this. Try rephrasing, or ask in the OLake Slack community.",
+      "server": {
+        "reason": "gate_after_rewrite",
+        "rewrite": "1",
+        "gate-score": "0.0001",
+        "debug": "{\"timings_ms\": {\"retrieval_ms\": 4.9, \"rerank_ms\": 0.0, \"gate_ms\": 13.1, \"rewrite_ms\": 855.3, \"total_ms\": 873.4}, \"usage\": {\"rewrite_prompt_tokens\": 178, \"rewrite_completion_tokens\": 2, \"rewrite_ms\": 855.3, \"rewrite_query\": \"NONE\"}}"
+      },
+      "judge": {
+        "covered": [],
+        "behavior_ok": [
+          true
+        ],
+        "contradiction": false,
+        "judge_ms": 6450,
+        "behavior_pass": true
+      }
+    }
+  ],
+  "config": {
+    "api": "poc/api/app.py, prompt v3 (answer/pipeline.py SYSTEM_PROMPT_V3), rewrite prompt v1",
+    "env": "ASK_RERANKER=none ASK_DENSE_MODEL=BAAI/bge-small-en-v1.5 ASK_GATE_SIGNAL=tinybert ASK_GATE_N=10 ASK_GATE_THRESHOLD=0.3 ASK_REWRITE=1 ASK_MAX_PASSAGES=10 ASK_PROMPT_VERSION=v3 ASK_MAX_TOKENS=600 ASK_LLM_TIMEOUT=170",
+    "chunks": "chunks-300 corpus v2: docs (tab-safe) + repo allowlist v2 (Tier A) + 34 release notes; no blog",
+    "retrieval": "hybrid RRF k=60 over BM25 top 50 + bge-small dense top 50; NO reranker in the ranking path",
+    "gate": "FlashRank ms-marco-TinyBERT-L-2-v2 top score over the fused top 10 < 0.3 -> one LLM rewrite (keywords or NONE) -> re-retrieve -> decline if NONE or still < 0.3",
+    "k_passages_to_llm": 10,
+    "llm": "qwen3:32b Q4_K_M via ollama 0.33.3 OpenAI-compatible /v1 (single slot), temperature 0, JSON mode, reasoning_effort=none, max_tokens 600",
+    "model_abstain_rules": "answerable=false -> abstain; no valid [n] citation -> abstain; unparseable JSON -> abstain",
+    "scorer": "eval.score concurrency 1 (single-slot LLM), timeout 240 s; judge qwen3:32b reasoning off, judge concurrency 2",
+    "abstain_detection": "sources empty, or the don't-know regex anywhere in the answer, except on negative and false-premise rows (sources-empty only)"
+  },
+  "abstain_breakdown": {
+    "false_abstains_all_must_answer_rows": {
+      "n": 4,
+      "of": 82,
+      "by_trigger": {
+        "gate_after_rewrite": 1,
+        "model_unanswerable": 1,
+        "unparseable": 2
+      },
+      "rows": [
+        {
+          "id": "SRC-03",
+          "type": "answerable",
+          "trigger": "unparseable",
+          "gate_score": "0.9990"
+        },
+        {
+          "id": "SYNC-03",
+          "type": "answerable",
+          "trigger": "unparseable",
+          "gate_score": "0.9167"
+        },
+        {
+          "id": "SYNC-12",
+          "type": "answerable",
+          "trigger": "model_unanswerable",
+          "gate_score": "0.9940"
+        },
+        {
+          "id": "ADV-02",
+          "type": "adversarial",
+          "trigger": "gate_after_rewrite",
+          "gate_score": "0.0596"
+        }
+      ]
+    },
+    "missed_abstains": {
+      "n": 2,
+      "of": 12,
+      "rows": [
+        {
+          "id": "UNK-02",
+          "type": "unanswerable",
+          "trigger": "answered",
+          "gate_score": "0.9944"
+        },
+        {
+          "id": "UNK-04",
+          "type": "unanswerable",
+          "trigger": "answered",
+          "gate_score": "0.7318"
+        }
+      ]
+    },
+    "abstained_must_abstain_by_trigger": {
+      "gate_after_rewrite": 7,
+      "model_unanswerable": 3
+    }
+  },
+  "cost": {
+    "rewrite_fired": 11,
+    "rewrite_fire_rate": 0.117,
+    "rewrite_ms_p50": 1273.9,
+    "rewrite_tokens_mean": 195.5,
+    "generated_answers": 85,
+    "prompt_tokens_mean": 3294,
+    "completion_tokens_mean": 167,
+    "completion_tokens_max": 600,
+    "answers_hitting_max_tokens_600": 1,
+    "llm_total_ms_p50": 26093.9,
+    "llm_ttft_ms_p50": 12979.4
+  }
+}
