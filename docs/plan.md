@@ -111,12 +111,14 @@ Chunk fields. The names follow the POC chunker (`poc/chunking/chunker.py`) so it
 | `lastmod` | str or null | Sitemap `lastmod` (docs) or commit date (repos) |
 | `hash` | str | sha256 of `text`, used for incremental refresh |
 
-**I2. HTTP endpoints**, all served by one container. CORS is `*` without credentials. JSON errors take the shape
+**I2. HTTP endpoints**, all served by one container. CORS is `*` without credentials, with `max_age` 86400 and
+`x-request-id` exposed. `/ask` keeps its contract shape even on errors: `{"answer": "<what went wrong>", "sources": []}`
+with status 422 (bad input) or 503 (cannot answer right now), never an HTML 500. Other endpoints return errors as
 `{"error": {"code": "...", "message": "..."}}`.
 
 | Method and path | Request | Response | Notes |
 |---|---|---|---|
-| `POST /ask` | `{"question": "<1-2000 chars>"}`. Unknown fields are ignored | `200 {"answer": "<markdown>", "sources": ["<url>", ...]}` with **exactly these two keys** | `sources` are deduped `doc_url`s in citation order. In `answer`, `[1]` refers to `sources[0]`. A full abstain returns `sources: []`. A malformed request returns 422 with the error shape. Headers: `X-Request-ID`, `Server-Timing` |
+| `POST /ask` | `{"question": "<1-2000 chars>"}`. Unknown fields are ignored | `200 {"answer": "<markdown>", "sources": ["<url>", ...]}` with **exactly these two keys** | `sources` are deduped `doc_url`s in citation order. In `answer`, `[1]` refers to `sources[0]`. A full abstain returns `sources: []`. A malformed request returns 422 with `{"answer": "<what was wrong>", "sources": []}`. Headers: `X-Request-ID`, `Server-Timing` |
 | `POST /ask/stream` | Same as `/ask`, plus an optional `history` (≤ 4 turns, `[{"role", "content"}]`) | `text/event-stream`, events below | UI only. Browsers must read it with `fetch()` plus a stream reader, because `EventSource` takes only a URL and options and cannot POST [[mdn-es]] |
 | `GET /healthz` | none | `200 {"status": "ok", "git_sha": "...", "index": {"version", "built_at", "pages", "chunks", "docs_lastmod_max", "repos": {"olake": "<sha7>", ...}}, "uptime_s": 0}` | Liveness. Never calls the LLM. Feeds the UI footer |
 | `GET /readyz` | none | `200 {"ready": true}` or `503 {"ready": false, "reason": "..."}` | Ready only after the index and models are loaded and one warm-up query has run |
@@ -141,10 +143,14 @@ because verified facts can contain semicolons. A literal `|` inside any cell is 
 Out-of-scope, unanswerable and adversarial rows use `—` for Expected sources and put the expected behaviour in Must mention.
 
 **I4. Environment variables** (`.env.example`; the template is in [Appendix C](#appendix-c-envexample)): `LLM_BASE_URL`, `LLM_API_KEY`,
-`LLM_MODEL`, `LLM_FALLBACK_BASE_URL`, `LLM_FALLBACK_API_KEY`, `LLM_FALLBACK_MODEL`, `INDEX_DIR`, `RETRIEVAL_MODE`
-(`hybrid` or `bm25`), `RERANK` (`on` or `off`), `RERANK_MODEL`, `ABSTAIN_THRESHOLD` (the off-topic short-circuit threshold, calibrated per `RERANK_MODEL`; about -4 for MiniLM-L6), `SOURCE_URL_STYLE` (`branch` or `sha`, for repo sources;
-kickoff question K3 decides), `BLOG` (`on` or `off`, decision D4), `GITHUB_TOKEN` (optional; makes conditional GitHub requests
-free), `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `PUBLIC_BASE_URL`, `REFRESH_INTERVAL_MIN` (`0` = off), `LOG_LEVEL`.
+`LLM_MODEL`, `LLM_REASONING_EFFORT` (optional; the lowest value the model supports), `LLM_FALLBACK_BASE_URL`,
+`LLM_FALLBACK_API_KEY`, `LLM_FALLBACK_MODEL`, `LLM_FALLBACK2_BASE_URL`, `LLM_FALLBACK2_API_KEY`, `LLM_FALLBACK2_MODEL`
+(the ordered provider chain), `INDEX_DIR`, `EMBED_MODEL` (default `BAAI/bge-small-en-v1.5`), `RETRIEVAL_MODE` (`hybrid` or
+`bm25`), `RERANK` (`on` or `off`), `RERANK_MODEL`, `GATE_SIGNAL` (`rerank` or `dense`), `ABSTAIN_THRESHOLD` (the off-topic
+short-circuit threshold for that signal), `SOURCE_URL_STYLE` (`branch` or `sha`, for repo sources; kickoff question K3
+decides), `BLOG` (`on` or `off`, decision D4), `GITHUB_TOKEN` (optional; makes conditional GitHub requests free),
+`MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `RATE_LIMIT_BURST`, `DAILY_TOKEN_BUDGET`, `PUBLIC_BASE_URL`, `REFRESH_INTERVAL_MIN`
+(`0` = off), `LOG_LEVEL`.
 
 ### 0.3 Event repo layout and ownership
 
@@ -161,14 +167,23 @@ free), `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `PUBLIC_BASE_URL`, `REFRESH_INTE
 
 ### 1.1 Accounts
 
+The host and key choices are decisions D1, D3 and D7 in [open-questions.md](open-questions.md#b-operator-decisions). The
+facts behind them are in [research.md §5](research.md#5-stack).
+
 - [ ] GitHub: `gh auth status` shows the account you will submit with, and a test `git push` to a scratch repo works.
 - [ ] MLH: registered for the event ([event page][ev]). Government photo ID in the bag; it is needed for venue entry ([event page][ev]).
-- [ ] Primary host: account, billing and CLI login done. PENDING(stack report: host choice). The decision is D1 in [open-questions.md](open-questions.md#b-operator-decisions).
-- [ ] Fallback host: account and token ready. Hugging Face Docker Spaces now need a paid PRO plan to create [[hf]], so
-      buy it or choose another fallback. PENDING(stack report).
-- [ ] Personal fallback LLM key on an OpenAI-compatible endpoint, with a spend cap. The Gemini API exposes one at
-      `https://generativelanguage.googleapis.com/v1beta/openai/` (an API base URL, not a web page) [[gemini-openai]]. The model
-      choice is PENDING(stack report).
+- [ ] **Primary host: Google Cloud Run** (asia-south1). A project with billing enabled (Cloud Run requires it), then:
+      `gcloud auth login && gcloud config set project $PROJECT` and
+      `gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com`.
+- [ ] **Fallback host: DigitalOcean App Platform** (BLR). An account with a payment method or prepaid balance, `doctl auth init`,
+      and App Platform's GitHub access granted to the event repo. The MLH "$200" link redirected to the DigitalOcean
+      homepage when tested, so do not count on that credit ([research.md §5.1](research.md#51-credits-what-the-event-actually-offers)).
+- [ ] **Emergency: ngrok.** A free account, then `ngrok config add-authtoken <TOKEN>` [[ngrok-cli]]. The free plan gives one
+      dev domain (`<name>.ngrok-free.app`) [[ngrok]]; note yours.
+- [ ] Hugging Face Docker Space: only if you already pay for PRO. Docker Spaces need a paid plan to create [[hf]].
+- [ ] **LLM keys (D7).** Keep one PAID fallback key with at least 100 RPM, with a spend cap set: an OpenAI key, a Groq developer
+      plan, or a prepaid DigitalOcean balance. Free tiers will throttle a scorer burst. Gemma 4 on the Gemini API is free tier
+      only, at about 15 RPM (third-party figure), and its OpenAI-compatible path is unverified ([research.md §5.1](research.md#51-credits-what-the-event-actually-offers)).
 - [ ] Claude Code: logged in, and `claude --version` noted. Agent teams are experimental and need
       `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` [[teams]]. On newer models the shared task list may also need
       `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` [[tools]].
@@ -177,47 +192,87 @@ free), `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `PUBLIC_BASE_URL`, `REFRESH_INTE
 
 ```bash
 uv --version && uv python install 3.12        # Python toolchain
-docker info >/dev/null && echo docker-ok      # local image builds and smoke runs
+docker info >/dev/null && echo docker-ok      # local smoke runs (use --platform linux/amd64 for images)
 gh --version && jq --version                  # repo and JSON tooling
 claude --version                              # Claude Code
-cloudflared --version                         # emergency tunnel only (section 11)
+gcloud --version                              # primary host CLI
+gcloud components install beta log-streaming  # needed for `gcloud beta run services logs tail` (section 9)
+doctl version                                 # fallback host CLI
+ngrok version                                 # emergency tunnel (section 11)
 uvx ruff --version                            # caches ruff for the optional format hook (Appendix B)
-# host CLI: PENDING(stack report), e.g. gcloud, doctl or flyctl, logged in
 ```
+
+The log-streaming component is required for tailing Cloud Run logs, and the tail command is in Preview [[cr-logging]].
 
 ### 1.3 Pre-cache (the venue Wi-Fi should only carry small uploads)
 
 - [ ] Python wheels: build one throwaway environment that holds the event dependency list (Appendix D), so the uv cache is
       warm. At the venue, `uv sync --offline` then works without the network (`--offline` is a uv global flag [[uv-cli]]).
-- [ ] Embedding and reranker models: download once into a cache directory outside any repo (`FASTEMBED_CACHE_PATH`).
-      PENDING(stack report / POC: exact fastembed model IDs and sizes).
-- [ ] Docker base image: `docker pull python:3.12-slim`. PENDING(stack report: confirm the base image and tag).
+- [ ] Models, into a cache directory outside any repo (`export FASTEMBED_CACHE_PATH=<cache dir>`). The fastembed calls are
+      the ones the POC uses (`poc/retrieval/index.py`), and the FlashRank call follows its README [[flashrank]]:
+      ```bash
+      uv run --with fastembed python -c "from fastembed import TextEmbedding as T; [T(m, cache_dir='$FASTEMBED_CACHE_PATH') for m in ('BAAI/bge-small-en-v1.5','BAAI/bge-base-en-v1.5')]"
+      uv run --with fastembed python -c "from fastembed.rerank.cross_encoder import TextCrossEncoder as R; [R(m, cache_dir='$FASTEMBED_CACHE_PATH') for m in ('Xenova/ms-marco-MiniLM-L-6-v2','BAAI/bge-reranker-base')]"
+      uv run --with flashrank python -c "from flashrank import Ranker; Ranker(model_name='ms-marco-TinyBERT-L-2-v2', cache_dir='$FASTEMBED_CACHE_PATH/flashrank')"
+      ```
+      bge-small is the default embedder and bge-base the upgrade. The reranker is PENDING(poc), so cache all three candidates.
+- [ ] Docker base image: `docker pull --platform linux/amd64 python:3.12-slim`. The plan pins Python 3.12, as the POC does.
+      DigitalOcean requires AMD64 Linux images ([research.md §5.5](research.md#55-host)), and an Apple-silicon laptop builds
+      arm64 by default, so build locally with `--platform linux/amd64` or let the hosts build remotely.
 - [ ] Repos: `git clone --depth 1` each of `olake`, `olake-ui`, `olake-helm` and `olake-fusion` from `github.com/datazip-inc`
       into the cache directory, for local index builds if the Wi-Fi is bad. All four default branches were `master` on
       2026-10-16 (`poc/results/corpus.json` records `master` for each of the POC's shallow clones).
 - [ ] Docs snapshot: one raw-HTML copy of the `/docs/` pages from the [sitemap][sitemap], used only as an offline fallback.
       The POC fetched 209 pages in 12.77 s at concurrency 4 (`poc/results/corpus.json`), so a live fetch at the venue is cheap
       when the network works.
-- [ ] Prefer a host whose builds run remotely from the GitHub repo or uploaded source, so a large image never goes up over
-      venue Wi-Fi. PENDING(stack report: which hosts build remotely).
+- [ ] Remote builds: `gcloud run deploy --source .` uploads the source and builds remotely, using the Dockerfile
+      [[gcloud-deploy]]. App Platform builds from the GitHub repo [[do-spec]]. So no large image has to go up over venue Wi-Fi.
 
-### 1.4 Hello-world deploy dry run (Saturday morning, on the chosen host)
+### 1.4 Hello-world deploy dry run (Saturday morning)
 
 Goal: find the deploy problems a day early, and measure deploy time and cold start.
 
-1. In a scratch folder outside any repo, write a 10-line FastAPI app with `GET /healthz` and `POST /ask` that returns
-   `{"answer": "hello", "sources": []}`, plus a Dockerfile with a non-root user, listening on `$PORT`.
-2. Deploy it with the host CLI. PENDING(stack report: exact deploy command, region, and the min-instances or no-sleep flag).
-3. From a phone on mobile data, check the endpoint:
+1. In a scratch folder outside any repo, write a 15-line FastAPI app with `GET /healthz`, `GET /readyz`, `GET /stream`
+   (one SSE event per second for 10 s) and `POST /ask` that returns `{"answer": "hello", "sources": []}`. Add a Dockerfile
+   `FROM python:3.12-slim` with a non-root user, listening on `$PORT` (default 8080). Push it to a private scratch GitHub repo
+   for the DigitalOcean test.
+2. **Cloud Run (primary).** The flags are checked against the reference [[gcloud-deploy]] and the probe syntax against the
+   health-check docs [[cr-health]]:
+   ```bash
+   PROJECT="<project-id>"; REGION=asia-south1; SVC=ask-olake-hello
+   gcloud run deploy "$SVC" --source . --region "$REGION" --allow-unauthenticated \
+     --min-instances 1 --cpu 1 --memory 1Gi --timeout 60 \
+     --startup-probe httpGet.path=/readyz,periodSeconds=5,failureThreshold=24,timeoutSeconds=2 \
+     --liveness-probe httpGet.path=/healthz,periodSeconds=30,timeoutSeconds=2
+   URL=$(gcloud run services describe "$SVC" --region "$REGION" --format 'value(status.url)')
+   ```
+3. **DigitalOcean App Platform (fallback).** `doctl apps create --spec .do/app.yaml` with this spec. Keys are from the app
+   spec reference [[do-spec]] and the size slug from the pricing page [[do-app-pricing]]:
+   ```yaml
+   name: ask-olake-hello
+   region: blr
+   services:
+     - name: web
+       github: {repo: <you>/<hello-repo>, branch: main, deploy_on_push: true}
+       dockerfile_path: Dockerfile
+       http_port: 8080
+       instance_size_slug: apps-s-1vcpu-1gb
+       instance_count: 1
+       health_check: {http_path: /readyz}
+       liveness_health_check: {http_path: /healthz}
+   ```
+   `doctl apps list` shows the app's URL.
+4. **ngrok (emergency).** `uv run uvicorn hello:app --port 8000` and `ngrok http 8000` [[ngrok-cli]].
+5. On each URL, from a phone on mobile data:
    ```bash
    curl -s -X POST "$URL/ask" -H 'content-type: application/json' -d '{"question":"hi"}'
-   curl -si -X OPTIONS "$URL/ask" -H 'Origin: https://example.com' \
+   curl -si -X OPTIONS "$URL/ask" -H 'Origin: https://olake.io' \
      -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type' | grep -i '^access-control'
+   curl -sN "$URL/stream"    # events must arrive one per second, not all at once
    ```
-4. Record the deploy wall time, cold-start time and HTTPS URL format in your notes. Check that SSE streams without buffering:
-   `curl -N` on a test `/stream` route that sends one event per second.
-5. Repeat steps 2-3 on the fallback host.
-6. Delete the hello-world service, or keep the service name reserved. PENDING(stack report: does the URL depend on the service name?).
+   Record the deploy wall time, the cold start, the URL format, and whether SSE streams. On App Platform, SSE through
+   Cloudflare is unverified ([research.md §5.5](research.md#55-host)). If it buffers, the widget there uses `POST /ask`.
+6. Clean up: `gcloud run services delete "$SVC" --region "$REGION"` and `doctl apps delete <app-id>`.
 
 ### 1.5 Files to prepare (the kit)
 
@@ -273,29 +328,50 @@ result once.
 5. Submission: where to submit, which fields, and can the URL change after 14:30? May the service restart or auto-refresh its index after freeze?
 6. Pre-existing work: are prepared plans, prompts and eval questions OK? Must all code be written today?
 
-**Credits smoke test.** Run it in `$KIT` after filling `$KIT/.env` (the event repo does not exist until 10:30). The base URL may end with or without a slash.
+**Credits smoke test and day-of checks 1-3** ([research.md §5](research.md#5-stack)). Run them in `$KIT` after filling
+`$KIT/.env`, because the event repo does not exist until 10:30. Run them for every key in the chain. The base URL may end
+with or without a slash.
 
 ```bash
 set -a; source .env; set +a
-B="${LLM_BASE_URL%/}"
-# 1. the key works: list the models
-curl -sS "$B/models" -H "Authorization: Bearer $LLM_API_KEY" | jq -r '.data[].id' | head -40
-# 2. one timed completion
-curl -sS -w '\nHTTP %{http_code} in %{time_total}s\n' "$B/chat/completions" \
-  -H "Authorization: Bearer $LLM_API_KEY" -H 'Content-Type: application/json' \
-  -d "{\"model\":\"$LLM_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word OK.\"}]}"
-# 3. eight parallel calls: any 429 means the rate limit is tight, so set MAX_CONCURRENCY below it
-seq 8 | xargs -P8 -I{} curl -s -o /dev/null -w '%{http_code} %{time_total}s\n' "$B/chat/completions" \
-  -H "Authorization: Bearer $LLM_API_KEY" -H 'Content-Type: application/json' \
+B="${LLM_BASE_URL%/}"; H=(-H "Authorization: Bearer $LLM_API_KEY" -H 'Content-Type: application/json')
+# check 3: the key works; list the models
+curl -sS "$B/models" "${H[@]}" | jq -r '.data[].id' | head -40
+# one timed completion, with the lowest reasoning setting; dump the headers to read any x-ratelimit-* values (check 2)
+curl -sS -D - -w '\nHTTP %{http_code} in %{time_total}s\n' "$B/chat/completions" "${H[@]}" \
+  -d "{\"model\":\"$LLM_MODEL\"${LLM_REASONING_EFFORT:+,\"reasoning_effort\":\"$LLM_REASONING_EFFORT\"},\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word OK.\"}]}" \
+  | grep -i -E '^x-ratelimit|^retry-after|HTTP |"content"'
+# check 1: streaming plus response_format (for Gemma on Gemini this is the unverified /v1beta/openai/ path)
+curl -sN "$B/chat/completions" "${H[@]}" \
+  -d "{\"model\":\"$LLM_MODEL\",\"stream\":true,\"response_format\":{\"type\":\"json_object\"},\"messages\":[{\"role\":\"user\",\"content\":\"Reply with {\\\"ok\\\": true} as JSON.\"}]}" | head -5
+# eight parallel calls: any 429 means the limit is tight, so set MAX_CONCURRENCY below it
+seq 8 | xargs -P8 -I{} curl -s -o /dev/null -w '%{http_code} %{time_total}s\n' "$B/chat/completions" "${H[@]}" \
   -d "{\"model\":\"$LLM_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with OK.\"}]}"
-# 4. streaming works
-curl -sN "$B/chat/completions" -H "Authorization: Bearer $LLM_API_KEY" -H 'Content-Type: application/json' \
-  -d "{\"model\":\"$LLM_MODEL\",\"stream\":true,\"messages\":[{\"role\":\"user\",\"content\":\"Count to 5.\"}]}" | head -5
-# 5. repeat 2 with the fallback trio (LLM_FALLBACK_*)
 ```
 
-Go/no-go: if call 2 fails, or takes more than 5 s for a one-word reply (a threshold chosen to keep the 6 s p95 **target**
-reachable), make the fallback trio primary now and tell the organizers.
+Also read the provider's own rate-limit page (check 2). For Gemini, the limits for your project are shown only in AI Studio
+[[gem-rl]]. DigitalOcean returns `x-ratelimit-*` headers [[do-quota]].
+
+If `response_format` or streaming fails on a model, the app still works: it never depends on `response_format`, and the
+widget falls back to `/ask`. Note the result.
+
+Go/no-go: if the timed call fails, or takes more than 5 s for a one-word reply (a threshold chosen to keep the 6 s p95
+**target** reachable), move the next key in the chain up to primary now, and tell the organizers.
+
+**Day-of checks 4-5 need a deployed URL.** Run them after the first real deploy (about 12:00, checkpoint 2) and again
+in the freeze checklist:
+
+```bash
+# check 4: a preflight from the olake.io origin, then SSE chunk timing (events must arrive spread out, not in one burst)
+curl -si -X OPTIONS "$URL/ask" -H 'Origin: https://olake.io' -H 'Access-Control-Request-Method: POST' \
+  -H 'Access-Control-Request-Headers: content-type' | grep -i '^access-control'
+curl -sN "$URL/ask/stream" -H 'content-type: application/json' -d '{"question":"How do I install OLake?"}' \
+  | while IFS= read -r l; do printf '%s %s\n' "$(date +%T)" "${l:0:80}"; done | head -20
+# check 5: 50 concurrent /ask requests, as a scorer burst would send. Any 429 or 5xx is a failure.
+seq 50 | xargs -P50 -I{} curl -s -o /dev/null -w '%{http_code} %{time_total}\n' "$URL/ask" \
+  -H 'content-type: application/json' -H 'Cache-Control: no-cache' -d '{"question":"What sources does OLake support?"}' \
+  | awk '{n[$1]++; if ($2 > m) m = $2} END {for (c in n) print "HTTP", c, n[c]; print "slowest_s", m}' 
+```
 
 ---
 
@@ -445,6 +521,8 @@ DO NOT
 
 FastAPI runs plain `def` handlers in a threadpool, while `async def` handlers run on the event loop [[fastapi-async]]. That is why the pitfall below matters.
 
+The LLM client rules come from the [stack report](reports/stack.md). The SDK's own defaults are a 10-minute timeout and 2 retries [[openai-readme]]. Gemini 3 thinking cannot be switched off, so the lowest `reasoning_effort` is the floor [[gemini-openai]]. Native SSE needs FastAPI 0.135 or later [[fastapi-sse]].
+
 ```text
 GOAL
 The FastAPI service behind contract I2 in CLAUDE.md: hybrid retrieval, rerank, gated generation with citations,
@@ -455,8 +533,11 @@ YOU OWN: app/, tests/app/. Do not edit anything else. web/ belongs to the widget
 STEPS (in order; each step leaves a working server)
 1. By 10:50, a stub: every I2 endpoint with canned data in the exact shapes, including the SSE event sequence.
    uv run uvicorn app.main:app --port 8000. Then message widget and the lead.
-2. app/llm.py: openai SDK client with base_url=LLM_BASE_URL, api_key=LLM_API_KEY, model=LLM_MODEL. Timeout 20 s, one
-   retry on 429/5xx with jitter, then try the LLM_FALLBACK_* trio if it is set.
+2. app/llm.py: the openai SDK, called over an ordered chain of (base_url, model, key): LLM_*, then LLM_FALLBACK_*, then
+   LLM_FALLBACK2_* (each optional). For each client, timeout=25 s and max_retries=1; the SDK defaults are a 10-minute
+   timeout and 2 retries. On 429, 5xx or a timeout, fail over to the next provider BEFORE the first streamed byte.
+   Pass reasoning_effort=LLM_REASONING_EFFORT only when it is set (the lowest value the model supports). Never depend on
+   response_format: parse the text defensively, because some providers ignore it.
 3. Fallback A: bm25s over chunk text, top 6, a numbered context "[n] <title> (<doc_url>)\n<text>", the system prompt
    below, parse [n], keep only valid n, renumber in order of first use so [1] = sources[0]. sources = the deduped citation
    URLs in citation order, capped at 5: doc_url for most chunks; cite_urls for a factcard chunk; for repo chunks, doc_url
@@ -464,9 +545,11 @@ STEPS (in order; each step leaves a working server)
    with one index-facts line: "Docs indexed <built_at>; latest releases: olake <tag> (<date>), olake-ui <tag> (<date>)".
    It comes from the manifest and the release-gh chunks.
 4. Load data/index/CURRENT at startup. /readyz returns 503 until the index and models are loaded and one warm-up query ran.
-5. Hybrid: dense (the fastembed model named in manifest.json) plus BM25, fused with RRF k=60. Rerank the top 10 with
-   RERANK_MODEL (default Xenova/ms-marco-MiniLM-L-6-v2) and keep the top 6 for the context. The top rerank score is
-   also the off-topic gate's score, so ABSTAIN_THRESHOLD must match RERANK_MODEL. Small-to-big: add the neighbouring chunk (ord ± 1) of the top hits, at most
+5. Hybrid: dense (the fastembed model named in manifest.json; default BAAI/bge-small-en-v1.5) plus BM25, fused with
+   RRF k=60. If RERANK=on, rerank the top 10 with RERANK_MODEL; CLAUDE.md says which model (PENDING(poc): FlashRank
+   ms-marco-TinyBERT-L-2-v2, fastembed Xenova/ms-marco-MiniLM-L-6-v2, or BAAI/bge-reranker-base). Keep the top 6 for the
+   context. RERANK=off must also work. The off-topic gate reads GATE_SIGNAL: the top rerank score, or the highest dense
+   cosine when the rerank is off. ABSTAIN_THRESHOLD is calibrated for that signal. Small-to-big: add the neighbouring chunk (ord ± 1) of the top hits, at most
    3 chunks per page and about 4k context tokens. Apply the CLAUDE.md "Corpus" ranking rules: tier weights (a blog or
    outside chunk never outranks a tier-1 chunk that passes gate 1); demote release notes older than the latest two minors
    x0.3; boost the connector page named in the question x1.6; expand the query with the synonym map (OLake = OLake Go =
@@ -485,10 +568,14 @@ STEPS (in order; each step leaves a working server)
      rewrite fired.
 7. Exact-match LRU cache keyed on normalized question + index version. No semantic cache. A request with the header
    Cache-Control: no-cache skips the cache (the monitoring probe uses it to exercise the LLM path).
-8. /ask/stream (SSE events meta, token, done, error), /feedback, structured JSON logs (request_id, timings per stage,
-   tokens in and out, cache hit, abstain_reason, top score, top-5 doc_urls), the Server-Timing header,
-   a global asyncio.Semaphore(MAX_CONCURRENCY) that queues rather than rejects, a per-IP rate limit of RATE_LIMIT_PER_MIN
-   (high enough that a scorer never sees 429), and CORS * without credentials.
+8. /ask/stream with FastAPI 0.135+ native SSE: response_class=fastapi.sse.EventSourceResponse, yielding ServerSentEvent
+   for meta, token, done and error. It works with POST, sets no-cache and X-Accel-Buffering: no, and pings every 15 s.
+   Also: /feedback; structured JSON logs (request_id, timings per stage, tokens in and out, cache hit, abstain_reason,
+   gate score, top-5 doc_urls, provider used); the Server-Timing header; a global asyncio.Semaphore(MAX_CONCURRENCY) that
+   queues rather than rejects; a per-client token bucket refilling at RATE_LIMIT_PER_MIN, with burst capacity
+   RATE_LIMIT_BURST above the test-set size, so one scorer IP bursting every question never sees 429; a daily token budget
+   (DAILY_TOKEN_BUDGET), after which /ask returns the degraded answer; and CORS * without credentials, max_age 86400,
+   exposing x-request-id.
 9. Serve web/: /widget.js -> web/widget.js, /embed -> web/embed.html (HTTP header Content-Security-Policy:
    frame-ancestors *; a <meta> tag cannot carry frame-ancestors), / -> web/demo/index.html, /static -> web/.
 10. Graceful degradation: if the LLM fails after retry and fallback, return 200 with "I couldn't generate an answer right
@@ -502,7 +589,11 @@ PITFALLS
   run_in_threadpool, or every request stalls.
 - /ask returns exactly {"answer", "sources"}. Never add fields. Debug data goes in logs and headers.
 - Respect the incoming X-Request-ID header (the eval runner sends eval-<ID>) so triage can match logs to rows.
-- Register a handler for FastAPI's RequestValidationError so a 422 body uses the I2 error shape, not {"detail": ...}.
+- /ask ALWAYS returns {"answer", "sources"}, even on errors and never as an HTML 500. Register handlers for
+  RequestValidationError (422) and Exception (500/503) that return a short "answer" explaining the problem and
+  "sources": [].
+- onnxruntime's CPU memory arena grows with concurrent rerank batches: the POC went from 1.4 GB to 2.6 GB RSS at
+  concurrency 4. Keep MAX_CONCURRENCY modest, or disable the arena, on a 1 GiB host.
 - /ask/stream: hold back the first tokens until they cannot be the start of NO_ANSWER or OUT_OF_SCOPE, so a marker never
   reaches the UI. Then send the standard text in done.
 - Log to stdout only, one JSON object per line. Locally, run uvicorn piped through `tee -a logs/app.jsonl` for triage.
@@ -575,16 +666,20 @@ LOADER (web/widget.js; target: ≤ 3 KB gzipped)
   <api>/embed?theme=auto. Desktop 400x600; ≤ 640 px wide, full screen.
 - Esc or the close button closes it and returns focus to the launcher. The iframe asks to close with
   postMessage({type: "askolake:close"}); check event.origin against the api origin.
+- Theme: watch html[data-theme] on the host page (a MutationObserver on that attribute; Docusaurus sets it) and post
+  {type: "askolake:theme", theme} to the iframe. The embed app uses it, falling back to prefers-color-scheme.
 - The host page gets no cookies, no localStorage and no CSS leakage (the iframe isolates styles).
 
 EMBED APP (web/embed.*)
-- Header (title, close). Message list with aria-live="polite". Textarea: Enter sends, Shift+Enter adds a newline.
+- Header (title, close). The panel has role="dialog" and aria-modal. The message list has role="log" (implicitly
+  aria-live polite), with aria-busy="true" while a reply streams. Textarea: Enter sends, Shift+Enter adds a newline.
 - Empty state: 3 suggested-question chips.
 - Call POST /ask/stream with fetch() and read response.body with a stream reader, parsing SSE frames (meta, token,
   done, error). EventSource cannot POST. If streaming fails, call POST /ask once and render it.
 - Render streamed tokens as they arrive, then replace the text with done.answer (final citation numbers).
 - Markdown: escape all HTML FIRST, then convert fenced code, inline code, bold, italic, lists, headings, tables and
-  links (http/https only, target=_blank rel="noopener noreferrer"). Never put unescaped model text into innerHTML.
+  links (https only, target=_blank rel="noopener noreferrer"). Build DOM nodes with textContent; never put unescaped
+  model text into innerHTML.
 - [n] markers link to source cards (title, domain, a snippet, a link to citations[n].url, and citations[n].label).
   Repo cards read "repo@sha7 · path Lx-Ly" and link to the SHA permalink. Outside cards carry an "outside OLake docs"
   badge. Release and issue cards show the tag or the issue number.
@@ -613,11 +708,29 @@ DO NOT
 
 ### 4.5 Brief D: lead and operator (deploy, eval, README)
 
+The secret setup follows the Secret Manager docs: create from stdin [[sm-create]], and grant `roles/secretmanager.secretAccessor` [[sm-access]]. Cloud Run's `--update-secrets` maps an env var to a pinned secret version [[cr-secrets]].
+
 ```text
-D1 (10:40-11:00) Hello-world deploy of B's stub. Write the Dockerfile: python:3.12-slim, uv sync --frozen --no-dev,
-   fastembed models downloaded at build time into the image, a non-root user, CMD uvicorn app.main:app --host 0.0.0.0
-   --port ${PORT:-8080}. Add .dockerignore (.cache, .env, .git) and deploy/deploy.sh <primary|fallback> with the
-   host-specific commands from docs/plan.md section 1.4. Deploy, then curl /healthz and /ask from a phone.
+D1 (10:40-11:00) Deploy B's stub to Cloud Run. Write the Dockerfile: FROM python:3.12-slim (linux/amd64), uv sync
+   --frozen --no-dev, the fastembed models downloaded at build time, COPY data/index/, a non-root user, and CMD uvicorn
+   app.main:app --host 0.0.0.0 --port ${PORT:-8080}. Add .dockerignore (.cache, .env, .git, logs).
+   deploy/deploy.sh primary: first the one-time secret setup (PROJECT set; each key in the chain gets its own secret):
+     gcloud iam service-accounts create ask-olake-run
+     printf %s "$LLM_API_KEY" | gcloud secrets create llm-api-key --replication-policy=automatic --data-file=-
+     gcloud secrets add-iam-policy-binding llm-api-key \
+       --member="serviceAccount:ask-olake-run@$PROJECT.iam.gserviceaccount.com" --role=roles/secretmanager.secretAccessor
+   then, on every deploy:
+     gcloud run deploy ask-olake --source . --region asia-south1 --allow-unauthenticated \
+       --service-account "ask-olake-run@$PROJECT.iam.gserviceaccount.com" --min-instances 1 --cpu 1 --memory 1Gi \
+       --timeout 60 --update-secrets LLM_API_KEY=llm-api-key:1 --env-vars-file deploy/env.yaml \
+       --startup-probe httpGet.path=/readyz,periodSeconds=5,failureThreshold=24,timeoutSeconds=2 \
+       --liveness-probe httpGet.path=/healthz,periodSeconds=30,timeoutSeconds=2
+   Use --memory 2Gi to 4Gi for bge-base or bge-reranker-base, and add --no-cpu-throttling when REFRESH_INTERVAL_MIN > 0.
+   deploy/env.yaml holds the non-secret I4 variables (gitignored if it holds anything sensitive).
+   deploy/deploy.sh fallback: doctl apps create --spec .do/app.yaml the first time, then doctl apps update <app-id>
+   --spec .do/app.yaml. This is the section 1.4 spec with the event repo, apps-s-1vcpu-1gb (or apps-s-1vcpu-2gb), and the
+   keys as envs of type SECRET.
+   Deploy, then curl /healthz and /ask from a phone.
 D2 (11:00-11:30) eval/run.py, following the "Scoring method" section of eval/questions.md: parse the table, POST each question to
    --base-url with X-Request-ID eval-<ID>, run the deterministic checks, and use the optional --judge LLM judge.
    Parse the table exactly: split cells on unescaped |, unescape \| to |, and split BOTH Expected sources and Must
@@ -700,7 +813,8 @@ Go/no-go:
 | 2.2 | Full eval: contract failures = 0; answerable source hit ≥ PENDING(POC baseline) (**target**); abstain recall ≥ 90% (**target**); false-abstain ≤ 5% (**target**) | `uv run python -m eval.run --base-url "$URL" --out eval/results/cp2.json` |
 | 2.3 | Latency: p50 ≤ 3 s and p95 ≤ 6 s (**targets**) | The same run prints p50 and p95 |
 | 2.4 | The widget loads from `$URL` on the demo page and on a foreign-origin page | Manual check in the browser |
-| 2.5 | Reranker A/B, measured rather than assumed: MiniLM-L6 (default) vs bge-reranker-base, both reranking the top 10, on the same eval rows. Each run uses its own off-topic threshold, because the score scales differ. Keep the upgrade only if source hit and fact coverage improve, p95 stays ≤ 6 s (**target**), and the host has ≥ 4 GB of RAM | `RERANK_MODEL=BAAI/bge-reranker-base ABSTAIN_THRESHOLD=<off-topic threshold for that model> uv run uvicorn app.main:app --port 8001` locally, then run `uv run python -m eval.run` against ports 8000 and 8001 and compare the two summaries |
+| 2.5 | Reranker check, measured rather than assumed: the POC's pick (PENDING(poc): none, TinyBERT, MiniLM-L6 or bge-reranker-base) against the next candidate, on the same eval rows. Each run uses its own `GATE_SIGNAL` and threshold, because the score scales differ. Keep a heavier reranker only if source hit and fact coverage improve, p95 stays ≤ 6 s (**target**), and the host has the RAM (≥ 4 GB for bge-reranker-base) | `RERANK_MODEL=<candidate> GATE_SIGNAL=<signal> ABSTAIN_THRESHOLD=<threshold> uv run uvicorn app.main:app --port 8001` locally, then run `uv run python -m eval.run` against ports 8000 and 8001 and compare the two summaries |
+| 2.6 | Day-of checks 4-5 on the deployed URL: the preflight from the olake.io origin, SSE chunk timing, and a 50-request burst with no 429 or 5xx | The commands under "Day-of checks 4-5" in section 2 |
 
 Go/no-go:
 - 2.1 fails: switch to the fallback host now (section 11). No more debugging the primary.
@@ -766,7 +880,9 @@ for a failure pattern (api), a prompt or citation-validation fix for over- or un
       transparency about AI code tools [[mlh]], and the MLH organizer guide asks for frameworks to be listed in the README [[mlh-guide]].
 - [ ] The repo is public and stays public after the event (an MLH standard rule [[mlh]]), `LICENSE` is present, and the default branch holds the deployed commit. Run `git tag freeze && git push origin freeze`.
 - [ ] Secrets: `git grep -nE 'sk-|AIza|api_key\s*=\s*"'` finds nothing. `.env` is not tracked. The image holds no keys.
-- [ ] Host: min instances ≥ 1 or no-sleep on; health check green; logs flowing. PENDING(stack report: the exact setting).
+- [ ] Host: on Cloud Run, `gcloud run services describe ask-olake --region asia-south1 --format yaml | grep -i minscale` shows
+      1, the probes pass and logs are flowing. On the fallback, the App Platform health checks are green.
+- [ ] Day-of checks 4-5 pass on the final URL: the olake.io-origin preflight, SSE timing, and the 50-request burst with no 429 or 5xx (section 2).
 - [ ] The rate limit cannot throttle the scorer. The fallback LLM trio is set if credits might stop after freeze (question K1).
 - [ ] The refresher is on or off as the kickoff answer to K5 says.
 - [ ] Submission: endpoint URL, repo URL and demo URL entered where the organizers said (question K5).
@@ -780,7 +896,10 @@ Lunch runs 14:30-15:30 and the top 10 are announced at 15:30 ([event page][ev]).
 
 - Synthetic probe in a terminal for the whole window:
   `while true; do date +%T; curl -s -o /dev/null -w 'healthz %{http_code} %{time_total}s\n' "$URL/healthz"; curl -s -o /dev/null -w 'ask %{http_code} %{time_total}s\n' "$URL/ask" -H 'content-type: application/json' -H 'Cache-Control: no-cache' -d '{"question":"What is OLake?"}'; sleep 60; done`
-- Tail the host logs. PENDING(stack report: the log tail command). Watch the 5xx rate, p95, and provider 429s or timeouts.
+- Tail the host logs. On Cloud Run run `gcloud beta run services logs tail ask-olake --project "$PROJECT"`, which needs the
+  log-streaming component and is in Preview [[cr-logging]], or poll with `gcloud run services logs read ask-olake --limit 50
+  --project "$PROJECT"`. On App Platform run `doctl apps logs <app-id> web --follow` [[do-logs]]. Watch the 5xx rate, p95,
+  provider 429s and timeouts, and which provider in the chain is answering.
 - Optionally let the lead session watch too. `/loop 5m <prompt>` re-runs a prompt every 5 minutes for the session
   [[loop]], for example: `/loop 5m curl $URL/healthz and one /ask with Cache-Control: no-cache; report the status codes,
   latency and any 5xx in the host logs since the last check`. The Monitor tool can also stream the probe loop's output
@@ -828,7 +947,7 @@ N, X, Y, Z and C come from the final eval file, never from memory.
 |---|---|---|
 | Venue Wi-Fi slow or down | Phone hotspot tested; uv cache, base image, models, repos and docs snapshot pre-cached (1.3); remote builds | Hotspot for `git push` and deploys only. Build the index from the cached HTML and clones. Never upload a large image over the venue network |
 | Credits missing, slow or expiring after freeze | Personal fallback key with a spend cap (1.1) | Switch `LLM_*` to the fallback trio (env only). If every LLM fails, the degraded mode returns the most relevant pages with sources |
-| Primary host fails | Fallback host dry-run (1.4) | `deploy/deploy.sh fallback` and resubmit the URL if allowed (question K5). Last resort: `cloudflared tunnel --url http://localhost:8000`. It needs no account, but uptime is not promised, SSE is not supported (the widget must use `/ask`), and more than 200 in-flight requests get 429 [[tunnel]]. The laptop must stay awake and online until 17:00 (`caffeinate -dims` on macOS) |
+| Primary host fails | Fallback dry-run on DigitalOcean App Platform BLR (1.4) | `deploy/deploy.sh fallback`, and resubmit the URL if allowed (question K5). On App Platform, SSE through Cloudflare is unverified, so check the widget's `/ask` fallback. Last resort: `ngrok http 8000` from the laptop on the free dev domain [[ngrok-cli]]. Limits: 1 GB outbound and 20,000 requests a month, 4,000 a minute. The browser interstitial applies to HTML pages (click through once on the demo page), not to API calls. SSE there is undocumented [[ngrok]]. Avoid Cloudflare quick tunnels: no SSE, random URLs [[tunnel]]. The laptop must stay awake and online until 17:00 (`caffeinate -dims` on macOS) |
 | Laptop dies | Charger; push at least every 30 minutes | The host keeps serving without the laptop. Continue from the pushed repo on a borrowed machine or in a GitHub Codespace [[codespaces]] |
 | Claude Code usage limit or agent stalls | Agent teams use many more tokens than one session [[teams]] | Shut down idle teammates. Continue with the lead plus subagents using the same briefs. Every brief is self-contained |
 
@@ -869,18 +988,23 @@ Judging: accuracy 35, citations and honesty 15, production readiness 20, UX and 
 - After a change, run your brief's acceptance checks. Never break the /ask contract.
 
 ## Parameters (set by the lead; change only through the lead)
-Provisional until the canonical eval re-runs in the POC; the 12:30 checkpoint measures the reranker choice.
+Decided by the lead (research.md §5.3) except the reranker, which waits on the POC's canonical comparison.
 - Chunks: target 300 / hard max 450 tokens (o200k_base). At a 600 target, 556 of 951 chunks exceed bge's 512-WordPiece limit
   and get truncated (poc/results/retrieval.json).
-- Embedder: BAAI/bge-base-en-v1.5 (768-dim). Dense MRR@10 was 0.567, against 0.463 for bge-small, and a query takes
-  15.8 ms p50 at 2 threads (poc/results/retrieval.json, latency_threads.json). Embed on the laptop and ship the vectors.
-- Reranker (RERANK_MODEL), default Xenova/ms-marco-MiniLM-L-6-v2 on the top 10: 205.9 ms p50 at 2 threads, and process RSS
-  about 0.7 GB with bge-small loaded (poc/results/latency_threads.json). Its top score is the abstain gate.
-  Upgrade path: BAAI/bge-reranker-base on the top 10. It took 922.3 ms p50 at 2 threads, RSS reached 2.3 GB, and seed-set hit@5
-  rose to 0.929 from 0.786 (poc/results/retrieval.json, latency_threads.json). Use it only if the 12:30 A/B confirms the
-  gain AND the host has at least 4 GB of RAM.
-- ABSTAIN_THRESHOLD is the off-topic short-circuit threshold, calibrated per reranker: about -4 for MiniLM-L6 (conservative).
-  The reranker score does not decide abstains. The model (NO_ANSWER) plus citation validation does. See "Honesty".
+- Embedder (EMBED_MODEL): BAAI/bge-small-en-v1.5 (384-dim). Hybrid MRR@10 / hit@5 on the canonical set was 0.736 / 0.87,
+  against 0.745 / 0.89 for bge-base. It embeds 3.3x faster (69 s vs 230 s for the corpus, poc/results/retrieval.json), and the
+  image is 180 MB with 189 MiB idle RSS (docs/reports/stack.md). Upgrade: BAAI/bge-base-en-v1.5 when the host has the RAM.
+  Embed on the laptop and ship embeddings.npy; only queries are embedded at runtime.
+- Reranker (RERANK_MODEL): PENDING(poc). The candidates:
+  - FlashRank ms-marco-TinyBERT-L-2-v2: about 4 MB, 13.9 ms for 20 candidates (docs/reports/stack.md);
+  - fastembed Xenova/ms-marco-MiniLM-L-6-v2: 205.9 ms for the top 10 at 2 threads (poc/results/latency_threads.json);
+  - BAAI/bge-reranker-base: 922.3 ms for the top 10 at 2 threads, about 1.5 GB more RSS, and seed-set hit@5 0.929 vs
+    0.786. Only on a host with at least 4 GB of RAM.
+  The stack research recommends no reranker by default, or TinyBERT if the eval shows a gain.
+- Off-topic gate (GATE_SIGNAL, ABSTAIN_THRESHOLD): PENDING(poc), decided together with the reranker. The signal is the top
+  rerank score, or the highest dense cosine when the rerank is off, and the threshold is calibrated for that signal. It
+  was about -4 when the MiniLM-L6 score was used. The score does not decide abstains: the model (NO_ANSWER) plus citation
+  validation does. See "Honesty".
 - RRF k = 60; rerank the top 10; 6 passages in the context, about 4k context tokens at most; max 3 chunks per page
 - Blog rank weight when BLOG=on: PENDING(A/B on the eval set at the event, decision D4)
 - Why not a score gate: on the 94-row set, -0.891 caught only half of the unanswerable and out-of-scope rows, and the best
@@ -982,7 +1106,8 @@ releases{name: {tag, published_at}}.
 
 ### I2 HTTP
 POST /ask {"question": 1-2000 chars} -> 200 {"answer": markdown, "sources": [doc_url, ...]} EXACTLY these keys.
-  [1] in answer = sources[0]. Full abstain -> sources []. Bad request -> 422 {"error": {"code", "message"}}.
+  [1] in answer = sources[0]. Full abstain -> sources []. Bad request -> 422 {"answer": "<what was wrong>", "sources": []};
+  can't answer now -> 503 {"answer": "...", "sources": []}. /ask never returns an HTML 500.
 POST /ask/stream (same body + optional history <=4 turns) -> text/event-stream:
   meta {request_id, index_version}; token {text}*; done {answer, sources, citations[{n,url,label,title,source_type,snippet}],
   abstained, abstain_reason, request_id, timings_ms}; or error {message, request_id}.
@@ -999,10 +1124,12 @@ Expected sources AND must-mention items are both separated by <br> (facts may co
 Rows with no sources use —.
 
 ### I4 env
-LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_FALLBACK_BASE_URL, LLM_FALLBACK_API_KEY, LLM_FALLBACK_MODEL, INDEX_DIR,
-RETRIEVAL_MODE (hybrid|bm25), RERANK (on|off), RERANK_MODEL, ABSTAIN_THRESHOLD (off-topic short-circuit, per RERANK_MODEL), SOURCE_URL_STYLE (branch|sha), BLOG (on|off),
-GITHUB_TOKEN (optional), MAX_CONCURRENCY, RATE_LIMIT_PER_MIN, PUBLIC_BASE_URL, REFRESH_INTERVAL_MIN (0 = off), LOG_LEVEL,
-DEBUG (local only)
+LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_REASONING_EFFORT, LLM_FALLBACK_BASE_URL, LLM_FALLBACK_API_KEY,
+LLM_FALLBACK_MODEL, LLM_FALLBACK2_BASE_URL, LLM_FALLBACK2_API_KEY, LLM_FALLBACK2_MODEL (ordered chain), INDEX_DIR,
+EMBED_MODEL, RETRIEVAL_MODE (hybrid|bm25), RERANK (on|off), RERANK_MODEL, GATE_SIGNAL (rerank|dense), ABSTAIN_THRESHOLD
+(off-topic short-circuit for that signal), SOURCE_URL_STYLE (branch|sha), BLOG (on|off), GITHUB_TOKEN (optional),
+MAX_CONCURRENCY, RATE_LIMIT_PER_MIN, RATE_LIMIT_BURST, DAILY_TOKEN_BUDGET, PUBLIC_BASE_URL, REFRESH_INTERVAL_MIN (0 = off),
+LOG_LEVEL, DEBUG (local only)
 ~~~~
 
 ## Appendix B: .claude/settings.json
@@ -1053,41 +1180,56 @@ the event JSON on stdin [[hooks]]. To use it, merge this `hooks` key into the sa
 ## Appendix C: .env.example
 
 ```bash
-# LLM (OpenAI-compatible). Fill from the kickoff answer K1.
+# LLM chain (OpenAI-compatible), tried in order. K1 decides the primary. Keep a PAID key with >= 100 RPM in the chain (D7).
 LLM_BASE_URL=
 LLM_API_KEY=
 LLM_MODEL=
-# Personal fallback with a spend cap, e.g. the Gemini API's OpenAI-compatible endpoint
-LLM_FALLBACK_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+# Lowest reasoning setting the model supports (e.g. low or minimal on Gemini 3); leave empty for non-reasoning models
+LLM_REASONING_EFFORT=
+# Fallbacks, e.g. DigitalOcean serverless inference (https://inference.do-ai.run/v1) or Groq (https://api.groq.com/openai/v1)
+LLM_FALLBACK_BASE_URL=
 LLM_FALLBACK_API_KEY=
 LLM_FALLBACK_MODEL=
+# Last resort, e.g. Gemini's OpenAI-compatible endpoint (Gemma 4 there is free tier only and unverified)
+LLM_FALLBACK2_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+LLM_FALLBACK2_API_KEY=
+LLM_FALLBACK2_MODEL=
 # Retrieval
 INDEX_DIR=data/index
+EMBED_MODEL=BAAI/bge-small-en-v1.5
 RETRIEVAL_MODE=hybrid
+# PENDING(poc): reranker and gate signal. Candidates: ms-marco-TinyBERT-L-2-v2 (FlashRank),
+# Xenova/ms-marco-MiniLM-L-6-v2, BAAI/bge-reranker-base. With RERANK=off, use GATE_SIGNAL=dense.
 RERANK=on
-RERANK_MODEL=Xenova/ms-marco-MiniLM-L-6-v2
-# Off-topic short-circuit threshold, calibrated per RERANK_MODEL (conservative; about -4 for MiniLM-L6).
+RERANK_MODEL=
+GATE_SIGNAL=rerank
+# Off-topic short-circuit threshold, calibrated for GATE_SIGNAL and RERANK_MODEL (about -4 for the MiniLM-L6 score).
 # The model's NO_ANSWER plus citation validation decides abstains, not this score.
-ABSTAIN_THRESHOLD=-4
+ABSTAIN_THRESHOLD=
 SOURCE_URL_STYLE=branch
 BLOG=off
 # Optional: a GitHub token makes conditional GitHub API requests free (unauthenticated limit: 60 per hour)
 GITHUB_TOKEN=
 # Serving
 MAX_CONCURRENCY=8
-RATE_LIMIT_PER_MIN=600
+RATE_LIMIT_PER_MIN=120
+RATE_LIMIT_BURST=200
+DAILY_TOKEN_BUDGET=5000000
 PUBLIC_BASE_URL=
 REFRESH_INTERVAL_MIN=0
 LOG_LEVEL=INFO
 DEBUG=0
 ```
 
-`MAX_CONCURRENCY` and `RATE_LIMIT_PER_MIN` are starting values, not measurements. Set them from the credits smoke test (section 2) and the 12:15 load test.
+`MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `RATE_LIMIT_BURST` and `DAILY_TOKEN_BUDGET` are starting values, not measurements.
+`RATE_LIMIT_BURST` must stay above the test-set size, so that one scorer IP sending the whole set never sees a 429. Set the
+others from the credits smoke test (section 2) and the 12:15 load test.
 
 ## Appendix D: dependency list
 
 This list is the POC's dependency list (`poc/pyproject.toml`) minus `psutil`, which the POC uses only for measurements.
-Streaming uses FastAPI's plain `StreamingResponse`, so no SSE package is needed. Versions are pinned by `uv lock` at the event.
+FastAPI is pinned at 0.135 or later for native SSE (`fastapi.sse`) [[fastapi-sse]]. Add `flashrank` only if the
+TinyBERT reranker is chosen (PENDING(poc)). Versions are locked by `uv lock` at the event.
 
 ```toml
 [project]
@@ -1095,7 +1237,7 @@ name = "ask-olake"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "fastapi", "uvicorn[standard]", "httpx", "openai",
+  "fastapi>=0.135", "uvicorn[standard]", "httpx", "openai",
   "beautifulsoup4", "lxml", "tiktoken", "bm25s", "PyStemmer",
   "fastembed", "numpy", "pyyaml",
 ]
@@ -1166,6 +1308,22 @@ __pycache__/
 [docusaurus]: https://docusaurus.io/docs/api/docusaurus-config
 [cli]: https://code.claude.com/docs/en/cli-reference
 [hf]: https://huggingface.co/docs/hub/spaces-overview
+[ngrok]: https://ngrok.com/docs/pricing-limits/free-plan-limits/
+[ngrok-cli]: https://ngrok.com/docs/agent/cli/
+[gem-rl]: https://ai.google.dev/gemini-api/docs/rate-limits
+[do-quota]: https://docs.digitalocean.com/products/inference/reference/quota-specific-response-headers/
+[cr-logging]: https://docs.cloud.google.com/run/docs/logging
+[cr-health]: https://docs.cloud.google.com/run/docs/configuring/healthchecks
+[cr-secrets]: https://docs.cloud.google.com/run/docs/configuring/services/secrets
+[gcloud-deploy]: https://docs.cloud.google.com/sdk/gcloud/reference/run/deploy
+[do-spec]: https://docs.digitalocean.com/products/app-platform/reference/app-spec/
+[do-app-pricing]: https://docs.digitalocean.com/products/app-platform/details/pricing/
+[do-logs]: https://docs.digitalocean.com/reference/doctl/reference/apps/logs/
+[flashrank]: https://raw.githubusercontent.com/PrithivirajDamodaran/FlashRank/main/README.md
+[sm-create]: https://docs.cloud.google.com/secret-manager/docs/create-secret-quickstart
+[sm-access]: https://docs.cloud.google.com/secret-manager/docs/manage-access-to-secrets
+[fastapi-sse]: https://fastapi.tiangolo.com/tutorial/server-sent-events/
+[openai-readme]: https://raw.githubusercontent.com/openai/openai-python/main/README.md
 [mlh]: https://github.com/MLH/mlh-policies/blob/main/standard-hackathon-rules.md
 [mlh-guide]: https://guide.mlh.com/general-information/judging-and-submissions/rules-for-your-hackathon
 [loop]: https://code.claude.com/docs/en/scheduled-tasks#run-a-prompt-repeatedly-with-loop

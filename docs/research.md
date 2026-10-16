@@ -19,8 +19,11 @@ The runbook that carries out these decisions is [plan.md](plan.md). Open items a
    grounded LLM call with `[n]` citations. A conservative off-topic gate (with one rewrite) sits before the call. The model's
    `NO_ANSWER` and citation validation decide abstains, and every abstain is logged. The fallback is BM25-only
    with the same chunks and prompt, behind a config flag (§4).
-5. **Stack**: Python 3.12, FastAPI, the `openai` SDK pointed at any OpenAI-compatible endpoint, fastembed (ONNX, CPU) for
-   embeddings and reranking, bm25s, and numpy brute-force vectors. One container. PENDING(stack report: host, model, prices) (§5).
+5. **Stack** (§5): Python 3.12 and FastAPI 0.135 or later (native SSE). The `openai` SDK drives an ordered chain of
+   OpenAI-compatible providers, with a paid key of at least 100 RPM first. Retrieval uses fastembed bge-small (ONNX, CPU),
+   bm25s and numpy vectors. The reranker is PENDING(poc). One container runs on Cloud Run asia-south1 with one instance
+   always on; DigitalOcean App Platform BLR is the fallback and an ngrok dev domain the emergency path. Latency, not cost,
+   decides the model: answers cost $0.0004-0.0045.
 6. **Widget**: a small `widget.js` loader that injects a launcher and an iframe served from our origin (`/embed`), plus a plain
    iframe snippet and a Docusaurus `scripts` snippet (§5.6).
 7. **Freshness** (§3.6): poll the sitemap with `If-None-Match`. On a deploy, re-fetch all docs (about 2 s), hash and re-embed
@@ -217,8 +220,8 @@ on a new SHA, call the compare API, filter the changed files by the allowlist, f
 re-embed. Releases: the releases API. The manifest (build time, docs `lastmod` max, repo SHAs, latest tags) is shown in
 `/healthz` and the UI footer. Version-sensitive answers say "Docs as of <date>; latest GitHub release <tag>". Re-crawl on
 the morning of 2026-10-18. Open PRs could change correct answers around the event: streams v2 ([#1145][pr1145]), Azure
-ADLS for Iceberg, and MySQL switchover CDC ([olake-domain report][r-olake-domain]). The in-app poller is decided (D9). PENDING(stack report:
-whether the host keeps CPU for background work between requests).
+ADLS for Iceberg, and MySQL switchover CDC ([olake-domain report][r-olake-domain]). The in-app poller is decided (D9). On Cloud Run, CPU is throttled outside requests unless the service is deployed
+with `--no-cpu-throttling` [[gcloud-deploy]], so use that flag whenever the poller runs (§5.5).
 
 ## 4. Architecture
 
@@ -323,26 +326,68 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
 
 ## 5. Stack
 
-PENDING(stack report) for every subsection. The memo's starting position is below.
+Sources: the [stack report][r-stack] (2026-10-16; methods and raw numbers are in it), the lead's stack decisions, and the
+POC result files named below.
 
-### 5.1 LLM provider and models
-Any OpenAI-compatible endpoint, configured by `LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL`, plus a fallback trio. The event's
-credits provider is not named ([event page][ev]). The resource links on the challenges page point to Gemma 4 and the
-Gemini API ([challenges page][ch]). The Gemini API has an OpenAI-compatible base URL,
-`https://generativelanguage.googleapis.com/v1beta/openai/` (an API base URL, not a web page), and supports streaming. Its OpenAI-library support is
-described as beta [[gemini-openai]]. PENDING(stack report: models, prices, rate limits, Gemma 4 availability).
+### 5.1 Credits: what the event actually offers
+- The event provides "LLM API credits" without naming a provider ([event page][ev]).
+- **Gemma 4 on the Gemini API.** The MLH Gemma links lead here. Only `gemma-4-31b-it` and `gemma-4-26b-a4b-it` are
+  served, and only on the free tier: the paid tier is listed as "Not available", and free-tier data is used to improve
+  Google's products ([Gemini pricing][gem-pricing]). Rate limits are shown only in AI Studio ([rate limits][gem-rl]); a
+  [third-party snapshot][tilnote] reports about 15 RPM and 1,500 requests per day for Gemma 4. The Gemini OpenAI-compatible
+  endpoint is not documented for Gemma ([OpenAI compatibility][gemini-openai]), so verify it on the day.
+- **DigitalOcean.** The MLH DigitalOcean link ([mlh.link/digitalocean][mlh-do]) promises $200, but its signup link returned
+  a 302 to the DigitalOcean homepage when tested, and DigitalOcean's docs describe only a $5 signup credit
+  ([stack report][r-stack]). DigitalOcean serverless inference is OpenAI-compatible: the API base is
+  `https://inference.do-ai.run/v1`, Tier 1 gets 120 RPM and 1.5M TPM, and it is prepaid only ([limits][do-limits],
+  [pricing][do-pricing]).
+- **Free tiers will throttle a scorer burst.** Groq's free plan allows 8K TPM, about 2 requests per minute at 4k tokens
+  ([Groq rate limits][groq-rl]). A Cerebras trial allows 5 RPM, and Gemma on the Gemini free tier about 15 RPM
+  ([stack report][r-stack]).
+- **Decision.** Use an ordered fallback chain of (base URL, model, key). The primary is a paid or credited key with at least
+  100 RPM, behind a global semaphore that queues. Kickoff questions K1 and K2 decide the order; the operator holds one paid
+  fallback key with a spend cap (decision D7).
 
-### 5.2 Cost per answer
-Measured in the POC with 6 passages of about 300 tokens each: a mean of 1,858 prompt tokens (max 2,169) and 71.8
-completion tokens (max 145) per answer, counted by the local model's tokenizer (`poc/results/answer.json`). The memo's
-estimate was about 4k input and 400 output. Cache hits cost 0. Cost per answer = tokens × the provider's price.
-PENDING(stack report prices).
+### 5.2 Generator candidates and cost
+Latency decides, not cost. At 4k input and 400 output tokens, an answer costs between $0.0004 and $0.0045 depending on
+the model. Time to first token ranges from 0.4 s to 24 s depending on the reasoning settings ([stack report][r-stack],
+using [Artificial Analysis][aa] medians). The POC's real answers averaged 1,858 input and 71.8 output tokens
+(`poc/results/answer.json`), so the actual cost is lower still.
+
+| Candidate | API base | $ per 1M in / out | TTFT and speed (Artificial Analysis) | Note |
+|---|---|---|---|---|
+| gemini-3.8-flash, reasoning_effort low | `generativelanguage.googleapis.com/v1beta/openai/` | 0.75 / 3.75 (doubles 2027-01-01) | 23.6 s at high reasoning; low and minimal must be measured | Best Flash-class quality (index 40.9). Gemini 3 reasoning cannot be turned off |
+| gemini-3.5-flash-lite, minimal | same | 0.30 / 2.50 | 6.98 s, 446 tok/s (default settings) | |
+| gemini-3-flash-preview | same | 0.50 / 3.00 | 0.94 s, 200 tok/s | Preview model |
+| DO openai-gpt-oss-120b | `inference.do-ai.run/v1` | 0.10 / 0.70 | provider-dependent | DO credits, 120 RPM |
+| DO gemma-4-31B-it | same | 0.18 / 0.50 | about 2 s, 44-48 tok/s | Open-weight (Gemma prize angle) |
+| Groq openai/gpt-oss-120b (paid developer plan) | `api.groq.com/openai/v1` | 0.15 / 0.60 | 0.71 s, 474 tok/s | Fastest TTFT; the free plan is too small |
+| OpenAI gpt-6-luna (non-reasoning) | `api.openai.com/v1` | 0.10 / 0.50 | 0.94 s, 117 tok/s | Needs the operator's own key |
+| claude-haiku-5-5 (low) | `api.anthropic.com/v1/` (compatibility layer) | 0.10 / 0.50 | 6.85 s | The layer ignores `response_format` |
+| gemma-4-26b-a4b-it, Gemini free tier | Gemini OpenAI-compatible (unverified) | 0 | 0.97 s, 46.8 tok/s | Last resort: about 15 RPM, and the data is used for training |
+
+Sources: the [stack report][r-stack] (prices from the providers' pricing pages, for example [Gemini][gem-pricing] and
+[DigitalOcean][do-pricing]; speeds parsed from [Artificial Analysis][aa]). Cost per answer at 4k in and 400 out: GPT-6 Luna
+$0.00060, Claude Haiku 5.5 $0.00060, Groq gpt-oss-120b $0.00084, DO Gemma 4 31B $0.00092, Gemini 3.5 Flash-Lite $0.00220,
+Gemini 3.8 Flash $0.00450, Gemma on the Gemini free tier $0 ([stack report][r-stack], `cost.py`).
+
+**Client rules** (decided):
+- Use the `openai` SDK (a 2.2 MB wheel, against 38.8 MB for LiteLLM) with `timeout` about 25 s and `max_retries` 1. The
+  SDK's defaults are a 10-minute timeout and 2 retries ([SDK README][openai-readme]).
+- Fail over to the next provider before the first streamed byte.
+- Never depend on `response_format`; parse defensively. Anthropic's compatibility layer ignores it
+  ([Anthropic OpenAI SDK compatibility][claude-compat]), DigitalOcean does not document it
+  ([serverless inference API][do-inference-api]), and it is unverified for Gemma.
+- Set `reasoning_effort` to the lowest value the model supports. Gemini 3 thinking cannot be switched off
+  ([OpenAI compatibility][gemini-openai]). On the POC's local model, only `none` switched thinking off
+  (`poc/results/answer.json`, think probe).
+
+The model is chosen on the day by measurement (decision D3).
 
 ### 5.3 Embeddings and reranker
-Local fastembed (ONNX on CPU), baked into the image. It does not depend on the provider, adds no marginal cost or rate limits,
-is deterministic and works offline. API embeddings are the alternative if image size or host CPU becomes a problem.
-Measured in the POC (`poc/results/retrieval.json`, `poc/results/latency_threads.json`). With 2 ONNX threads, a stand-in for a
-2-vCPU host, measured on the laptop:
+Local fastembed models (ONNX on CPU) are baked into the image. They work with any LLM provider, cost nothing per query,
+have no rate limit and work offline. Measured in the POC (`poc/results/retrieval.json`, `poc/results/latency_threads.json`;
+2 ONNX threads as a stand-in for a 2-vCPU host, on the laptop):
 
 | Model | Dim | Query embed p50 (2 threads) | Rerank p50, top 10 / top 20 (2 threads) | Full-corpus embed (1,861 chunks, all cores) |
 |---|---|---|---|---|
@@ -351,44 +396,86 @@ Measured in the POC (`poc/results/retrieval.json`, `poc/results/latency_threads.
 | Xenova/ms-marco-MiniLM-L-6-v2 (reranker) | | | 205.9 / 546.4 ms (358.2 ms for top 20 with passages cut to 1,000 chars) | |
 | BAAI/bge-reranker-base (reranker) | | | 922.3 / 2,119.7 ms | |
 
-Memory, as process RSS after loading each model in turn (2 threads): 245 MB after bge-small, 713 MB after MiniLM-L6, and
-2,282 MB after bge-reranker-base (`poc/results/latency_threads.json`). So the larger reranker adds about 1.5 GB.
-The POC API (hybrid bge-base plus MiniLM-L6) used 1,419 MB RSS after one query and 2,609 MB after a scorer run at
-concurrency 4. The onnxruntime CPU memory arena grows with concurrent rerank batches, so cap concurrency or disable the
-arena on small hosts (`poc/results/embed_probe.json`, which also records `api_startup_s` 0.4).
-PENDING(stack report: image size and host CPU).
+**Embedder (decided): BAAI/bge-small-en-v1.5 (384 dims) by default; bge-base-en-v1.5 is the upgrade when the host has the
+RAM.**
+- Retrieval quality: on the canonical set, hybrid MRR@10 / hit@5 was 0.736 / 0.87 with bge-small vs 0.745 / 0.89 with
+  bge-base (§4.3). On MTEB retrieval, bge-small scores 51.68, close to OpenAI text-embedding-3-small at 51.08
+  ([model card][bge-small], [stack report][r-stack]).
+- Speed: bge-small embeds the corpus 3.3x faster (69.09 s vs 229.79 s, table above).
+- Footprint: an image with fastembed and bge-small is 180 MB compressed and idles at 189 MiB RSS, against 73 MB and 59 MiB
+  for a lean image without local models. Cold start to `/readyz` took 1.24-1.28 s ([stack report][r-stack]: docker build,
+  `docker stats` with 1 CPU and 1 GiB). The POC API with bge-base plus MiniLM-L6 used 1,419 MB RSS after one query, and
+  2,609 MB after a scorer run at concurrency 4, as the onnxruntime CPU memory arena grows with concurrent rerank batches
+  (`poc/results/embed_probe.json`).
+- Corpus vectors are computed offline into `embeddings.npy` and baked into the image. At about 10.6 chunks/s on 2 threads
+  ([stack report][r-stack]) the corpus is far too slow to embed at startup. Only the query is embedded at runtime: 2.3 ms
+  p50 in the stack bench, 5.4 ms at 2 threads in the POC.
 
-**Provisional choice (lead, pending the POC re-run on the canonical set):** 300-token chunks; the BAAI/bge-base-en-v1.5
-embedder (dense MRR@10 0.567 vs 0.463 for bge-small, 15.8 ms per query at 2 threads); and the Xenova/ms-marco-MiniLM-L-6-v2
-reranker on the top 10 (205.9 ms p50 at 2 threads). The MiniLM-L6 score also drives the off-topic gate. The upgrade path is
-BAAI/bge-reranker-base on the top 10 (922.3 ms p50 at 2 threads, RSS 2.3 GB; seed-set hit@5 0.929 vs 0.786). It is adopted
-only if the 12:30 A/B (plan section 5, 2.5) confirms the gain and the host has at least 4 GB of RAM. `ABSTAIN_THRESHOLD` is
-now the off-topic short-circuit threshold, calibrated per reranker: about -4 for MiniLM-L6 (§4.3). The canonical
-retrieval run (§4.3) found bge-small close to bge-base on the hybrid (MRR 0.736 vs 0.745) at 3.3x lower embedding cost.
-The rerank comparison on the canonical set is PENDING(poc).
+**Reranker: PENDING(poc canonical comparison).** The candidates:
+- FlashRank TinyBERT-L-2: about 4 MB; 13.9 ms for 20 candidates and 41.7 ms for 50 ([stack report][r-stack]).
+- fastembed MiniLM-L-6: 215 ms for 20 and 863 ms for 50 at low load ([stack report][r-stack]); 205.9 ms for the top 10 at
+  2 threads (POC).
+- bge-reranker-base: 922.3 ms for the top 10 at 2 threads, and about 1.5 GB more RSS (POC).
+
+The stack research recommends no reranker by default, or TinyBERT if the eval shows a gain. The off-topic gate (§4.3) needs
+a score whichever is chosen: the TinyBERT score, the MiniLM score, or the highest dense cosine. The POC is measuring which
+separates best.
 
 ### 5.4 Vector store
-None. Vectors stay in process as numpy brute force: 951-1,861 chunks without the blog, depending on chunk size
-(`poc/results/chunks.json`). The index artifact is a directory (plan section 0.2, I1).
+None. Retrieval stays in process. Stack-report benchmarks at 20k chunks:
+
+| Engine | Query p50 at 20k chunks |
+|---|---|
+| bm25s | 0.10 ms |
+| numpy exact cosine (384 / 768 dims) | 0.35 / 0.68 ms |
+| FAISS flat | 0.24 ms |
+| Chroma | 1.31 ms |
+| sqlite-vec | 1.40 ms |
+| SQLite FTS5 | 3.5 ms |
+| LanceDB | 3.71 ms |
+| rank_bm25 | 13.8 ms |
+
+Our corpus is 951-1,861 chunks without the blog (`poc/results/chunks.json`). Hosted vector services add a network hop, and
+their free tiers pause when idle: Qdrant Cloud's after a week unused ([Qdrant][qdrant]), Supabase's after a week of
+inactivity ([Supabase pricing][supabase]). Decision: bm25s plus numpy, fused with RRF. The index artifact is a directory
+(plan section 0.2, I1).
 
 ### 5.5 Host
-PENDING(stack report: Cloud Run asia-south1 with min instances 1, DigitalOcean App Platform, Fly.io or Render, and a
-Hugging Face Docker Space as the free fallback. Compare cold start, SSE support, CPU for background work, build path and cost).
-A Cloudflare quick tunnel is for emergencies only: no uptime guarantee, no SSE, and a limit of 200 in-flight requests [[tunnel]].
-Verified so far:
-- **Hugging Face Docker Space**: creating one now needs a paid plan (PRO for personal accounts). The free CPU Basic
-  hardware (2 vCPU, 16 GB RAM) sleeps when unused [[hf-overview]]. The container runs as uid 1000, listens on port 7860
-  unless `app_port` says otherwise, and gets secrets as env vars at runtime [[hf-docker]]. It is no longer a *free* fallback.
-- **Cloud Run**: `gcloud run deploy --source .` builds remotely, using the Dockerfile when there is one. `--min-instances` is
-  set per revision, while `--min` is service-wide. `--no-cpu-throttling` keeps CPU allocated outside requests, which a
-  background refresher needs. `--cpu-boost` is on by default for new services. `--set-secrets` maps env vars to Secret
-  Manager versions [[gcloud-deploy]].
+
+| Option | Role | Facts | Sources |
+|---|---|---|---|
+| Google Cloud Run, asia-south1 (Mumbai) | **Primary** | 41.5 ms HTTPS round trip from the venue area, against 261.7-387.9 ms to US and EU regions. min-instances=1 idles at about $0.32 a day (1 vCPU, 0.5 GiB). `--source .` builds remotely, so no image upload over venue Wi-Fi. HTTP startup and liveness probes. `--no-cpu-throttling` keeps CPU for a background refresher. Needs a billing account | [stack report][r-stack] (gcping, pricing math); [Cloud Run pricing][cr-pricing]; [gcloud run deploy][gcloud-deploy]; [health checks][cr-health] |
+| DigitalOcean App Platform, BLR | **Fallback** | BLR is available for dynamic apps. `apps-s-1vcpu-1gb` costs $12 a month and `apps-s-1vcpu-2gb` $25, billed per second, so one day costs well under $1. The app spec has `health_check` and `liveness_health_check`. Images must be AMD64 Linux; under 1 GiB is recommended. Traffic passes through Cloudflare. SSE buffering and a 100 s request cap appear only in community threads and are unverified, so the widget must be able to fall back to `POST /ask` | [availability][do-avail]; [pricing][do-app-pricing]; [app spec][do-spec]; [stack report][r-stack]; community threads on [SSE][do-sse] and [the 100 s limit][do-100s] |
+| ngrok free dev domain, from the laptop | **Emergency** | One stable dev domain (`<name>.ngrok-free.app`); 1 GB a month outbound, 20,000 HTTP requests a month, 4,000 a minute. The browser interstitial applies to HTML pages only, not to API calls. SSE is not documented | [ngrok free plan][ngrok] |
+| Cloudflare quick tunnel | Avoid | No SSE, a new random URL each run, and 200 in-flight requests at most | [quick tunnels][tunnel] |
+| Fly.io | Avoid | No India region; a trial of 2 hours of machine runtime | [stack report][r-stack]; [Fly pricing][fly] |
+| Render free | Avoid | Spins down when idle and serves a loading page | [Render free][render] |
+| Hugging Face Docker Space | Only if PRO is already paid | Docker Spaces need a paid plan to create, and free hardware sleeps when unused. The container runs as uid 1000 on port 7860 | [Spaces overview][hf-overview]; [Docker Spaces][hf-docker] |
+
+**Sizing (decided):** 1 vCPU; 1 GiB of memory with bge-small and a light reranker, or 2-4 GiB with bge-base or
+bge-reranker-base (memory figures in §5.3); a request timeout of about 60 s; min-instances 1. On Cloud Run,
+`--min-instances` is set per revision and `--min` service-wide. `--cpu-boost` is on by default for new services, and
+`--update-secrets` maps env vars to Secret Manager versions ([gcloud run deploy][gcloud-deploy],
+[Cloud Run secrets][cr-secrets]).
 
 ### 5.6 Widget pattern, CORS and CSP
-A loader script injects a launcher and an iframe from our origin, so styles are isolated and the host page's CORS and
-`connect-src` do not apply. `/embed` sends `Content-Security-Policy: frame-ancestors *` so any site can frame it [[csp-fa]].
-Docusaurus can add the loader through its `scripts` config, which inserts tags into `<head>` [[docusaurus]].
-The alternative is a Shadow DOM widget on the host page, which is what the POC built (`poc/api/static/widget.js`).
+**Prior art.** kapa.ai and Inkeep both ship a single script that mounts a Shadow DOM panel and streams with `fetch` and
+`getReader`, with no iframe. The stack research measured this from their bundles: kapa's is 2,130,950 bytes raw and
+Inkeep's 1,655,186. olake.io sends no CSP and no `X-Frame-Options`, and its `/message-listener.js` accepts a
+`{theme: light|dark}` message from a parent window when the docs are framed ([stack report][r-stack]). So both patterns
+would work on olake.io itself.
+
+**Decision: the iframe loader stays primary**, with Shadow DOM as the documented alternative:
+- one chat page serves as the full-page demo, the plain `<iframe>` embed and the launcher panel;
+- nothing clashes with the host page's styles or keys (Docusaurus global CSS, the DocSearch Cmd+K shortcut);
+- the iframe calls its own origin, so the host page needs no CORS or `connect-src` change.
+
+A loader script injects a launcher and an iframe from our origin. `/embed` sends
+`Content-Security-Policy: frame-ancestors *` so any site can frame it [[csp-fa]]. Docusaurus adds the loader through its
+`scripts` config, which inserts tags into `<head>` [[docusaurus]]. Load it with `async: true`, because a script there
+without async blocks rendering ([stack report][r-stack]). The loader watches `html[data-theme]` and posts the theme to the
+iframe. Accessibility: `role=dialog`, a `role=log` message list ([MDN][log-role]), `aria-busy` while streaming, Escape to
+close, focus restored to the launcher, and text rendered as text, never as raw HTML.
 
 | | Loader plus iframe (chosen) | Shadow DOM widget (POC) |
 |---|---|---|
@@ -400,19 +487,32 @@ The alternative is a Shadow DOM widget on the host page, which is what the POC b
 The POC tested this on a strict-CSP page (`poc/api/demo/csp.html`, `connect-src 'self'`) in Chrome
 (`poc/results/embed_probe.json`). The Shadow DOM widget rendered, but `/ask` was blocked by a `connect-src` violation.
 Because `fetch()` rejects with the same TypeError for CSP and CORS failures, the widget cannot tell the two apart. On an
-ordinary page the same widget worked across origins, and a second request reused the cached preflight. This supports the
-iframe choice.
+ordinary page the same widget worked across origins, and a second request reused the cached preflight.
 
-### 5.7 Production basics
-Pydantic validation (1-2000 characters), JSON errors, a 20 s LLM timeout with one jittered retry on 429/5xx, graceful
-degradation, a concurrency semaphore that queues, a generous per-IP rate limit, CORS `*` without credentials, structured
-JSON logs, `Server-Timing`, a non-root container user, and secrets only in env.
+### 5.7 Production basics (decided)
+- **FastAPI 0.135 or later**, for native SSE through `fastapi.sse.EventSourceResponse`. It works with POST, sets
+  `Cache-Control: no-cache` and `X-Accel-Buffering: no`, and sends a keep-alive ping every 15 s
+  ([FastAPI SSE][fastapi-sse]).
+- **CORS**: `allow_origins=*` without credentials, `max_age` 86400, and `x-request-id` exposed.
+- **`/ask` always returns `{answer, sources}`**, even on errors, never an HTML 500.
+- **Limits**: a per-client token bucket (the stack research suggests 60-120 per minute) with its burst capacity above the
+  test-set size, because the scorer will probably send a burst from one IP; a global semaphore that queues; and a daily
+  token budget.
+- **Caching**: an in-process answer cache. It beats provider prompt caching for RAG, because Gemini 3.8 Flash needs a
+  4,096-token identical prefix before caching applies ([Gemini caching][gem-caching], [stack report][r-stack]).
+- Pydantic validation (1-2000 characters), graceful degradation, structured JSON logs with `request_id`, `Server-Timing`,
+  a non-root container user, and secrets only in env or Secret Manager.
 
 ### 5.8 Latency and cost targets
-**Targets** (unmeasured): `/ask` p50 ≤ 3 s and p95 ≤ 6 s with a Flash-class model; stream time to first token ≤ 1.2 s;
-retrieval plus rerank ≤ 150 ms on 2 vCPU. Measured: no reranker meets the 150 ms **target** at 2 threads. MiniLM-L6 needs
-205.9 ms p50 for the top 10 alone. Hybrid retrieval without a rerank takes 13.53 ms p50 on all cores, and its bge-base
-query embedding alone takes 15.8 ms p50 at 2 threads (§4.3, §5.3). PENDING(POC end-to-end latency with the LLM).
+**Targets** (unmeasured end to end): `/ask` p50 ≤ 3 s and p95 ≤ 6 s; stream time to first token ≤ 1.2 s; retrieval plus
+rerank ≤ 150 ms on 2 vCPU. Measured so far:
+- Of the rerankers, only TinyBERT fits the 150 ms target (13.9 ms for 20 candidates). MiniLM-L6 takes 205.9 ms for the
+  top 10 at 2 threads.
+- Hybrid retrieval without a rerank takes 13.53 ms p50 on all cores (§4.3).
+- The container reaches `/readyz` 1.24-1.28 s after start ([stack report][r-stack]).
+- The generator's time to first token depends far more on its reasoning setting than on anything we control (§5.2).
+
+PENDING(POC: end-to-end latency with a hosted model).
 
 ## 6. Evaluation
 
@@ -531,6 +631,13 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | spec.json converted to Markdown | 118,870 bytes to 39,612 bytes | [repos report][r-repos], `spec_to_md.py` |
 | olake issues that are bot TODOs | 99 of 321 | [repos report][r-repos] |
 | Grounded eval questions written | 40 (ingestion) + 50 (ops) | [eval-ingestion][r-eval-ingestion] and [eval-ops][r-eval-ops] reports |
+| HTTPS round trip to Cloud Run regions (venue area) | Mumbai 41.5 ms; Delhi 53.4 ms; Singapore 53.0 ms; Iowa 261.7 ms; Belgium 360.2 ms; South Carolina 387.9 ms | [stack report][r-stack] (gcping, warm medians, n=7) |
+| Cloud Run min-instance idle cost (1 vCPU, 0.5 GiB) | about $0.324 a day | [stack report][r-stack], from [Cloud Run pricing][cr-pricing] |
+| Container image and idle memory | lean 73 MB / 59 MiB; with fastembed and bge-small 180 MB / 189 MiB | [stack report][r-stack] (docker save, docker stats) |
+| Cold start to `/readyz` | 1.24-1.28 s | [stack report][r-stack] |
+| Reranker latency, 20 / 50 candidates (low load) | FlashRank TinyBERT 13.9 / 41.7 ms; fastembed MiniLM-L-6 215 / 863 ms | [stack report][r-stack] |
+| Cost per answer, 4k in and 400 out | $0.0004-$0.0045 (Gemini 3.8 Flash the highest) | [stack report][r-stack] (`cost.py`, list prices) |
+| Widget bundles (prior art) | kapa 2,130,950 bytes, Inkeep 1,655,186 bytes; both Shadow DOM, no iframe | [stack report][r-stack] |
 | End-to-end accuracy, latency and cost with the event's model | PENDING | Curated eval set at the event |
 
 ## Sources
@@ -538,6 +645,35 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 [ev]: https://events.mlh.com/events/15468-hacktoberfest-hack-day-bengaluru-x-olake
 [ch]: https://www.mlh.com/events/lakehouse-bot-day-hacktoberfest-bengaluru-x-olake/challenges
 [r-docs-site]: reports/docs-site.md
+[r-stack]: reports/stack.md
+[gem-pricing]: https://ai.google.dev/gemini-api/docs/pricing
+[gem-rl]: https://ai.google.dev/gemini-api/docs/rate-limits
+[gem-caching]: https://ai.google.dev/gemini-api/docs/caching
+[tilnote]: https://tilnote.io/pages/6a51b3398d9a59d14c1c174c
+[mlh-do]: https://mlh.link/digitalocean
+[do-limits]: https://docs.digitalocean.com/products/inference/details/limits/
+[do-pricing]: https://docs.digitalocean.com/products/inference/details/pricing/
+[do-inference-api]: https://docs.digitalocean.com/reference/api/reference/serverless-inference/
+[groq-rl]: https://console.groq.com/docs/rate-limits
+[aa]: https://artificialanalysis.ai/
+[openai-readme]: https://raw.githubusercontent.com/openai/openai-python/main/README.md
+[claude-compat]: https://platform.claude.com/docs/en/api/openai-sdk
+[bge-small]: https://huggingface.co/BAAI/bge-small-en-v1.5
+[qdrant]: https://qdrant.tech/documentation/cloud/create-cluster/
+[supabase]: https://supabase.com/pricing
+[cr-pricing]: https://cloud.google.com/run/pricing
+[cr-health]: https://docs.cloud.google.com/run/docs/configuring/healthchecks
+[cr-secrets]: https://docs.cloud.google.com/run/docs/configuring/services/secrets
+[do-avail]: https://docs.digitalocean.com/products/app-platform/details/availability/
+[do-app-pricing]: https://docs.digitalocean.com/products/app-platform/details/pricing/
+[do-spec]: https://docs.digitalocean.com/products/app-platform/reference/app-spec/
+[do-sse]: https://www.digitalocean.com/community/questions/feature-request-app-platform-supports-server-side-events
+[do-100s]: https://www.digitalocean.com/community/questions/how-to-resolve-the-100s-request-timeout-of-digital-ocean-s-app-is-there-a-way-to-increase-the-timeout-or-something-else
+[ngrok]: https://ngrok.com/docs/pricing-limits/free-plan-limits/
+[fly]: https://fly.io/docs/about/pricing/
+[render]: https://render.com/docs/free
+[log-role]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/log_role
+[fastapi-sse]: https://fastapi.tiangolo.com/tutorial/server-sent-events/
 [r-repos]: reports/repos.md
 [r-olake-domain]: reports/olake-domain.md
 [r-eval-ingestion]: reports/eval-ingestion.md
