@@ -273,3 +273,16 @@ def test_concurrent_call_reports_busy(seeded):
 def test_no_index_is_reported_not_raised(isolated):
     r = refresh.refresh_once(isolated / "empty-index")
     assert r["changed"] is False and r["errors"] and "index.build" in r["errors"][0]
+
+
+def test_refresh_prunes_to_current_and_previous(seeded):
+    from index.manifest import list_versions
+    alpha, beta = seeded["pages"]
+    docs_200(seeded, [alpha, page(B, "Beta: first change.")], etag='W/"v2"')
+    r1 = refresh.refresh_once(seeded["root"])
+    assert r1["written"] and r1["pruned"] == []
+    docs_200(seeded, [alpha, page(B, "Beta: second change.")], etag='W/"v3"')
+    r2 = refresh.refresh_once(seeded["root"])
+    assert r2["written"] and r2["pruned"] == [seeded["version"]]
+    assert list_versions(seeded["root"]) == [r1["version"], r2["version"]]
+    assert read_current(seeded["root"]) == r2["version"]

@@ -37,7 +37,7 @@ from index.build import RELEASE_URL, latest_versions_card, publish, validate
 from index.chunk import sha256
 from index.config import INDEX_DIR
 from index.lock import Busy, index_lock, load_state, save_state
-from index.manifest import iso, load_version, read_current, utc_now
+from index.manifest import iso, load_version, prune, read_current, utc_now
 from ingest import config
 from ingest.docs import fetch_docs, fetch_sitemap
 from ingest.faq import fetch_faqs
@@ -379,7 +379,9 @@ class Refresher:
             releases=self.releases, denylist_skipped=self.denylist_skipped, sources_info=self.src,
             build_info={"command": "index.refresh", "outside": (self.src.get("outside") or {}).get("enabled")})
         save_state(self.new_state)
-        self.report.update(version=version, written=True, embedded=stats["embedded"])
+        # keep CURRENT and the version before it: a container (Cloud Run's in-memory disk) must not grow per refresh
+        pruned = prune(self.index_root)
+        self.report.update(version=version, written=True, embedded=stats["embedded"], pruned=pruned)
         log.info("refresh wrote %s (%d chunks, %d embedded)", version, len(new_chunks), stats["embedded"])
         return self.done()
 

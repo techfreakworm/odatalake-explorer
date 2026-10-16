@@ -23,6 +23,11 @@ from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5', cac
 from flashrank import Ranker; Ranker(model_name='ms-marco-TinyBERT-L-2-v2', cache_dir='/app/models/flashrank'); \
 import tiktoken; tiktoken.get_encoding('o200k_base'); print('models ready')" \
  && rm -rf /app/models/flashrank/__MACOSX /app/models/hf/xet
+# the index: only the version CURRENT names (older versions in the tree never reach a layer)
+COPY data/index/ /app/data/index/
+RUN cur=$(tr -d '[:space:]' < /app/data/index/CURRENT) && test -f "/app/data/index/$cur/manifest.json" \
+ && find /app/data/index -mindepth 1 -maxdepth 1 -type d ! -name "$cur" -exec rm -rf {} + \
+ && echo "index $cur" && ls /app/data/index
 
 # ----------------------------------------------------------------------------- runtime
 FROM ${PYTHON_IMAGE}
@@ -39,7 +44,7 @@ COPY app/ app/
 COPY ingest/ ingest/
 COPY index/ index/
 COPY web/ web/
-COPY --chown=app:app data/index/ data/index/
+COPY --from=build --chown=app:app /app/data/index/ data/index/
 # .cache holds the refresher's poll state and lock; data/index takes new versions when the in-app refresher runs
 RUN mkdir -p /app/.cache && chown app:app /app/.cache /app/data
 USER app
