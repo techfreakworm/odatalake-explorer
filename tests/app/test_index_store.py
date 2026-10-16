@@ -123,6 +123,8 @@ def test_release_series_are_grouped_by_repo_and_tag_prefix():
               {"source_type": "release", "doc_url": "https://olake.io/docs/release/ingestion/v0.2.2-v0.2.4/"},
               {"source_type": "release", "doc_url": "https://olake.io/docs/release/ingestion/v0.12.0/"},
               {"source_type": "release", "doc_url": "https://olake.io/docs/release/ingestion/v0.11.0/"},
-              {"source_type": "release", "doc_url": "https://olake.io/docs/release/ingestion/28-04-2025/"}]
-    # the chart series (olake-0.0.x) has one minor, so none of it is demoted; v0.2.0 is older than v0.4 and v0.3
-    assert old_release_mask(chunks) == [False, False, True, False, False, True, False, False, False]
+              {"source_type": "release", "doc_url": "https://olake.io/docs/release/ingestion/28-04-2025/"},
+              {"source_type": "release", "doc_url": "https://olake.io/docs/fusion/release/maintenance/v0.1.0/"}]
+    # the chart series (olake-0.0.x) has one minor, so none of it is demoted; v0.2.0 is older than v0.4 and v0.3;
+    # Fusion's own notes (v0.1.0) are compared with Fusion's, never with Go's v0.12
+    assert old_release_mask(chunks) == [False, False, True, False, False, True, False, False, False, False]

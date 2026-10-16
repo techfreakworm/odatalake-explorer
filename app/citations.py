@@ -121,7 +121,7 @@ def resolve_citations(answer: str, passages: Sequence[Passage], max_sources: int
     by_n = {p.n: p for p in passages}
     sources: list[str] = []
     cited: list[CitedSource] = []
-    new_n: dict[int, int] = {}
+    new_n: dict[int, list[int]] = {}  # passage number -> its source numbers (a fact card can have two)
     segs = segments(answer)
     for is_code, seg in segs:
         if is_code:
@@ -131,21 +131,25 @@ def resolve_citations(answer: str, passages: Sequence[Passage], max_sources: int
                 p = by_n.get(n)
                 if p is None or n in new_n:
                     continue
-                if p.source_url in sources:
-                    new_n[n] = sources.index(p.source_url) + 1
-                elif len(sources) < max_sources:
-                    sources.append(p.source_url)
-                    cited.append(CitedSource(len(sources), p.source_url, p))
-                    new_n[n] = len(sources)
+                nums: list[int] = []
+                for url in p.urls:
+                    if url in sources:
+                        nums.append(sources.index(url) + 1)
+                    elif len(sources) < max_sources:
+                        sources.append(url)
+                        cited.append(CitedSource(len(sources), url, p))
+                        nums.append(len(sources))
+                if nums:
+                    new_n[n] = nums
 
     def rewrite_run(m: re.Match) -> str:
         lead, run = m.group(1), m.group(2)
         mapped: list[int] = []
         for g in GROUP_RE.finditer(run):
             for n in _group_numbers(g.group(0)):
-                k = new_n.get(n)
-                if k is not None and k not in mapped:
-                    mapped.append(k)
+                for k in new_n.get(n, ()):
+                    if k not in mapped:
+                        mapped.append(k)
         if mapped:
             return lead + "".join(f"[{k}]" for k in mapped)
         nxt = m.string[m.end():m.end() + 1]
@@ -188,7 +192,7 @@ def salvage_truncated(text: str, max_n: int) -> str:
 
 
 def source_url(chunk: Mapping[str, Any], style: str = "branch") -> str:
-    """The URL a cited chunk contributes to `sources` (fact cards: see choose_cite_url in retrieval)."""
+    """The URL a cited chunk contributes to `sources` (fact cards: see choose_cite_urls in retrieval)."""
     if chunk.get("source_type") == "repo" and style == "sha" and chunk.get("url"):
         return str(chunk["url"])
     return str(chunk["doc_url"])

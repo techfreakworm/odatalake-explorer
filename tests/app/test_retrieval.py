@@ -155,7 +155,9 @@ def test_twins_prefer_fusion_when_the_question_names_fusion_or_compaction(snapsh
 def test_factcard_cites_the_page_most_relevant_to_the_question(snapshot, embedder):
     res = retrieve(snapshot, "Does OLake support Oracle CDC?", embedder=embedder, cfg=HYBRID)
     card = next(h for h in res.hits if h.chunk["source_type"] == "factcard")
-    assert card.source_url == "https://olake.io/docs/connectors/oracle/"
+    assert card.source_url == "https://olake.io/docs/connectors/oracle/"  # the connector named in the question
+    assert card.source_urls[0] == card.source_url and len(card.source_urls) == 2  # at most 2 per card
+    assert set(card.source_urls) <= set(card.chunk["cite_urls"])
 
 
 def test_repo_source_url_follows_source_url_style(snapshot):

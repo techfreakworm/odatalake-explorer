@@ -442,6 +442,7 @@ def create_app(settings: Settings | None = None, *, llm=None, embedder_factory: 
                     "results": [{"rank": i, "doc_url": h.chunk.get("doc_url"), "url": h.chunk.get("url"),
                                  "id": h.chunk.get("id"), "source_type": h.chunk.get("source_type"),
                                  "score": round(float(h.score), 6), "source_url": h.source_url,
+                                 "source_urls": list(h.source_urls or (h.source_url,)),
                                  "dense": None if h.dense is None else round(h.dense, 4)}
                                 for i, h in enumerate(r.hits, start=1)]}
 

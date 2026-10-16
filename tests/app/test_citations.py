@@ -86,12 +86,29 @@ def test_code_blocks_are_never_rewritten():
     assert r.sources == ["https://x/A/"]
 
 
-def test_factcard_passage_uses_its_chosen_cite_url():
-    card = doc(0, "https://olake.io/docs/connectors/postgres/", source_type="factcard",
-               cite_urls=["https://olake.io/docs/connectors/postgres/", "https://olake.io/docs/connectors/oracle/"])
-    ps = [Passage(n=1, chunk=card, source_url="https://olake.io/docs/connectors/oracle/")]
-    r = resolve_citations("Oracle has no CDC [1].", ps)
-    assert r.sources == ["https://olake.io/docs/connectors/oracle/"]
+def test_factcard_passage_contributes_its_cite_urls_as_adjacent_markers():
+    urls = ["https://olake.io/docs/connectors/oracle/", "https://olake.io/docs/"]
+    card = doc(0, urls[0], source_type="factcard", cite_urls=urls)
+    mysql = "https://olake.io/docs/connectors/mysql/"
+    ps = [Passage(n=1, chunk=card, source_url=urls[0], source_urls=tuple(urls)),
+          Passage(n=2, chunk=doc(1, mysql), source_url=mysql)]
+    r = resolve_citations("Oracle has no CDC [1]. MySQL has CDC [2]. Again [1].", ps)
+    assert r.sources == [urls[0], urls[1], mysql]
+    assert r.answer == "Oracle has no CDC [1][2]. MySQL has CDC [3]. Again [1][2]."
+    det = citation_details(r.cited)
+    assert [d["url"] for d in det] == [urls[0], urls[1], mysql + "#a"]  # cards link to the deep link
+    assert [d["source_type"] for d in det] == ["factcard", "factcard", "docs"]
+
+
+def test_factcard_sources_respect_the_cap():
+    urls = [f"https://x/{i}/" for i in range(4)]
+    card_urls = ("https://x/card-a/", "https://x/card-b/")
+    card = doc(9, card_urls[0], source_type="factcard", cite_urls=list(card_urls))
+    ps = [Passage(n=i + 1, chunk=doc(i, u), source_url=u) for i, u in enumerate(urls)]
+    ps.append(Passage(n=5, chunk=card, source_url=card_urls[0], source_urls=card_urls))
+    r = resolve_citations("a [1]. b [2]. c [3]. d [4]. card [5].", ps)
+    assert r.sources == urls + [card_urls[0]]  # only one slot left for the card
+    assert r.answer.endswith("card [5].")
 
 
 def test_source_url_style_branch_vs_sha_for_repo_chunks():

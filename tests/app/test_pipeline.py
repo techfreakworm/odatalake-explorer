@@ -305,3 +305,14 @@ def test_code_blocks_survive_the_pipeline_byte_for_byte(index_dir):
     out = ask(service(index_dir, FakeLLM(text)), TELEMETRY)
     assert code in out.answer
     assert out.answer == text
+
+
+def test_cited_fact_card_puts_its_cite_urls_into_sources(index_dir):
+    def cite_the_card(user):
+        n = next(line.split("]")[0][1:] for line in user.splitlines() if "Fact card: sync modes" in line)
+        return f"No, Oracle CDC is not supported [{n}]."
+
+    out = ask(service(index_dir, FakeLLM(cite_the_card)), "Does OLake support Oracle CDC?")
+    assert out.reason == "answered"
+    assert out.sources[0] == "https://olake.io/docs/connectors/oracle/" and len(out.sources) == 2
+    assert out.answer == "No, Oracle CDC is not supported [1][2]."

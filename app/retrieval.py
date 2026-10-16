@@ -30,6 +30,7 @@ IDENT_BOOST_STEP = 0.5  # BM25 score x(1 + 0.5 per identifier found in the chunk
 IDENT_BOOST_MAX = 2.0
 TWIN_COSINE = 0.95  # near-duplicate go/fusion twin pages (install, quickstart, ...)
 TWIN_DEMOTE = 0.5
+MAX_CARD_SOURCES = 2  # cite_urls one cited fact card may add to sources
 
 TIER_BY_TYPE = {"docs": 1, "release": 1, "release-gh": 1, "faq": 1, "factcard": 1, "repo": 2, "issue": 2,
                 "blog": 3, "outside": 4}
@@ -106,6 +107,7 @@ class Hit:
     dense: float | None
     bm25: float
     source_url: str
+    source_urls: tuple[str, ...] = ()  # fact cards: the cite_urls that go into sources (source_url first)
 
 
 @dataclass
@@ -321,19 +323,20 @@ def _enforce_tier_rule(order: list[int], tier: np.ndarray, ok: set[int]) -> list
     return [i for i in head if tier[i] < 3] + [i for i in head if tier[i] >= 3] + tail
 
 
-def choose_cite_url(chunk: Mapping[str, Any], rd: RankingData, page_scores: Callable[[str], float],
-                    connectors: set[str]) -> str:
-    """A fact card is cited by ONE of its cite_urls: the page of a connector named in the question, else the page
-    whose chunks best match the question."""
-    urls = [u for u in (chunk.get("cite_urls") or []) if u] or [str(chunk.get("doc_url"))]
+def choose_cite_urls(chunk: Mapping[str, Any], page_scores: Callable[[str], float], connectors: set[str],
+                     limit: int = MAX_CARD_SOURCES) -> tuple[str, ...]:
+    """The cite_urls a cited fact card puts into sources: the page of a connector named in the question first, then
+    the pages whose chunks best match the question, at most `limit` (some cards list six pages, and a single
+    citation must not fill the five-source cap)."""
+    urls = list(dict.fromkeys(u for u in (chunk.get("cite_urls") or []) if u)) or [str(chunk.get("doc_url"))]
     if len(urls) == 1:
-        return urls[0]
+        return (urls[0],)
 
-    def key(u: str) -> tuple[int, float]:
+    def key(u: str) -> tuple[int, float, int]:
         m = _DOCS_CONNECTOR_RE.search(u)
-        return (1 if m and m.group(1) in connectors else 0, page_scores(u))
+        return (1 if m and m.group(1) in connectors else 0, page_scores(u), -urls.index(u))
 
-    return max(urls, key=key)
+    return tuple(sorted(urls, key=key, reverse=True)[:limit])
 
 
 # ---------------------------------------------------------------- retrieve
@@ -409,11 +412,11 @@ def retrieve(snapshot, query: str, *, embedder: QueryEmbedder | None = None, rer
     def hit(i: int) -> Hit:
         c = chunks[i]
         if c.get("source_type") == "factcard":
-            url = choose_cite_url(c, rd, page_scores, connectors)
+            urls = choose_cite_urls(c, page_scores, connectors)
         else:
-            url = plain_source_url(c, cfg.source_url_style)
+            urls = (plain_source_url(c, cfg.source_url_style),)
         return Hit(idx=i, chunk=c, score=final_score[i], dense=None if sims is None else float(sims[i]),
-                   bm25=float(bm[i]), source_url=url)
+                   bm25=float(bm[i]), source_url=urls[0], source_urls=urls)
 
     ranked = [hit(i) for i in order]
     hits = per_page_cap(ranked, key=lambda h: rd.page_key[h.idx], per_page=cfg.per_page, k=cfg.k)

@@ -5,6 +5,7 @@
 #   1. clean tree        git status --porcelain is empty (skipped with --allow-dirty)
 #   2. deps              uv sync --frozen --extra rerank
 #   3. unit tests        uv run pytest -q -m "not e2e"
+#   3b. index            uv run python -m index.validate (the active index honours I1 and the citation policy)
 #   4. hygiene           no secrets (plan §8 grep), no personal paths, no commit trailers on this branch
 #   5. e2e               tests/e2e against a local ollama, holding .cache/ollama.lock (bounded wait, trap release)
 #   6. docker            docker build -t ask-olake:verify .   (SKIP while there is no Dockerfile)
@@ -69,22 +70,32 @@ run_step deps uv sync --frozen --extra rerank
 # 3. unit tests (no network, no LLM)
 run_step unit-tests uv run pytest -q -m "not e2e"
 
+# 3b. the active index honours contract I1 and the citation policy (offline, about 1 s)
+if [ -f index/validate.py ]; then
+  run_step index uv run python -m index.validate
+else
+  result SKIP index "no index/validate.py"
+fi
+
 # 4. hygiene
 secrets=$(git grep -nE '(^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{35}|api_key[[:space:]]*=[[:space:]]*"')
 if [ -z "$secrets" ]; then result PASS secrets "plan §8 grep finds nothing"; else
   result FAIL secrets "possible keys in tracked files:"; printf '%s\n' "$secrets" | head -n 10 | sed 's/^/      | /'; fi
 
-# Generic home-directory paths anywhere except docs/ and poc/ (both are clean today), data/ (the corpus snapshot
-# quotes example paths from the upstream OLake docs: a macOS user "john" and a Linux "user") and this script (it
-# holds the pattern). The operator's real home directory must not appear anywhere at all.
-paths=$(git grep -nE '/Users/|/home/[a-z]' -- . ':!docs' ':!poc' ':!data' ':!scripts/verify.sh')
-if [ "${#HOME}" -gt 5 ]; then
-  home_hits=$(git grep -nF "$HOME" -- .)
-else
-  home_hits=""
-fi
-if [ -z "$paths$home_hits" ]; then result PASS paths "no personal paths in tracked files"; else
-  result FAIL paths "personal paths in tracked files:"; printf '%s\n%s\n' "$paths" "$home_hits" | grep -v '^$' \
+# Personal paths, two checks:
+#  (a) across ALL tracked files, data/index/ included: never the operator's home directory or user name (both
+#      derived at runtime, never written here) and never a soma worktree path (the needle is split so this script
+#      does not match itself);
+#  (b) generic home-directory paths anywhere except docs/ and poc/ (research notes) and data/index/ (third-party
+#      docs text that quotes example paths).
+exact=""
+for needle in "$HOME" "$(id -un)" ".soma/""worktrees"; do
+  [ "${#needle}" -ge 4 ] || continue
+  hits=$(git grep -n -F -e "$needle" -- .) && exact="$exact$hits"$'\n'
+done
+generic=$(git grep -nE '/Users/[A-Za-z]|/home/[a-z]' -- . ':!docs' ':!poc' ':!data/index')
+if [ -z "$exact$generic" ]; then result PASS paths "no personal paths in tracked files"; else
+  result FAIL paths "personal paths in tracked files:"; printf '%s\n%s\n' "$exact" "$generic" | grep -v '^$' \
     | head -n 10 | cut -c1-200 | sed 's/^/      | /'; fi
 
 if git rev-parse --verify -q "$BASE" >/dev/null; then

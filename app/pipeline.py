@@ -212,7 +212,7 @@ class AskService:
     async def _generate(self, req: AskRequest, run: _Run, r: RetrievalResult, snap, deadline: float,
                         emit: Callable[[str], Any] | None) -> AskOutcome:
         loop = asyncio.get_running_loop()
-        passages = [Passage(n=i + 1, chunk=h.chunk, source_url=h.source_url, score=h.score)
+        passages = [Passage(n=i + 1, chunk=h.chunk, source_url=h.source_url, score=h.score, source_urls=h.source_urls)
                     for i, h in enumerate(r.hits)]
         messages = prompts.build_messages(req.question, passages, snap.facts_line, self.s.canary, req.history)
         sanitizer = StreamSanitizer(self.guard) if emit is not None else None
