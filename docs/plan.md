@@ -5,8 +5,8 @@ Companion docs: [open-questions.md](open-questions.md) (kickoff questions and op
 [research.md](research.md) (why each decision), [eval-questions.md](eval-questions.md) (the eval set and how it is scored).
 
 Markers used here:
-- `PENDING(x)`: waiting for a research report or a POC number. Fill it in before Saturday's rehearsal.
-- `TODO(cite)`: the claim still needs a source.
+- `PENDING(x)` (waiting for a research report or a POC number) and `TODO(cite)` (the claim still needs a source): none
+  remain in this version.
 - **target**: a goal that has not been measured. Measured numbers name their source file.
 
 ---
@@ -1137,7 +1137,7 @@ checkpoint 2.7 decides the TinyBERT rerank.
   conceptual "why Iceberg" questions.
 - Why the score gate is only an off-topic short-circuit: on the 94-row set, -0.891 on the MiniLM score caught only half
   of the unanswerable and out-of-scope rows, and the best threshold (1.18) false-abstained on 13% of answerable rows
-  (poc/results/gate-canonical.json). The end-to-end numbers of poc's full 94-row /ask run are PENDING(poc).
+  (poc/results/gate-canonical.json). The end-to-end numbers are measured at checkpoints 2.2 and 2.5 (the full eval, with X-Ask-Reason per row).
 - Zero valid citations after generation (decision D8, decided by data): abstain. In the canonical run this rule caused 0
   of the 13 false abstains on must-answer rows: the gate caused 7, the model's answerable=false 5 and the scorer's
   pattern 1 (poc/results/eval_run-canonical.json, abstain_breakdown).

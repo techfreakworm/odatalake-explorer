@@ -1,7 +1,7 @@
 # Ask OLake: research, comparisons and decisions
 
-Status: draft, filled in as the research reports and POC measurements land. `PENDING(x)` marks a section or number that
-waits on input x. Measured numbers name their source file, and unmeasured goals are labelled **target**.
+Status: final for 2026-10-17 (re-check the volatile items on the morning of 2026-10-18). Measured numbers name their
+source file, and unmeasured goals are labelled **target**.
 The runbook that carries out these decisions is [plan.md](plan.md). Open items are in [open-questions.md](open-questions.md).
 
 ## 1. Executive summary
@@ -493,10 +493,10 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   - for type-mapping misses (SYNC-12, Postgres jsonb): keep tables whole in chunks, plus the exact-match boost for
     identifiers.
 
-  PENDING(poc): the end-to-end numbers of poc's full 94-row `/ask` run (a TinyBERT top-10 gate at 0.3 plus one rewrite,
-  k=10, prompt v3). Its model stage is the recommended one; only the gate differs, and the gate's offline effect is
-  measured above. On the seed set, the model's own flag added one false abstain (precision 0.75, false-abstain 0.071), on a
-  false-premise question whose retrieval missed (`poc/results/answer.json`).
+  The recommended policy's end-to-end abstain recall, false-abstain rate and latency are measured at checkpoints 2.2 and
+  2.5 on the day: the full eval against the deployed URL, with each row's abstain reason read from the X-Ask-Reason
+  header. The gate's offline effect is measured above. On the seed set, the model's own flag added one false abstain
+  (precision 0.75, false-abstain 0.071), on a false-premise question whose retrieval missed (`poc/results/answer.json`).
 - **Honesty specifics** (decided): "not supported" or "not documented" with a fact-card citation is an answer, not an
   abstain. For pricing, SLA and enterprise questions, give no specifics and point to hello@olake.io or
   [the contact page][contact], as [/olake-go/][go-faq] does. Default credentials are stated only as the docs state them,
@@ -943,7 +943,7 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Credits throttle or stop during post-freeze scoring | Every row fails | The ordered provider chain: the credits, then the operator's paid key with ≥ 100 RPM (D7), then Gemma on the free tier, failing over before the first byte; a degraded mode that returns the most relevant pages; ask at kickoff (K1) |
 | Endpoint down, cold or rate-limited while scoring | Production readiness and accuracy both lose | Min instances ≥ 1, a queue rather than rejection, a very high rate limit, a synthetic probe every minute (plan section 9) |
 | The organizers match sources differently from us | Citation points lost | Canonical sitemap URLs and branch-form GitHub URLs; ask K3; matching in our own eval is lenient |
-| Over-abstaining or under-abstaining | Accuracy or honesty points lost. Both abstain targets were missed in the local end-to-end run (recall 0.833, false-abstain 0.072; `poc/results/eval_run-canonical.json`) | The reranker score alone cannot separate the cases (§4.3), so the model's `NO_ANSWER` plus citation validation decides. The off-topic gate is a dense-score short-circuit with a 0.02 margin and no rewrite, with a unified short-circuit text; it catches at most about 50-58% of the must-abstain rows, so the model does most of the abstaining. Event-day levers: a stronger hosted model, the unknowns fact card, the v2 prompt. The end-to-end numbers of poc's full run are PENDING(poc) |
+| Over-abstaining or under-abstaining | Accuracy or honesty points lost. Both abstain targets were missed in the local end-to-end run (recall 0.833, false-abstain 0.072; `poc/results/eval_run-canonical.json`) | The reranker score alone cannot separate the cases (§4.3), so the model's `NO_ANSWER` plus citation validation decides. The off-topic gate is a dense-score short-circuit with a 0.02 margin and no rewrite, with a unified short-circuit text; it catches at most about 50-58% of the must-abstain rows, so the model does most of the abstaining. Event-day levers: a stronger hosted model, the unknowns fact card, the v2 prompt. The end-to-end numbers are measured at checkpoints 2.2 and 2.5 on the day |
 | Venue Wi-Fi | Slow builds and deploys | Pre-cached wheels, models, repos and base image; remote builds; phone hotspot (plan section 11) |
 | A teammate edits another track's files | Lost work | One owner per path (plan section 0.3) |
 | Stale stub pages contradict live pages (e.g. "Kafka is WIP") | Confidently wrong answers | Denylist the stubs; fact cards with explicit negatives (§3.1, §3.3) |
