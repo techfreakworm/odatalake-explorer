@@ -730,6 +730,8 @@ N, X, Y, Z and C come from the final eval file, never from memory.
 
 ## Appendix A: event-repo CLAUDE.md
 
+The repo allowlist below is the POC's (`poc/ingest/repos.py`; the reasoning per repo is in `poc/README.md`). It selected 84 files on 2026-10-16 (`poc/results/corpus.json`).
+
 ~~~~markdown
 # Ask OLake (hackathon build, 2026-10-18; code freeze 14:30 IST)
 
@@ -766,8 +768,25 @@ Judging: accuracy 35, citations and honesty 15, production readiness 20, UX and 
 - RRF k = 60; candidates 30 (default, tune); final context ≈ 4k tokens; max 3 chunks per page
 - Blog rank penalty: PENDING(retrieval eval, decision D4)
 - ABSTAIN_THRESHOLD default: PENDING(POC)
-- Docusaurus article selector: PENDING(docs-site report)
-- Repo allowlist globs: PENDING(repos report)
+- Docusaurus extraction (the selectors the POC used on all 124 docs pages, `poc/ingest/html2md.py`; 13 pages came out
+  under 100 tokens, `poc/results/corpus.json`): article =
+  `.theme-doc-markdown`, else `article [itemprop="articleBody"]`, else `article .markdown`, else `article`; headings keep
+  their `id` as the anchor (drop `.hash-link`); tabs = `.tabs-container` with `[role="tab"]` labels and `[role="tabpanel"]`
+  panels; admonitions = `.theme-admonition` with `[class*="admonitionHeading"]` and `[class*="admonitionContent"]`; code =
+  `pre` lines from `.token-line`, with the title from `[class*=codeBlockTitle]`; canonical URL = `link[rel=canonical]`
+- Repo allowlist (fnmatch globs per repo; 84 files on 2026-10-16). Deny anywhere: .github/*, */test/*, */tests/*,
+  */testdata/*, *_test.go, */vendor/*, */node_modules/*, *.lock, *-lock.json, *-lock.yaml, go.sum, *.pb.go, images.
+  - olake: README.md, CONTRIBUTING.md, drivers/*/README.md, destination/**/README.md, examples/**/README.md,
+    docker-compose.yml, drivers/*/docker-compose*.yml, examples/**/docker-compose.yml,
+    destination/iceberg/local-test/docker-compose.yml, drivers/*/resources/spec.json, destination/*/resources/spec.json,
+    protocol/*.go, drivers/*/internal/config.go, destination/*/config.go, utils/ssh.go, utils/ssl.go, constants/*.go
+  - olake-ui: README.md, CONTRIBUTING.md, api-contract.md, server/README.md, ui/README.md, ui/CONTRIBUTING.md,
+    docker-compose.yml, docker-compose-v1.yml, server/docker-compose.yml, server/conf/app.yaml, server/internal/appconfig/*.go
+  - olake-helm: README.md, helm/olake/README.md, helm/olake/UNINSTALL_GUIDE.md, helm/olake/Chart.yaml,
+    helm/olake/values.yaml, worker/README.md
+  - olake-fusion: README.md, CONTRIBUTING.md, docker/README.md, charts/amoro/Chart.yaml, charts/amoro/values.yaml,
+    charts/amoro/README.md, dist/src/main/amoro-bin/conf/config.yaml, local-test/docker-compose.yml, local-test/config.yaml
+    (skip docs/**: upstream Apache Amoro docs; the OLake Fusion docs live under olake.io/docs/fusion/)
 
 ## Contracts
 ### I1 index artifact
