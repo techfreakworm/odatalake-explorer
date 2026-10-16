@@ -16,7 +16,8 @@ The runbook that carries out these decisions is [plan.md](plan.md). Open items a
    `SOURCE_URL_STYLE` switches between branch-form and SHA-permalink GitHub URLs (K3). Anchors and line ranges appear in
    the UI.
 4. **Architecture**: hybrid retrieval (BM25 plus local dense embeddings, RRF k=60), a local cross-encoder rerank, then one
-   grounded LLM call with `[n]` citations, behind two gates and three logged abstain triggers. The fallback is BM25-only
+   grounded LLM call with `[n]` citations. A conservative off-topic gate (with one rewrite) sits before the call. The model's
+   `NO_ANSWER` and citation validation decide abstains, and every abstain is logged. The fallback is BM25-only
    with the same chunks and prompt, behind a config flag (§4).
 5. **Stack**: Python 3.12, FastAPI, the `openai` SDK pointed at any OpenAI-compatible endpoint, fastembed (ONNX, CPU) for
    embeddings and reranking, bm25s, and numpy brute-force vectors. One container. PENDING(stack report: host, model, prices) (§5).
@@ -269,19 +270,48 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   | BM25 + rerank ms-marco-MiniLM-L-6-v2 | 0.429 | 0.786 | 0.786 | 0.574 | 382.10 |
 
   With 14 questions, one question moves a hit rate by about 0.07, so differences of that size are noise. The best MRR
-  (hybrid + bge-reranker-base) costs about 1.8 s per query on this machine. PENDING(lead: which embedder and reranker, and
-  the rerank depth).
+  (hybrid + bge-reranker-base) costs about 1.8 s per query on this machine.
+
+  **Canonical set** (the 82 rows of the curated set that have expected sources; about 300-token chunks; the lead's summary
+  of the POC run, with the JSON still to be committed, PENDING(poc)):
+
+  | Config | MRR@10 | hit@5 |
+  |---|---|---|
+  | BM25 | 0.68 | 0.85 |
+  | Dense bge-small-en-v1.5 | 0.69 | 0.85 |
+  | Dense bge-base-en-v1.5 | 0.70 | 0.83 |
+  | Hybrid (RRF) bge-small | 0.736 | 0.87 |
+  | Hybrid (RRF) bge-base | 0.745 | 0.89 |
+
+  Hybrid clearly beats either retriever alone. bge-small comes close to bge-base, and it embeds the corpus 3.3x faster
+  (69.09 s vs 229.79 s, `poc/results/retrieval.json`). With hybrid bge-base and the MiniLM-L6 rerank, an expected source
+  is among the 6 context passages for 85.4% of the 94 rows (`poc/results/gate-canonical.json`,
+  `context_hit_rate_top_passages`). PENDING(poc: the rerank comparison on the canonical set).
 - **Grounding.** One system prompt (plan section 4.3): answer only from numbered passages, cite `[n]` per claim, and copy
   configs exactly. Fixed `NO_ANSWER` and `OUT_OF_SCOPE` markers. Prompt injection is treated as data.
-- **Abstain.** Three triggers, each logged: (1) the top rerank score is below the threshold after one rewrite; (2) the
-  model emits the don't-know marker; (3) no valid citation is left after parsing. **Targets**: abstain recall ≥ 90% on
-  unanswerable plus out-of-scope rows, and false-abstain ≤ 5% on answerable rows. POC on the 18 seed questions
-  (`poc/results/answer.json`; hybrid bge-base, MiniLM-L6 rerank, 6 passages, a local qwen3:32b): a gate on the top rerank
-  score at -0.891 abstained on all 3 should-abstain questions and on none of the 14 should-answer ones (precision 1.0,
-  recall 1.0). The model's own "answerable" flag added one false abstain (precision 0.75, false-abstain 0.071), on a
-  false-premise question whose retrieval missed. The top MiniLM-L6 rerank score ranged 2.16 to 8.73 on answerable
-  questions and -11.24 to -3.95 on the out-of-scope, unanswerable and adversarial ones (`poc/results/retrieval.json`).
-  Too few rows to tune on. PENDING(re-tune on the curated set).
+- **Abstain: the reranker score cannot decide it.** On the 18 seed questions, a gate on the top MiniLM-L6 rerank score at
+  -0.891 looked perfect (precision and recall 1.0; `poc/results/answer.json`). That did not hold on the 94-row curated set
+  (`poc/results/gate-canonical.json`: 12 rows should abstain, the 6 unanswerable and 6 out-of-scope; 82 should answer):
+  - At -0.891 the gate caught only 6 of the 12 (recall 0.5) and false-abstained on 3 of 69 answerable rows (4.3%). The
+    doc-writer recomputed this from `per_question` in that file.
+  - The best single threshold, 1.18, reached recall 0.917, but with precision 0.44, false abstains on 13% of answerable
+    rows and 17.1% of all must-answer rows.
+  - The score ranges overlap. A near-domain unknown scores high (UNK-01: 6.28), and an injection-wrapped real question
+    scores very low (ADV-03: -6.36). Answerable rows range from -2.67 to 7.78.
+- **Abstain policy** (decided by the lead after this result):
+  1. The gate is only a cheap off-topic short-circuit, at a conservative threshold (about -4 for MiniLM-L6).
+     `ABSTAIN_THRESHOLD` now means this off-topic threshold.
+  2. Below it, ONE LLM rewrite turns the question into search keywords, which strips injections, pasted logs and
+     chit-chat. Retrieval runs again, and the bot declines only if the score is still below the threshold.
+  3. The real abstain decision comes from the model (the `NO_ANSWER` marker or "answerable" flag) plus citation validation.
+     With no valid citation left, it abstains.
+  4. Negative and false-premise answers say "not supported", or correct the premise, with the citation of the page that
+     lists what is supported. They never say "the docs don't mention X". The scorer skips abstain matching on those rows.
+
+  Every abstain is logged with its reason. **Targets**: abstain recall ≥ 90% on unanswerable plus out-of-scope rows, and
+  false-abstain ≤ 5% on answerable rows. PENDING(poc: the combined policy's abstain recall, false-abstain on all must-answer
+  rows, how often the rewrite fires, and its latency). On the seed set, the model's own flag added one false abstain
+  (precision 0.75, false-abstain 0.071), on a false-premise question whose retrieval missed (`poc/results/answer.json`).
 - **Honesty specifics** (decided): "not supported" or "not documented" with a fact-card citation is an answer, not an
   abstain. For pricing, SLA and enterprise questions, give no specifics and point to hello@olake.io or
   [the contact page][contact], as [/olake-go/][go-faq] does. Default credentials are stated only as the docs state them,
@@ -323,14 +353,19 @@ Measured in the POC (`poc/results/retrieval.json`, `poc/results/latency_threads.
 
 Memory, as process RSS after loading each model in turn (2 threads): 245 MB after bge-small, 713 MB after MiniLM-L6, and
 2,282 MB after bge-reranker-base (`poc/results/latency_threads.json`). So the larger reranker adds about 1.5 GB.
+The POC API (hybrid bge-base plus MiniLM-L6) used 1,419 MB RSS after one query and 2,609 MB after a scorer run at
+concurrency 4. The onnxruntime CPU memory arena grows with concurrent rerank batches, so cap concurrency or disable the
+arena on small hosts (`poc/results/embed_probe.json`, which also records `api_startup_s` 0.4).
 PENDING(stack report: image size and host CPU).
 
 **Provisional choice (lead, pending the POC re-run on the canonical set):** 300-token chunks; the BAAI/bge-base-en-v1.5
 embedder (dense MRR@10 0.567 vs 0.463 for bge-small, 15.8 ms per query at 2 threads); and the Xenova/ms-marco-MiniLM-L-6-v2
-reranker on the top 10 (205.9 ms p50 at 2 threads). The MiniLM-L6 score also drives the abstain gate. The upgrade path is
+reranker on the top 10 (205.9 ms p50 at 2 threads). The MiniLM-L6 score also drives the off-topic gate. The upgrade path is
 BAAI/bge-reranker-base on the top 10 (922.3 ms p50 at 2 threads, RSS 2.3 GB; seed-set hit@5 0.929 vs 0.786). It is adopted
 only if the 12:30 A/B (plan section 5, 2.5) confirms the gain and the host has at least 4 GB of RAM. `ABSTAIN_THRESHOLD` is
-calibrated per reranker; the POC value for MiniLM-L6 is -0.891 (`poc/results/answer.json`).
+now the off-topic short-circuit threshold, calibrated per reranker: about -4 for MiniLM-L6 (§4.3). The canonical
+retrieval run (§4.3) found bge-small close to bge-base on the hybrid (MRR 0.736 vs 0.745) at 3.3x lower embedding cost.
+The rerank comparison on the canonical set is PENDING(poc).
 
 ### 5.4 Vector store
 None. Vectors stay in process as numpy brute force: 951-1,861 chunks without the blog, depending on chunk size
@@ -362,8 +397,11 @@ The alternative is a Shadow DOM widget on the host page, which is what the POC b
 | CORS | Not needed by the UI: the iframe calls its own origin | Needed: the host page calls our API from another origin |
 | Access to the host page | None: messages only through `postMessage` | Runs in the host page's JavaScript context |
 
-The POC ships a strict-CSP test page (`poc/api/demo/csp.html`, `connect-src 'self'`). There the Shadow DOM widget is
-expected to render, but its API calls are expected to fail. PENDING(POC: the observed result).
+The POC tested this on a strict-CSP page (`poc/api/demo/csp.html`, `connect-src 'self'`) in Chrome
+(`poc/results/embed_probe.json`). The Shadow DOM widget rendered, but `/ask` was blocked by a `connect-src` violation.
+Because `fetch()` rejects with the same TypeError for CSP and CORS failures, the widget cannot tell the two apart. On an
+ordinary page the same widget worked across origins, and a second request reused the cached preflight. This supports the
+iframe choice.
 
 ### 5.7 Production basics
 Pydantic validation (1-2000 characters), JSON errors, a 20 s LLM timeout with one jittered retry on 429/5xx, graceful
@@ -439,7 +477,7 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Credits throttle or stop during post-freeze scoring | Every row fails | A personal fallback trio (env only); a degraded mode that returns the most relevant pages; ask at kickoff (K1) |
 | Endpoint down, cold or rate-limited while scoring | Production readiness and accuracy both lose | Min instances ≥ 1, a queue rather than rejection, a very high rate limit, a synthetic probe every minute (plan section 9) |
 | The organizers match sources differently from us | Citation points lost | Canonical sitemap URLs and branch-form GitHub URLs; ask K3; matching in our own eval is lenient |
-| Over-abstaining or under-abstaining | Accuracy or honesty points lost | Three logged triggers and a threshold tuned on the eval set (§4.3) |
+| Over-abstaining or under-abstaining | Accuracy or honesty points lost | The reranker score alone cannot separate the cases (§4.3). The model's `NO_ANSWER` plus citation validation decides; the off-topic gate stays conservative, with one rewrite; measured on the 94-row set, PENDING(poc) |
 | Venue Wi-Fi | Slow builds and deploys | Pre-cached wheels, models, repos and base image; remote builds; phone hotspot (plan section 11) |
 | A teammate edits another track's files | Lost work | One owner per path (plan section 0.3) |
 | Stale stub pages contradict live pages (e.g. "Kafka is WIP") | Confidently wrong answers | Denylist the stubs; fact cards with explicit negatives (§3.1, §3.3) |
@@ -471,7 +509,13 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Rerank p50 at 2 threads, top 10 | MiniLM-L6 205.9 ms; bge-reranker-base 922.3 ms | `poc/results/latency_threads.json` |
 | Query embedding p50 at 2 threads | bge-small 5.4 ms; bge-base 15.8 ms | `poc/results/latency_threads.json` |
 | Full-corpus embedding (1,861 chunks) | bge-small 69.09 s; bge-base 229.79 s | `poc/results/retrieval.json` |
-| Abstain gate on the top rerank score (18 seed questions) | threshold -0.891: precision 1.0, recall 1.0, false-abstain 0.0 (3 should abstain, 14 should answer) | `poc/results/answer.json` |
+| Abstain gate on the top rerank score, seed set (18 rows) | threshold -0.891: precision 1.0, recall 1.0, false-abstain 0.0 (3 should abstain, 14 should answer) | `poc/results/answer.json` |
+| Abstain gate, curated set (94 rows; 12 should abstain) | -0.891: recall 0.5, false-abstain 4.3% of answerable rows. Best threshold 1.18: recall 0.917, precision 0.44, false-abstain 13% of answerable and 17.1% of must-answer rows | `poc/results/gate-canonical.json` (the -0.891 figures recomputed from `per_question`) |
+| Top rerank score range by type, curated set | answerable -2.67 to 7.78; unanswerable -5.52 to 6.28; out-of-scope -11.21 to 0.78; adversarial -6.36 to 2.95 | `poc/results/gate-canonical.json` (`by_type`) |
+| Expected source among the 6 context passages, curated set | 85.4% of 94 rows | `poc/results/gate-canonical.json` |
+| Retrieval MRR@10 / hit@5, curated set (82 rows with sources) | BM25 0.68 / 0.85; hybrid bge-small 0.736 / 0.87; hybrid bge-base 0.745 / 0.89 | The lead's summary of the POC canonical run; JSON PENDING(poc) |
+| API memory (hybrid bge-base + MiniLM-L6) | 1,419 MB RSS after one query; 2,609 MB after a scorer run at concurrency 4 | `poc/results/embed_probe.json` |
+| Strict-CSP host page (`connect-src 'self'`) | The Shadow DOM widget renders, but `/ask` is blocked by `connect-src` | `poc/results/embed_probe.json` |
 | Abstain on the model's own flag | precision 0.75, recall 1.0, false-abstain 0.071 | `poc/results/answer.json` |
 | Answered questions that hit an expected source | 0.714 | `poc/results/answer.json` |
 | Tokens per answer (6 passages) | prompt mean 1,858 (max 2,169); completion mean 71.8 (max 145) | `poc/results/answer.json` |

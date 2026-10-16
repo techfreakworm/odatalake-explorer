@@ -58,15 +58,15 @@ flowchart LR
     LRU -- "yes" --> OUT["answer + sources"]
     LRU -- "no" --> RET["BM25 + dense, RRF k=60"]
     RET --> RR["cross-encoder rerank"]
-    RR --> G1{"gate 1: top score at or above threshold?"}
-    G1 -- "no" --> RW["one LLM query rewrite, retrieve again"]
-    RW --> G1B{"still below threshold?"}
-    G1B -- "yes" --> ABS["abstain: plain don't-know, sources = []"]
+    RR --> G1{"off-topic gate: top score at or above ABSTAIN_THRESHOLD (about -4)?"}
+    G1 -- "no" --> RW["one LLM rewrite into search keywords, retrieve again"]
+    RW --> G1B{"still below?"}
+    G1B -- "yes" --> DEC["decline as off-topic, sources = []"]
     G1B -- "no" --> CTX
     G1 -- "yes" --> CTX["small-to-big context, about 4k tokens, max 3 chunks per page"]
     CTX --> LLM["LLM via OpenAI-compatible API"]
-    LLM --> G2{"gate 2: at least one valid citation marker?"}
-    G2 -- "no" --> ABS
+    LLM --> G2{"model answered (no NO_ANSWER) and at least one valid citation?"}
+    G2 -- "no" --> ABS["abstain: plain don't-know, sources = []"]
     G2 -- "yes" --> OUT
   end
   subgraph C ["Track C: widget (web/)"]
@@ -142,7 +142,7 @@ Out-of-scope, unanswerable and adversarial rows use `—` for Expected sources a
 
 **I4. Environment variables** (`.env.example`; the template is in [Appendix C](#appendix-c-envexample)): `LLM_BASE_URL`, `LLM_API_KEY`,
 `LLM_MODEL`, `LLM_FALLBACK_BASE_URL`, `LLM_FALLBACK_API_KEY`, `LLM_FALLBACK_MODEL`, `INDEX_DIR`, `RETRIEVAL_MODE`
-(`hybrid` or `bm25`), `RERANK` (`on` or `off`), `RERANK_MODEL`, `ABSTAIN_THRESHOLD` (calibrated per `RERANK_MODEL`), `SOURCE_URL_STYLE` (`branch` or `sha`, for repo sources;
+(`hybrid` or `bm25`), `RERANK` (`on` or `off`), `RERANK_MODEL`, `ABSTAIN_THRESHOLD` (the off-topic short-circuit threshold, calibrated per `RERANK_MODEL`; about -4 for MiniLM-L6), `SOURCE_URL_STYLE` (`branch` or `sha`, for repo sources;
 kickoff question K3 decides), `BLOG` (`on` or `off`, decision D4), `GITHUB_TOKEN` (optional; makes conditional GitHub requests
 free), `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `PUBLIC_BASE_URL`, `REFRESH_INTERVAL_MIN` (`0` = off), `LOG_LEVEL`.
 
@@ -317,7 +317,7 @@ The lead spawns the teammates at 10:35, so A, B and C start at 10:40. "msg" mean
 | 12:00 | index v3: fact cards written from the extracted docs (each with `cite_urls`), plus the curated outside pages | Gate 2, abstain texts, out-of-scope and false-premise handling, injection rules, exact-match LRU cache | Mobile layout (≤ 640 px full screen), dark mode, keyboard and ARIA | Full eval on `$URL`. README skeleton with the diagram |
 | 12:15 | Refresher: sitemap If-None-Match poll, page/chunk hashes, `git ls-remote` plus the compare API, atomic swap. `python -m index.refresh --check` | `/ask/stream` SSE, `/feedback`, JSON logs, `Server-Timing`, semaphore plus queue, rate limit | Wire the UI to `/ask/stream` on `$URL`, falling back to `/ask`; freshness footer from `/healthz` | Load test: eval at concurrency 8. Record p50 and p95 |
 | **12:30** | **Checkpoint 2** | | | |
-| 12:35 | Fix ingestion gaps that the eval found | Tune the abstain threshold on eval rows (curve to research notes); fix prompts | Suggested-question chips, code copy button, polish | Second deploy. README: design-choices table |
+| 12:35 | Fix ingestion gaps that the eval found | Check abstains on the eval rows (off-topic gate firing on must-answer rows, NO_ANSWER rate, citation validation); fix prompts | Suggested-question chips, code copy button, polish | Second deploy. README: design-choices table |
 | 13:00 | Freshness wiring: the in-app sitemap poller (`REFRESH_INTERVAL_MIN`, 5-10 minutes; decision D9); blog A/B on the eval (decision D4) | Graceful degradation (LLM down: return the most relevant pages), switch to the fallback provider | Foreign-origin embed test, Safari and mobile check | Cost per answer from the logged tokens. README numbers |
 | **13:30** | **Checkpoint 3**, then the patch hour (section 7) | | | |
 | 13:30-14:15 | Fixes from triage in ingest/ and index/ | Fixes from triage in app/ | Fixes from triage in web/ | Eval loop every 15 minutes, triage workflow (4.6), deploy after each fix that passes eval |
@@ -466,17 +466,23 @@ STEPS (in order; each step leaves a working server)
 4. Load data/index/CURRENT at startup. /readyz returns 503 until the index and models are loaded and one warm-up query ran.
 5. Hybrid: dense (the fastembed model named in manifest.json) plus BM25, fused with RRF k=60. Rerank the top 10 with
    RERANK_MODEL (default Xenova/ms-marco-MiniLM-L-6-v2) and keep the top 6 for the context. The top rerank score is
-   also the gate-1 score, so ABSTAIN_THRESHOLD must match RERANK_MODEL. Small-to-big: add the neighbouring chunk (ord ± 1) of the top hits, at most
+   also the off-topic gate's score, so ABSTAIN_THRESHOLD must match RERANK_MODEL. Small-to-big: add the neighbouring chunk (ord ± 1) of the top hits, at most
    3 chunks per page and about 4k context tokens. Apply the CLAUDE.md "Corpus" ranking rules: tier weights (a blog or
    outside chunk never outranks a tier-1 chunk that passes gate 1); demote release notes older than the latest two minors
    x0.3; boost the connector page named in the question x1.6; expand the query with the synonym map (OLake = OLake Go =
    OLake ingestion). If the question names Fusion or compaction, prefer product=fusion; otherwise prefer product=go
    among near-duplicate twin pages. (In the olake-domain research report's BM25 test, the demote, boost and synonym rules
    lifted top-1 hits from 22 to 27 of 35 seed questions.)
-6. Gate 1: if the top rerank score < ABSTAIN_THRESHOLD, do ONE LLM rewrite of the question into search keywords and
-   retrieve again. Still below, abstain without generating. Gate 2: no valid citation in the answer, abstain (or answer
-   marked low confidence, if decision D8 in CLAUDE.md says so).
-   The model outputs NO_ANSWER, abstain. OUT_OF_SCOPE, the standard decline. Log abstain_reason every time.
+6. Abstain policy. The reranker score alone cannot decide abstains: on the 94-row set, near-domain unknowns score high and
+   injection-wrapped real questions score very low.
+   - Off-topic gate: if the top rerank score < ABSTAIN_THRESHOLD (conservative, about -4 for MiniLM-L6), do ONE LLM rewrite
+     of the question into search keywords, which strips injections, pasted logs and chit-chat. Retrieve again, and decline
+     with the out-of-scope text only if the score is still below.
+   - Otherwise always generate. The model decides. NO_ANSWER means abstain, with the abstain text. OUT_OF_SCOPE means the
+     standard decline.
+   - Citation validation: if no valid citation is left after parsing, abstain (decision D8).
+   - Log abstain_reason every time (retrieval_gate, model_dont_know, no_valid_citation, out_of_scope), plus whether the
+     rewrite fired.
 7. Exact-match LRU cache keyed on normalized question + index version. No semantic cache. A request with the header
    Cache-Control: no-cache skips the cache (the monitoring probe uses it to exercise the LLM path).
 8. /ask/stream (SSE events meta, token, done, error), /feedback, structured JSON logs (request_id, timings per stage,
@@ -517,8 +523,9 @@ Answer ONLY from the numbered context passages. Each passage starts with [n], it
    version and date), then READMEs, FAQs and blog posts (give their date), then outside docs (only for how that system
    behaves; mark them "(outside OLake docs)"), then Apache Amoro (concepts only; mark "(upstream Amoro; Fusion may
    differ)"). If two OLake pages disagree, cite both and say they disagree.
-8. If a passage says something is not supported or not documented, answer "not supported" or "not documented" with that
-   citation. Do not reply NO_ANSWER in that case.
+8. If the question asks whether OLake supports something it does not, answer "not supported" and cite the page or fact
+   card that lists what IS supported. For a false premise, correct it with that citation (rule 4). Never answer "the docs
+   don't mention X" in these cases, and do not reply NO_ANSWER.
 9. For version-sensitive answers, add one line: "Docs as of <date>; latest GitHub release <tag>", using the index-facts line.
 10. Pricing, SLA or enterprise questions: give no specifics, and point to hello@olake.io or https://olake.io/contact/.
 11. Default credentials: give them only as the docs do, cite the page, and add "change them for production".
@@ -693,12 +700,12 @@ Go/no-go:
 | 2.2 | Full eval: contract failures = 0; answerable source hit ≥ PENDING(POC baseline) (**target**); abstain recall ≥ 90% (**target**); false-abstain ≤ 5% (**target**) | `uv run python -m eval.run --base-url "$URL" --out eval/results/cp2.json` |
 | 2.3 | Latency: p50 ≤ 3 s and p95 ≤ 6 s (**targets**) | The same run prints p50 and p95 |
 | 2.4 | The widget loads from `$URL` on the demo page and on a foreign-origin page | Manual check in the browser |
-| 2.5 | Reranker A/B, measured rather than assumed: MiniLM-L6 (default) vs bge-reranker-base, both reranking the top 10, on the same eval rows. Each run uses its own calibrated `ABSTAIN_THRESHOLD`. Keep the upgrade only if source hit and fact coverage improve, p95 stays ≤ 6 s (**target**), and the host has ≥ 4 GB of RAM | `RERANK_MODEL=BAAI/bge-reranker-base ABSTAIN_THRESHOLD=<calibrated> uv run uvicorn app.main:app --port 8001` locally, then run `uv run python -m eval.run` against ports 8000 and 8001 and compare the two summaries |
+| 2.5 | Reranker A/B, measured rather than assumed: MiniLM-L6 (default) vs bge-reranker-base, both reranking the top 10, on the same eval rows. Each run uses its own off-topic threshold, because the score scales differ. Keep the upgrade only if source hit and fact coverage improve, p95 stays ≤ 6 s (**target**), and the host has ≥ 4 GB of RAM | `RERANK_MODEL=BAAI/bge-reranker-base ABSTAIN_THRESHOLD=<off-topic threshold for that model> uv run uvicorn app.main:app --port 8001` locally, then run `uv run python -m eval.run` against ports 8000 and 8001 and compare the two summaries |
 
 Go/no-go:
 - 2.1 fails: switch to the fallback host now (section 11). No more debugging the primary.
 - 2.3 fails with p50 > 6 s: set `RERANK=off` or lower k. If it is still slow, use a smaller or faster model.
-- 2.2 source hit low: pair `ingest` and `api` on retrieval in the patch hour. Abstain recall low: raise `ABSTAIN_THRESHOLD`. False-abstain high: lower it.
+- 2.2 source hit low: pair `ingest` and `api` on retrieval in the patch hour. Abstain recall low: tighten the prompt's NO_ANSWER rule and citation validation, not the threshold. False-abstain high: check whether the off-topic gate fires on must-answer rows (if so, lower `ABSTAIN_THRESHOLD`) or the model over-uses NO_ANSWER (fix the prompt).
 
 ### 13:30, checkpoint 3: feature freeze
 
@@ -725,7 +732,7 @@ Cut in this order. Never cut the `/ask` contract, citation mapping, abstain, `/h
 | p50 > 6 s | `RERANK=off`, then lower k, then a faster model |
 | 13:00 streaming not working | The UI calls `POST /ask` with a spinner |
 | 13:00 loader not ready | Ship only the `<iframe src=".../embed">` snippet |
-| Any time behind | Drop, in order: non-English translation (Brief B step 12), query rewrite, the blog tier, outside pages, multi-turn history, refresher (keep the manual `index.refresh` and the manifest), feedback (keep a stub returning 204) |
+| Any time behind | Drop, in order: non-English translation (Brief B step 12), the blog tier, outside pages, multi-turn history, refresher (keep the manual `index.refresh` and the manifest), feedback (keep a stub returning 204) |
 
 ---
 
@@ -743,7 +750,7 @@ Each loop takes about 15 minutes. The last fix deploy is at 14:15.
 6. **Deploy and smoke.** Run `deploy/deploy.sh primary`, then `curl` `/healthz` and one `/ask`. Record the run in `eval/results/` and the README.
 
 Typical fixes, cheapest first: a missing page or extraction bug (ingest), a source-type boost or a wrong k (api), a prompt rule
-for a failure pattern (api), an abstain threshold step (api), UI rendering of code or tables (widget).
+for a failure pattern (api), a prompt or citation-validation fix for over- or under-abstaining (api), UI rendering of code or tables (widget).
 
 ---
 
@@ -872,14 +879,14 @@ Provisional until the canonical eval re-runs in the POC; the 12:30 checkpoint me
   Upgrade path: BAAI/bge-reranker-base on the top 10. It took 922.3 ms p50 at 2 threads, RSS reached 2.3 GB, and seed-set hit@5
   rose to 0.929 from 0.786 (poc/results/retrieval.json, latency_threads.json). Use it only if the 12:30 A/B confirms the
   gain AND the host has at least 4 GB of RAM.
-- ABSTAIN_THRESHOLD is calibrated per reranker. The POC value for MiniLM-L6 is -0.891 (poc/results/answer.json); re-calibrate
-  before switching to bge-reranker-base.
+- ABSTAIN_THRESHOLD is the off-topic short-circuit threshold, calibrated per reranker: about -4 for MiniLM-L6 (conservative).
+  The reranker score does not decide abstains. The model (NO_ANSWER) plus citation validation does. See "Honesty".
 - RRF k = 60; rerank the top 10; 6 passages in the context, about 4k context tokens at most; max 3 chunks per page
 - Blog rank weight when BLOG=on: PENDING(A/B on the eval set at the event, decision D4)
-- ABSTAIN_THRESHOLD default: -0.891, provisional and valid only for the MiniLM-L6 reranker's score scale. On the 18 seed
-  questions this gate on the top rerank score abstained on all 3 should-abstain questions and on none of the 14
-  should-answer ones (poc/results/answer.json). Re-tune on the curated set at 12:35.
-- Zero valid citations after generation (decision D8): abstain or low-confidence answer: PENDING(POC)
+- Why not a score gate: on the 94-row set, -0.891 caught only half of the unanswerable and out-of-scope rows, and the best
+  threshold (1.18) false-abstained on 13% of answerable rows (poc/results/gate-canonical.json). The combined policy's
+  numbers are PENDING(poc).
+- Zero valid citations after generation (decision D8): abstain.
 - Docusaurus extraction: docs article = `.theme-doc-markdown`, blog post = `#__blog-post-container`; headings keep their
   `id` as the anchor (drop the `.hash-link`); tabs = `.tabs-container` with `[role="tab"]` labels and `[role="tabpanel"]`
   panels (only the panels whose nearest `.tabs-container` is this one); admonitions = `.theme-admonition`; code = `pre`
@@ -955,7 +962,10 @@ Provisional until the canonical eval re-runs in the POC; the 12:30 checkpoint me
 ## Honesty
 - Pricing, SLA and enterprise: no specifics; point to hello@olake.io or https://olake.io/contact/.
 - Default credentials: only as the docs state them, with "change them for production". Never print secrets from repo files.
-- "Not supported" or "not documented" with a citation (fact cards) is an answer, not an abstain.
+- "Not supported" or "not documented" with a citation (fact cards) is an answer, not an abstain. Negative and false-premise
+  answers cite the page that lists what IS supported. Never "the docs don't mention X".
+- Abstain policy: a conservative off-topic gate (ABSTAIN_THRESHOLD) with one rewrite. Then the model's NO_ANSWER plus
+  citation validation decides. Log every abstain_reason.
 - Issues only as "known issue #N (open/closed; fixed in vX)".
 
 ## Contracts
@@ -990,7 +1000,7 @@ Rows with no sources use —.
 
 ### I4 env
 LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_FALLBACK_BASE_URL, LLM_FALLBACK_API_KEY, LLM_FALLBACK_MODEL, INDEX_DIR,
-RETRIEVAL_MODE (hybrid|bm25), RERANK (on|off), RERANK_MODEL, ABSTAIN_THRESHOLD (per RERANK_MODEL), SOURCE_URL_STYLE (branch|sha), BLOG (on|off),
+RETRIEVAL_MODE (hybrid|bm25), RERANK (on|off), RERANK_MODEL, ABSTAIN_THRESHOLD (off-topic short-circuit, per RERANK_MODEL), SOURCE_URL_STYLE (branch|sha), BLOG (on|off),
 GITHUB_TOKEN (optional), MAX_CONCURRENCY, RATE_LIMIT_PER_MIN, PUBLIC_BASE_URL, REFRESH_INTERVAL_MIN (0 = off), LOG_LEVEL,
 DEBUG (local only)
 ~~~~
@@ -1056,8 +1066,9 @@ INDEX_DIR=data/index
 RETRIEVAL_MODE=hybrid
 RERANK=on
 RERANK_MODEL=Xenova/ms-marco-MiniLM-L-6-v2
-# Calibrated per RERANK_MODEL; the POC value for MiniLM-L6 is -0.891 (poc/results/answer.json)
-ABSTAIN_THRESHOLD=-0.891
+# Off-topic short-circuit threshold, calibrated per RERANK_MODEL (conservative; about -4 for MiniLM-L6).
+# The model's NO_ANSWER plus citation validation decides abstains, not this score.
+ABSTAIN_THRESHOLD=-4
 SOURCE_URL_STYLE=branch
 BLOG=off
 # Optional: a GitHub token makes conditional GitHub API requests free (unauthenticated limit: 60 per hour)
