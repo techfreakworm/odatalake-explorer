@@ -311,6 +311,9 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   - The MiniLM-L6 rerank leaves MRR flat (0.746 vs 0.736) and makes hit@3 and hit@5 worse (0.780 vs 0.829, 0.829 vs 0.866).
   - bge-reranker-base makes MRR worse (0.664, log transcription).
   - At 600-token chunks every config scores lower.
+  - Identifier questions (CLI flags, and config keys defined only in Go) are where dense retrieval fails and BM25 rescues
+    them. An exact-match boost for `--flags` and `snake_case` keys found in the question is a cheap next step
+    (`poc/README.md`, finding 7). The plan adds it to the BM25 query.
 
   **Decision: no reranker in the ranking path.** A reranker is only an optional patch-hour experiment. The context gets the
   top 10 chunks, not 6, because hit@10 is 0.939. With 6 passages (hybrid bge-base plus MiniLM-L6), an expected source was in
@@ -573,6 +576,8 @@ ordinary page the same widget worked across origins, and a second request reused
   a 429 or 5xx. The budget is raised before the scoring window if the credits allow.
 - **Caching**: an in-process answer cache. It beats provider prompt caching for RAG, because Gemini 3.8 Flash needs a
   4,096-token identical prefix before caching applies ([Gemini caching][gem-caching], [stack report][r-stack]).
+- **onnxruntime threads capped** (`ONNX_THREADS`, set to the vCPU count). By default every onnxruntime session sizes its
+  thread pool to all cores; during the POC runs the load average went above 200 (`poc/README.md`, "Serving box").
 - Pydantic validation (1-2000 characters), graceful degradation, structured JSON logs with `request_id`, `Server-Timing`,
   a non-root container user, and secrets only in env or Secret Manager.
 
@@ -627,7 +632,8 @@ the 94 rows.
   first token fell from 32,961 ms to 13,920 ms in the think probe. So set the hosted provider's lowest reasoning
   setting, and measure it at the 12:15 load test.
 - **End to end on the curated 94 rows** (`poc/results/eval_run-canonical.json`): the POC API with the v1 prompt, a local
-  qwen3:32b and the same model as judge, at concurrency 4.
+  qwen3:32b and the same model as judge, at concurrency 4. The run used the configuration from before decision R:
+  bge-base, a MiniLM-L6 rerank of the fused top 20, the -0.891 gate and 6 passages (the file's `config` block).
   - Schema valid: 1.0.
   - Behaviour correct: 0.84.
   - Source hit: 0.695.
@@ -637,10 +643,25 @@ the 94 rows.
   - 5xx responses: 0.
   - Abstain recall on unanswerable plus out-of-scope rows: 0.833, which **misses** the ≥ 0.90 target.
   - False-abstain on answerable rows: 0.072, which **misses** the ≤ 0.05 target.
-  - Weakest types: false-premise rows (behaviour 0.25) and negative rows (0.4).
+  - Weakest types: false-premise (1 of 4), negative (2 of 5) and adversarial (2 of 4).
+  - Where the false abstains came from (`abstain_breakdown`): 13 of the 82 must-answer rows abstained wrongly. The gate
+    caused 7, the model's "answerable = false" 5, and the scorer's abstain pattern on a sourced answer 1. On answerable
+    rows it was 5 of 69 (gate 3, model 2). Of the 12 must-abstain rows, 2 were missed (UNK-04, OOS-03): the gate passed
+    them and the model answered. Most false abstains came from the gate, which is why the gate is now only a short-circuit
+    calibrated at 0% false abstains (§4.3).
 
   This run is a lower bound from a local 32B model; its latency (p50 105 s per `/ask`) says nothing about a hosted model.
   The event-day levers are listed in §4.3.
+- **Prompt v2 A/B** (`poc/results/eval_run-canonical-v2-subset.json` against the same rows of the v1 run; 35 rows: all 25
+  non-answerable plus 10 answerable; same retrieval and gate):
+  - Behaviour correct rose from 23 to 26 of 35.
+  - The judged false-premise BEHAVIOR check rose from 2 of 4 to 3 of 4.
+  - Fact coverage was flat (0.533 vs 0.536 on the 23 judged rows).
+  - FP-02 still accepted a false premise in v2. The deterministic rule only checks "did not abstain", so for false-premise
+    rows trust the judged BEHAVIOR check (`poc/README.md`, finding 9b).
+
+  The v2 rules go into the event prompt (plan section 4.3): correct false premises with the contradicting passage cited,
+  answer the genuine question inside an injection, reply in the user's language, and add 2-3 few-shot premise corrections.
 - **Hosted end-to-end accuracy, latency and cost: not measured on 2026-10-16 (no hosted key).**
   - Estimate for latency: §5.8.
   - Estimate for cost per answer: about 3.3k input and 72 output tokens times the provider's price. That gives about
@@ -648,6 +669,25 @@ the 94 rows.
     (§5.2).
   - Accuracy is expected to beat the local-32B lower bound above.
   - All three are measured at the 12:30 checkpoint.
+
+> **Surprises from the POC** (`poc/README.md`, Findings; result files as named):
+> - **Cross-encoders do not help on the canonical set.** bge-reranker-base costs 0.07 MRR (0.664 vs 0.736, a log
+>   transcription), and MiniLM-L6 is neutral. The 14-question seed set said the opposite; its gains were noise
+>   (`poc/results/retrieval-canonical.json`, §4.3).
+> - **The rerank-score gate does not generalize** from the seed set to the 94 rows (§4.3, `poc/results/gate-canonical.json`).
+> - **CPU embedding and reranking are the expensive steps, while generation tokens are small.** A rerank costs 0.2-2 s
+>   and 0.5-1.5 GB of RAM; an answer averages about 1.86K prompt and 72 completion tokens (`poc/README.md`, findings 7, 8;
+>   `poc/results/answer.json`).
+> - **ollama ignores `/no_think`** and `extra_body={"think": false}` on its OpenAI-compatible API. Only
+>   `reasoning_effort="none"` disables thinking (`poc/README.md`, finding 8).
+> - **Nested Docusaurus tabs duplicate content.** Taking every tab panel emitted nested panels twice and inflated one page
+>   from 122 KB to 342 KB of Markdown, until the extractor took only the panels of the current tab group. Brief A must
+>   handle nested tabs (`poc/README.md`, finding 1).
+> - **The docs repeat content** across `install/`, `getting-started/` and `fusion/install/`. So source hit undercounts
+>   correct answers, and eval rows need alternate sources (`poc/README.md`, finding 10).
+> - **The latencies were measured under heavy machine contention.** The load average went above 200 while another
+>   onnxruntime job shared the machine, so they are inflated (`poc/results/eval_run-canonical.json` `config.machine_note`;
+>   `poc/README.md`). Cap onnx threads on the server.
 
 ## 7. Prior art and what judges probe
 

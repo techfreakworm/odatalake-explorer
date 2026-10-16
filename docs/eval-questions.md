@@ -150,6 +150,18 @@ How the results map to the rubric ([challenges page][ch]):
 **Targets** from the design memo: abstain recall ≥ 90% on unanswerable plus out-of-scope rows; false-abstain ≤ 5% on
 answerable rows; p50 ≤ 3 s and p95 ≤ 6 s.
 
+## Known limitations (from the POC)
+
+- **Duplicate pages.** The docs repeat content across `install/`, `getting-started/` and `fusion/install/`, so source hit
+  undercounts correct answers. When triage finds a correct answer citing a duplicate page, add that page to the row's
+  Expected sources (`poc/README.md`, finding 10).
+- **False-premise rows.** Trust the judged BEHAVIOR check over the deterministic rule. In the v2 A/B, FP-02 accepted a
+  false premise and still passed the "did not abstain" rule (`poc/README.md`, finding 9b).
+- **The judge.** Use the strongest model available: the POC's local judge flipped 2 of 14 verdicts between thinking on
+  and off (`poc/README.md`, "Eval").
+- **Retrieval-only changes.** Check them with a retrieval-only run first; the POC's took under 4 minutes for 94
+  questions and 13 configs. End-to-end runs need the hosted provider (`poc/README.md`, "Eval").
+
 ## Table format rules
 
 - The header is exactly `| ID | Category | Type | Question | Expected sources | Must mention |`, followed by a separator row.
