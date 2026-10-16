@@ -49,6 +49,8 @@ async def lifespan(app: FastAPI):
         dense_model=os.environ.get("ASK_DENSE_MODEL", "BAAI/bge-small-en-v1.5"),
         reranker_model=os.environ.get("ASK_RERANKER", "Xenova/ms-marco-MiniLM-L-6-v2"),
         gate_threshold=float(gate) if gate else None,
+        prompt_version=os.environ.get("ASK_PROMPT_VERSION", "v1"),
+        threads=int(os.environ.get("ASK_ONNX_THREADS", "0")) or None,  # cap onnxruntime threads on small boxes
     )
     STATE["startup_s"] = round(time.perf_counter() - t0, 2)
     yield

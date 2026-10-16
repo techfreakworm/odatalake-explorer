@@ -1,0 +1,19 @@
+{
+  "source": "log of the first canonical bench run (stopped before writing JSON because bge-reranker-base configs ran for 10+ min per config under machine-wide CPU contention)",
+  "questions": "docs/eval-questions.md, 82 rows with expected sources",
+  "configs": {
+    "@300 hybrid:BAAI/bge-small-en-v1.5+rerank:BAAI/bge-reranker-base": {
+      "hit@1": 0.549,
+      "hit@3": 0.744,
+      "hit@5": 0.829,
+      "hit@10": 0.89,
+      "mrr@10": 0.664
+    }
+  },
+  "compare_same_run_without_rerank": {
+    "@300 hybrid:BAAI/bge-small-en-v1.5": {
+      "mrr@10": 0.736,
+      "hit@5": 0.866
+    }
+  }
+}

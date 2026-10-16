@@ -44,24 +44,30 @@ def main() -> None:
                  f"{cfg['chunks']} chunks; tokens p50 {t['p50']}, p95 {t['p95']}, max {t['max']}; "
                  f"{cfg['over_hard_max']} over hard max",
                  f"`chunking.chunker --target {cfg['target']}`"))
-    rt = load("retrieval.json")
-    if rt:
-        cmd = "`retrieval.bench` (see Steps)"
+    for fname, label in (("retrieval.json", "seed"), ("retrieval-canonical.json", "canonical")):
+        rt = load(fname)
+        if not rt:
+            continue
+        cmd = "`retrieval.bench` (see Steps)" + (" `--questions ../docs/eval-questions.md --repeat 0 --reuse-embeddings`"
+                                                 if label == "canonical" else "")
+        add((f"Retrieval eval set ({label})", f"{rt['questions']['n_with_sources']} questions with expected sources", cmd))
         for target, tr in rt["per_target"].items():
             add((f"BM25 index build @ {target}", f"{tr['bm25_build_s']} s for {tr['chunks']} chunks", cmd))
             for m, e in tr["embedding"].items():
-                if "embed_full_corpus_s" in e:
+                if "embed_full_corpus_s" in e and label == "seed":
                     add((f"Embed {m.split('/')[-1]} @ {target}",
                          f"50 chunks {e['embed_50_chunks_s']} s; full {e['embed_full_corpus_s']} s "
                          f"({e['chunks_per_s']} chunks/s); {e['wordpiece_over_512']} chunks > 512 WordPiece tokens",
                          cmd))
             for name, cfg in tr["configs"].items():
                 lat = cfg["latency_ms"].get("total_ms", {})
-                add((f"@{target} {name}",
-                     f"hit@1 {cfg['hit@1']}, hit@5 {cfg['hit@5']}, hit@10 {cfg['hit@10']}, MRR {cfg['mrr@10']}; "
-                     f"latency p50 {lat.get('p50')} ms / p95 {lat.get('p95')} ms", cmd))
-        add(("Bench process RSS (2 dense + 2 rerankers, after batch-embedding both corpora; not a serving number)",
-             f"{rt['rss_mb']['end']} MB", cmd))
+                latency = f"; latency p50 {lat.get('p50')} ms / p95 {lat.get('p95')} ms" if lat else ""
+                add((f"[{label}] @{target} {name}",
+                     f"hit@1 {cfg['hit@1']}, hit@5 {cfg['hit@5']}, hit@10 {cfg['hit@10']}, MRR {cfg['mrr@10']}{latency}",
+                     cmd))
+            if label == "seed" and target == "600":
+                add(("Bench process RSS (2 dense + 2 rerankers, after batch-embedding both corpora; not a serving number)",
+                     f"{rt['rss_mb']['end']} MB", cmd))
     lt = load("latency_threads.json")
     if lt:
         for label, res in lt["by_threads"].items():
@@ -81,12 +87,38 @@ def main() -> None:
         t = a["tokens_per_answer"]
         add(("Tokens per answer (prompt / completion, mean)", f"{t['prompt_mean']} / {t['completion_mean']}", cmd))
         add(("Answered questions citing an expected source", str(a["answered_source_hit_rate"]), cmd))
+    g = load("gate-canonical.json")
+    if g:
+        rows_g = g["per_question"]
+        sa = [r for r in rows_g if r["must_abstain"]]
+        ans = [r for r in rows_g if r["type"] == "answerable"]
+        cmd = "`answer.probe --no-generate --questions ../docs/eval-questions.md`"
+        for t in (g["policy_a_gate"]["threshold"], -0.891, -4.0):
+            ab = lambda r, t=t: (r["top_score"] if r["top_score"] is not None else -99) < t  # noqa: E731
+            add((f"[canonical] MiniLM gate threshold {round(t, 3)}",
+                 f"abstain recall {sum(map(ab, sa)) / len(sa):.2f} (unanswerable+out-of-scope), "
+                 f"false-abstain {sum(map(ab, ans)) / len(ans):.3f} (answerable)", cmd))
+        add(("[canonical] expected source in top-6 passages", str(g["context_hit_rate_top_passages"]), cmd))
+    ec = load("eval_run-canonical.json")
+    if ec:
+        s2 = ec["summary"]
+        cmd = "`eval.score --questions ../docs/eval-questions.md --out results/eval_run-canonical.json`"
+        add(("[canonical] /ask: schema valid / source hit / behaviour correct",
+             f"{s2['schema_valid']} / {s2['source_hit']} / {s2['behaviour_correct']}", cmd))
+        add(("[canonical] /ask: abstain recall / false-abstain (answerable)",
+             f"{s2['abstain_recall_unanswerable_out_of_scope']} / {s2['false_abstain_rate_answerable']}", cmd))
+        add(("[canonical] judge fact coverage / BEHAVIOR pass / contradictions",
+             f"{s2['fact_coverage_mean']} / {s2['judged_behavior_pass']} / {s2['contradictions']}", cmd))
+        add(("[canonical] /ask latency p50 / p95 (local qwen3:32b, concurrency 4)",
+             f"{s2['latency_ms']['p50']} / {s2['latency_ms']['p95']} ms", cmd))
+        add(("[canonical] full run wall time", f"{s2['total_wall_s']} s ({s2['ask_wall_s']} s asks + "
+             f"{s2['judge_wall_s']} s judge)", cmd))
     e = load("eval_run.json")
     if e:
         s = e["summary"]
         cmd = "`eval.score`"
-        add(("Scorer: schema valid / source hit / behaviour correct", f"{s['schema_valid']} / {s['source_hit_rate']} / "
-             f"{s['behaviour_correct']}", cmd))
+        add(("[seed] Scorer: schema valid / source hit / behaviour correct",
+             f"{s['schema_valid']} / {s.get('source_hit', s.get('source_hit_rate'))} / {s['behaviour_correct']}", cmd))
         add(("Scorer: judge fact coverage (mean)", str(s["fact_coverage_mean"]), cmd))
         add(("Scorer: /ask latency p50 / p95", f"{s['latency_ms']['p50']} / {s['latency_ms']['p95']} ms", cmd))
         add(("Scorer: full run wall time", f"{s['total_wall_s']} s ({s['ask_wall_s']} s asks + {s['judge_wall_s']} s judge)", cmd))
