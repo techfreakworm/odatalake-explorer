@@ -219,12 +219,13 @@ It contains documents and configuration only. All product code is written during
 | `eval/questions.md` | A copy of [eval-questions.md](eval-questions.md) (the question table and the scoring method) |
 | `.claude/settings.json` | [Appendix B](#appendix-b-claudesettingsjson) |
 | `.env.example` | [Appendix C](#appendix-c-envexample) |
+| `.gitignore` | [Appendix F](#appendix-f-gitignore). It keeps `.env` out of git, because the 10:30 step copies the kit with `git add -A` |
 | `pyproject.toml` (dependencies only, no code) | [Appendix D](#appendix-d-dependency-list) |
 | `LICENSE` | The full text of the chosen license (decision D6) |
 | `README.md` | [Appendix E](#appendix-e-readme-skeleton): headings only |
 | `docs/checkpoints.md` | [Section 5](#5-checkpoints) |
 
-To build the kit, start Claude Code with an initial prompt [[cli]] in this research repo: `claude "Copy every file block in docs/plan.md appendices A to E and
+To build the kit, start Claude Code with an initial prompt [[cli]] in this research repo: `claude "Copy every file block in docs/plan.md appendices A to F and
 sections 4-5 into the paths named in the kit table under $KIT, byte for byte. Do not change the content."`, then read the
 result once.
 
@@ -247,7 +248,7 @@ result once.
 | 09:30 | Arrive at HustleHub H203, 24th Main Rd, Sector 2, HSR Layout ([event page][ev]). Check-in runs 10:00-10:30. Have the ID ready. |
 | 09:45 | Join the Wi-Fi and check the hotspot as backup. Run `gh auth status`, `docker info` and `claude --version`. |
 | 10:00-10:30 | Kickoff. Ask the questions below, and write the answers into the kit's `CLAUDE.md` under "Kickoff answers". |
-| 10:15 | Credits smoke test (below). Put the key in `.env` and in the host's secret store. |
+| 10:15 | Credits smoke test (below), run in `$KIT` with the key in `$KIT/.env`. Put the key in the host's secret store too. `.gitignore` keeps `.env` out of the 10:30 commit. |
 
 **Kickoff questions, short list** (full list with defaults: [open-questions.md §A](open-questions.md#a-questions-for-the-organizers-at-kickoff)):
 1. Credits: which provider, which models and rate limits, and do the keys keep working through scoring and demos (until 17:30)?
@@ -257,7 +258,7 @@ result once.
 5. Submission: where to submit, which fields, and can the URL change after 14:30? May the service restart or auto-refresh its index after freeze?
 6. Pre-existing work: are prepared plans, prompts and eval questions OK? Must all code be written today?
 
-**Credits smoke test.** Run it in the event repo folder after filling `.env`. A base URL without a trailing slash is assumed.
+**Credits smoke test.** Run it in `$KIT` after filling `$KIT/.env` (the event repo does not exist until 10:30). The base URL may end with or without a slash.
 
 ```bash
 set -a; source .env; set +a
@@ -423,9 +424,11 @@ STEPS (in order; each step leaves a working server)
    3 chunks per page and about 4k context tokens. Blog chunks (tier 2) get the rank penalty set in CLAUDE.md, and never
    outrank a docs chunk unless no docs chunk passes gate 1 (decision D4).
 6. Gate 1: if the top rerank score < ABSTAIN_THRESHOLD, do ONE LLM rewrite of the question into search keywords and
-   retrieve again. Still below, abstain without generating. Gate 2: no valid citation in the answer, abstain.
+   retrieve again. Still below, abstain without generating. Gate 2: no valid citation in the answer, abstain (or answer
+   marked low confidence, if decision D8 in CLAUDE.md says so).
    The model outputs NO_ANSWER, abstain. OUT_OF_SCOPE, the standard decline. Log abstain_reason every time.
-7. Exact-match LRU cache keyed on normalized question + index version. No semantic cache.
+7. Exact-match LRU cache keyed on normalized question + index version. No semantic cache. A request with the header
+   Cache-Control: no-cache skips the cache (the monitoring probe uses it to exercise the LLM path).
 8. /ask/stream (SSE events meta, token, done, error), /feedback, structured JSON logs (request_id, timings per stage,
    tokens in and out, cache hit, abstain_reason, top score, top-5 doc_urls), the Server-Timing header,
    a global asyncio.Semaphore(MAX_CONCURRENCY) that queues rather than rejects, a per-IP rate limit of RATE_LIMIT_PER_MIN
@@ -441,6 +444,10 @@ PITFALLS
   run_in_threadpool, or every request stalls.
 - /ask returns exactly {"answer", "sources"}. Never add fields. Debug data goes in logs and headers.
 - Respect the incoming X-Request-ID header (the eval runner sends eval-<ID>) so triage can match logs to rows.
+- Register a handler for FastAPI's RequestValidationError so a 422 body uses the I2 error shape, not {"detail": ...}.
+- /ask/stream: hold back the first tokens until they cannot be the start of NO_ANSWER or OUT_OF_SCOPE, so a marker never
+  reaches the UI. Then send the standard text in done.
+- Log to stdout only, one JSON object per line. Locally, run uvicorn piped through `tee -a logs/app.jsonl` for triage.
 
 SYSTEM PROMPT (app/prompts.py, keep it as one stable prefix so provider prompt caching can work)
 You are Ask OLake, the documentation assistant for OLake (moves data from databases and streams into Apache Iceberg or
@@ -462,8 +469,8 @@ ABSTAIN TEXT (sources = []):
 "I don't know. The OLake docs and repos I searched don't cover this. You can ask in the OLake Slack
 (https://olake.io/slack/) or in GitHub Discussions (https://github.com/datazip-inc/olake/discussions)."
 OUT-OF-SCOPE TEXT (sources = []):
-"I can only help with OLake and OLake Fusion: setup, source configuration, sync modes, catalogs, table maintenance,
-deployment and troubleshooting."
+"That's outside the scope of Ask OLake. I can help with OLake and OLake Fusion: setup, source configuration, sync modes,
+catalogs, table maintenance, deployment and troubleshooting."
 
 ACCEPTANCE CHECKS (paste the output to the lead)
 - curl -s localhost:8000/ask -H 'content-type: application/json' -d '{"question":"How do I install OLake?"}' \
@@ -541,7 +548,7 @@ D1 (10:40-11:00) Hello-world deploy of B's stub. Write the Dockerfile: python:3.
    fastembed models downloaded at build time into the image, a non-root user, CMD uvicorn app.main:app --host 0.0.0.0
    --port ${PORT:-8080}. Add .dockerignore (.cache, .env, .git) and deploy/deploy.sh <primary|fallback> with the
    host-specific commands from docs/plan.md section 1.4. Deploy, then curl /healthz and /ask from a phone.
-D2 (11:00-11:30) eval/run.py, following eval/questions.md "Scoring": parse the table, POST each question to
+D2 (11:00-11:30) eval/run.py, following the "Scoring method" section of eval/questions.md: parse the table, POST each question to
    --base-url with X-Request-ID eval-<ID>, run the deterministic checks, and use the optional --judge LLM judge.
    Flags: --ids, --types, --limit, --concurrency (default 4), --out. Print a summary by Type and Category, plus p50/p95.
    Exit code 1 on any contract failure.
@@ -556,7 +563,9 @@ D7 (14:15-14:30) Freeze checklist (section 8), tag freeze, submit.
 ### 4.6 Workflow 1: eval-triage fan-out (paste into the lead session after an eval run)
 
 Saying "use a workflow" in your own words is the opt-in, and `/workflows` shows progress [[wf]].
-Run it on a local server built from the same commit, so the logs can be read locally.
+Triage reads request logs, so run the eval against a local server built from the same commit and index first:
+`mkdir -p logs && uv run uvicorn app.main:app --port 8000 2>&1 | tee -a logs/app.jsonl` in one terminal, then
+`uv run python -m eval.run --base-url http://localhost:8000 --out eval/results/latest.json` in another.
 
 ```text
 Use a workflow to triage eval/results/latest.json. Group the failed rows into these classes: contract,
@@ -654,7 +663,7 @@ Cut in this order. Never cut the `/ask` contract, citation mapping, abstain, `/h
 
 Each loop takes about 15 minutes. The last fix deploy is at 14:15.
 
-1. **Measure.** `uv run python -m eval.run --base-url "$URL" --out eval/results/$(date +%H%M).json && cp eval/results/$(date +%H%M).json eval/results/latest.json`
+1. **Measure.** `T=$(date +%H%M); uv run python -m eval.run --base-url "$URL" --out eval/results/$T.json && cp eval/results/$T.json eval/results/latest.json`
 2. **Triage.** First loop: workflow 4.6. Later loops: read the summary. Rank failure classes by rubric weight: accuracy 35
    (retrieval-miss, generation-miss), citations and honesty 15 (citation, false-abstain, missed-abstain), production
    readiness 20 (contract, 5xx, latency) ([challenges page][ch]).
@@ -690,7 +699,7 @@ for a failure pattern (api), an abstain threshold step (api), UI rendering of co
 Lunch runs 14:30-15:30 and the top 10 are announced at 15:30 ([event page][ev]). Eat next to the laptop, on power.
 
 - Synthetic probe in a terminal for the whole window:
-  `while true; do date +%T; curl -s -o /dev/null -w 'healthz %{http_code} %{time_total}s\n' "$URL/healthz"; curl -s -o /dev/null -w 'ask %{http_code} %{time_total}s\n' "$URL/ask" -H 'content-type: application/json' -d '{"question":"What is OLake?"}'; sleep 60; done`
+  `while true; do date +%T; curl -s -o /dev/null -w 'healthz %{http_code} %{time_total}s\n' "$URL/healthz"; curl -s -o /dev/null -w 'ask %{http_code} %{time_total}s\n' "$URL/ask" -H 'content-type: application/json' -H 'Cache-Control: no-cache' -d '{"question":"What is OLake?"}'; sleep 60; done`
 - Tail the host logs. PENDING(stack report: the log tail command). Watch the 5xx rate, p95, and provider 429s or timeouts.
 - If the provider fails: switch the env vars to the fallback trio (a config change, not a code change). Restart only if the endpoint is broken.
 - After 15:30, if we are in the top 10: warm the endpoint with the three demo questions; open tabs for the demo page, the README diagram,
@@ -769,6 +778,7 @@ Judging: accuracy 35, citations and honesty 15, production readiness 20, UX and 
 - RRF k = 60; candidates 30 (default, tune); final context ≈ 4k tokens; max 3 chunks per page
 - Blog rank penalty: PENDING(retrieval eval, decision D4)
 - ABSTAIN_THRESHOLD default: PENDING(POC)
+- Zero valid citations after generation (decision D8): abstain or low-confidence answer: PENDING(POC)
 - Docusaurus extraction (the selectors the POC used on all 124 docs pages, `poc/ingest/html2md.py`; 13 pages came out
   under 100 tokens, `poc/results/corpus.json`): article =
   `.theme-doc-markdown`, else `article [itemprop="articleBody"]`, else `article .markdown`, else `article`; headings keep
@@ -906,6 +916,18 @@ One-paragraph pitch. Live demo: <URL>/ · API: POST <URL>/ask · Repo license: <
 ## Production readiness (validation, errors, timeouts and retries, rate limits, logging, health)
 ## Run locally / deploy
 ## Disclosure (what was prepared before the event: research, plan, eval questions; all code written on 2026-10-18)
+```
+
+## Appendix F: .gitignore
+
+```gitignore
+.env
+.cache/
+logs/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
 ```
 
 ---
