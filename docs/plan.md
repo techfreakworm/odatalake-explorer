@@ -146,7 +146,7 @@ Out-of-scope, unanswerable and adversarial rows use `—` for Expected sources a
 `LLM_MODEL`, `LLM_REASONING_EFFORT` (optional; the lowest value the model supports), `LLM_FALLBACK_BASE_URL`,
 `LLM_FALLBACK_API_KEY`, `LLM_FALLBACK_MODEL`, `LLM_FALLBACK2_BASE_URL`, `LLM_FALLBACK2_API_KEY`, `LLM_FALLBACK2_MODEL`
 (the ordered provider chain), `INDEX_DIR`, `EMBED_MODEL` (default `BAAI/bge-small-en-v1.5`), `RETRIEVAL_MODE` (`hybrid` or
-`bm25`), `RERANK` (`on` or `off`), `RERANK_MODEL`, `GATE_SIGNAL` (`rerank` or `dense`), `ABSTAIN_THRESHOLD` (the off-topic
+`bm25`), `RERANK` (`on` or `off`), `RERANK_MODEL`, `GATE_SIGNAL` (`rerank`, `dense` or `bm25`), `ABSTAIN_THRESHOLD` (the off-topic
 short-circuit threshold for that signal), `SOURCE_URL_STYLE` (`branch` or `sha`, for repo sources; kickoff question K3
 decides), `BLOG` (`on` or `off`, decision D4), `GITHUB_TOKEN` (optional; makes conditional GitHub requests free),
 `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `RATE_LIMIT_BURST`, `DAILY_TOKEN_BUDGET`, `PUBLIC_BASE_URL`, `REFRESH_INTERVAL_MIN`
@@ -548,8 +548,9 @@ STEPS (in order; each step leaves a working server)
 5. Hybrid: dense (the fastembed model named in manifest.json; default BAAI/bge-small-en-v1.5) plus BM25, fused with
    RRF k=60. If RERANK=on, rerank the top 10 with RERANK_MODEL; CLAUDE.md says which model (PENDING(poc): FlashRank
    ms-marco-TinyBERT-L-2-v2, fastembed Xenova/ms-marco-MiniLM-L-6-v2, or BAAI/bge-reranker-base). Keep the top 6 for the
-   context. RERANK=off must also work. The off-topic gate reads GATE_SIGNAL: the top rerank score, or the highest dense
-   cosine when the rerank is off. ABSTAIN_THRESHOLD is calibrated for that signal. Small-to-big: add the neighbouring chunk (ord ± 1) of the top hits, at most
+   context. RERANK=off must also work. The off-topic gate reads GATE_SIGNAL: rerank (the top rerank score), dense (the
+   highest dense cosine) or bm25 (the highest BM25 score). ABSTAIN_THRESHOLD is calibrated for that signal at 0% false
+   abstains (the values are in CLAUDE.md). Small-to-big: add the neighbouring chunk (ord ± 1) of the top hits, at most
    3 chunks per page and about 4k context tokens. Apply the CLAUDE.md "Corpus" ranking rules: tier weights (a blog or
    outside chunk never outranks a tier-1 chunk that passes gate 1); demote release notes older than the latest two minors
    x0.3; boost the connector page named in the question x1.6; expand the query with the synonym map (OLake = OLake Go =
@@ -725,10 +726,12 @@ D1 (10:40-11:00) Deploy B's stub to Cloud Run. Write the Dockerfile: FROM python
        --timeout 60 --update-secrets LLM_API_KEY=llm-api-key:1 --env-vars-file deploy/env.yaml \
        --startup-probe httpGet.path=/readyz,periodSeconds=5,failureThreshold=24,timeoutSeconds=2 \
        --liveness-probe httpGet.path=/healthz,periodSeconds=30,timeoutSeconds=2
-   Use --memory 2Gi to 4Gi for bge-base or bge-reranker-base, and add --no-cpu-throttling when REFRESH_INTERVAL_MIN > 0.
+   Memory: 1Gi for bge-small with no reranker or TinyBERT, 2Gi with MiniLM-L6, 4Gi with bge-base or bge-reranker-base.
+   Add --no-cpu-throttling when REFRESH_INTERVAL_MIN > 0.
    deploy/env.yaml holds the non-secret I4 variables (gitignored if it holds anything sensitive).
    deploy/deploy.sh fallback: doctl apps create --spec .do/app.yaml the first time, then doctl apps update <app-id>
-   --spec .do/app.yaml. This is the section 1.4 spec with the event repo, apps-s-1vcpu-1gb (or apps-s-1vcpu-2gb), and the
+   --spec .do/app.yaml. This is the section 1.4 spec with the event repo, sized like Cloud Run (apps-s-1vcpu-1gb, apps-s-1vcpu-2gb
+   or apps-d-1vcpu-4gb), and the
    keys as envs of type SECRET.
    Deploy, then curl /healthz and /ask from a phone.
 D2 (11:00-11:30) eval/run.py, following the "Scoring method" section of eval/questions.md: parse the table, POST each question to
@@ -1001,10 +1004,12 @@ Decided by the lead (research.md §5.3) except the reranker, which waits on the 
   - BAAI/bge-reranker-base: 922.3 ms for the top 10 at 2 threads, about 1.5 GB more RSS, and seed-set hit@5 0.929 vs
     0.786. Only on a host with at least 4 GB of RAM.
   The stack research recommends no reranker by default, or TinyBERT if the eval shows a gain.
-- Off-topic gate (GATE_SIGNAL, ABSTAIN_THRESHOLD): PENDING(poc), decided together with the reranker. The signal is the top
-  rerank score, or the highest dense cosine when the rerank is off, and the threshold is calibrated for that signal. It
-  was about -4 when the MiniLM-L6 score was used. The score does not decide abstains: the model (NO_ANSWER) plus citation
-  validation does. See "Honesty".
+- Off-topic gate (GATE_SIGNAL, ABSTAIN_THRESHOLD): PENDING(poc), measured together with the reranker on the canonical set.
+  The candidate signals are the TinyBERT score, the MiniLM score, the highest dense cosine and the highest BM25 score. The
+  winner is the one that best separates off-topic rows at 0% false abstains on must-answer rows. Placeholders:
+  RERANK_MODEL=<poc pick>, GATE_SIGNAL=<poc pick>, ABSTAIN_THRESHOLD=<threshold at 0% false abstains>. With the MiniLM-L6
+  score the threshold was about -4. The score does not decide abstains: the model (NO_ANSWER) plus citation validation
+  does. See "Honesty".
 - RRF k = 60; rerank the top 10; 6 passages in the context, about 4k context tokens at most; max 3 chunks per page
 - Blog rank weight when BLOG=on: PENDING(A/B on the eval set at the event, decision D4)
 - Why not a score gate: on the 94-row set, -0.891 caught only half of the unanswerable and out-of-scope rows, and the best
@@ -1126,7 +1131,7 @@ Rows with no sources use —.
 ### I4 env
 LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_REASONING_EFFORT, LLM_FALLBACK_BASE_URL, LLM_FALLBACK_API_KEY,
 LLM_FALLBACK_MODEL, LLM_FALLBACK2_BASE_URL, LLM_FALLBACK2_API_KEY, LLM_FALLBACK2_MODEL (ordered chain), INDEX_DIR,
-EMBED_MODEL, RETRIEVAL_MODE (hybrid|bm25), RERANK (on|off), RERANK_MODEL, GATE_SIGNAL (rerank|dense), ABSTAIN_THRESHOLD
+EMBED_MODEL, RETRIEVAL_MODE (hybrid|bm25), RERANK (on|off), RERANK_MODEL, GATE_SIGNAL (rerank|dense|bm25), ABSTAIN_THRESHOLD
 (off-topic short-circuit for that signal), SOURCE_URL_STYLE (branch|sha), BLOG (on|off), GITHUB_TOKEN (optional),
 MAX_CONCURRENCY, RATE_LIMIT_PER_MIN, RATE_LIMIT_BURST, DAILY_TOKEN_BUDGET, PUBLIC_BASE_URL, REFRESH_INTERVAL_MIN (0 = off),
 LOG_LEVEL, DEBUG (local only)
@@ -1180,17 +1185,18 @@ the event JSON on stdin [[hooks]]. To use it, merge this `hooks` key into the sa
 ## Appendix C: .env.example
 
 ```bash
-# LLM chain (OpenAI-compatible), tried in order. K1 decides the primary. Keep a PAID key with >= 100 RPM in the chain (D7).
+# LLM chain (OpenAI-compatible), tried in order: 1) the event credits (K1 picks the model, D3), 2) the operator's PAID key with
+# >= 100 RPM (OpenAI gpt-6-luna, a Groq developer key, or prepaid DigitalOcean; D7), 3) Gemma on the Gemini free tier, last.
 LLM_BASE_URL=
 LLM_API_KEY=
 LLM_MODEL=
 # Lowest reasoning setting the model supports (e.g. low or minimal on Gemini 3); leave empty for non-reasoning models
 LLM_REASONING_EFFORT=
-# Fallbacks, e.g. DigitalOcean serverless inference (https://inference.do-ai.run/v1) or Groq (https://api.groq.com/openai/v1)
+# 2) The paid fallback, e.g. OpenAI (https://api.openai.com/v1), Groq (https://api.groq.com/openai/v1) or DigitalOcean (https://inference.do-ai.run/v1)
 LLM_FALLBACK_BASE_URL=
 LLM_FALLBACK_API_KEY=
 LLM_FALLBACK_MODEL=
-# Last resort, e.g. Gemini's OpenAI-compatible endpoint (Gemma 4 there is free tier only and unverified)
+# 3) Last resort: Gemma 4 on Gemini's OpenAI-compatible endpoint (free tier only, about 15 RPM, data used by Google, unverified)
 LLM_FALLBACK2_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
 LLM_FALLBACK2_API_KEY=
 LLM_FALLBACK2_MODEL=
@@ -1199,7 +1205,7 @@ INDEX_DIR=data/index
 EMBED_MODEL=BAAI/bge-small-en-v1.5
 RETRIEVAL_MODE=hybrid
 # PENDING(poc): reranker and gate signal. Candidates: ms-marco-TinyBERT-L-2-v2 (FlashRank),
-# Xenova/ms-marco-MiniLM-L-6-v2, BAAI/bge-reranker-base. With RERANK=off, use GATE_SIGNAL=dense.
+# Xenova/ms-marco-MiniLM-L-6-v2, BAAI/bge-reranker-base. Gate signal: rerank, dense or bm25 (dense or bm25 if RERANK=off).
 RERANK=on
 RERANK_MODEL=
 GATE_SIGNAL=rerank

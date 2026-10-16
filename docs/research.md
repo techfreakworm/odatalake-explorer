@@ -344,9 +344,15 @@ POC result files named below.
 - **Free tiers will throttle a scorer burst.** Groq's free plan allows 8K TPM, about 2 requests per minute at 4k tokens
   ([Groq rate limits][groq-rl]). A Cerebras trial allows 5 RPM, and Gemma on the Gemini free tier about 15 RPM
   ([stack report][r-stack]).
-- **Decision.** Use an ordered fallback chain of (base URL, model, key). The primary is a paid or credited key with at least
-  100 RPM, behind a global semaphore that queues. Kickoff questions K1 and K2 decide the order; the operator holds one paid
-  fallback key with a spend cap (decision D7).
+- **Decision.** Use an ordered fallback chain of (base URL, model, key), behind a global semaphore that queues. The order is
+  always:
+  1. the event credits;
+  2. the operator's paid personal key with at least 100 RPM: OpenAI gpt-6-luna, a Groq developer key, or a prepaid
+     DigitalOcean balance (decision D7);
+  3. Gemma on the Gemini free tier, last: about 15 RPM, the data is used by Google, and the OpenAI-compatible path is
+     unverified.
+
+  Kickoff question K1 decides which models to try on the credits (decision D3).
 
 ### 5.2 Generator candidates and cost
 Latency decides, not cost. At 4k input and 400 output tokens, an answer costs between $0.0004 and $0.0045 depending on
@@ -417,9 +423,14 @@ RAM.**
   2 threads (POC).
 - bge-reranker-base: 922.3 ms for the top 10 at 2 threads, and about 1.5 GB more RSS (POC).
 
-The stack research recommends no reranker by default, or TinyBERT if the eval shows a gain. The off-topic gate (§4.3) needs
-a score whichever is chosen: the TinyBERT score, the MiniLM score, or the highest dense cosine. The POC is measuring which
-separates best.
+The stack research recommends no reranker by default, or TinyBERT if the eval shows a gain. Both choices are measured on
+the canonical set, PENDING(poc):
+- **Reranker**: none, TinyBERT, MiniLM-L6 or bge-reranker-base, compared on source hit and latency.
+- **Off-topic gate signal**: the TinyBERT score, the MiniLM score, the highest dense cosine or the highest BM25 score. The
+  winner is the signal that separates off-topic rows best at 0% false abstains on must-answer rows.
+
+Placeholders until the POC reports: `RERANK_MODEL=<poc pick>`, `GATE_SIGNAL=<poc pick>`, `ABSTAIN_THRESHOLD=<threshold at 0%
+false abstains>`.
 
 ### 5.4 Vector store
 None. Retrieval stays in process. Stack-report benchmarks at 20k chunks:
@@ -452,18 +463,25 @@ inactivity ([Supabase pricing][supabase]). Decision: bm25s plus numpy, fused wit
 | Render free | Avoid | Spins down when idle and serves a loading page | [Render free][render] |
 | Hugging Face Docker Space | Only if PRO is already paid | Docker Spaces need a paid plan to create, and free hardware sleeps when unused. The container runs as uid 1000 on port 7860 | [Spaces overview][hf-overview]; [Docker Spaces][hf-docker] |
 
-**Sizing (decided):** 1 vCPU; 1 GiB of memory with bge-small and a light reranker, or 2-4 GiB with bge-base or
-bge-reranker-base (memory figures in §5.3); a request timeout of about 60 s; min-instances 1. On Cloud Run,
+**Sizing (decided):** 1 vCPU, a request timeout of about 60 s, and min-instances 1. Memory depends on the models (figures in
+§5.3):
+- 1 GiB for bge-small with no reranker or TinyBERT;
+- 2 GiB with MiniLM-L6;
+- 4 GiB with bge-base or bge-reranker-base. The POC measured 1.4-2.6 GB RSS with bge-base plus MiniLM.
+
+The DigitalOcean fallback is sized the same way: `apps-s-1vcpu-1gb` ($12 a month), `apps-s-1vcpu-2gb` ($25), or a 4 GiB size
+such as `apps-d-1vcpu-4gb` ($49) ([pricing][do-app-pricing]). Add `--no-cpu-throttling` on Cloud Run when the in-app refresher
+runs. On Cloud Run,
 `--min-instances` is set per revision and `--min` service-wide. `--cpu-boost` is on by default for new services, and
 `--update-secrets` maps env vars to Secret Manager versions ([gcloud run deploy][gcloud-deploy],
 [Cloud Run secrets][cr-secrets]).
 
 ### 5.6 Widget pattern, CORS and CSP
-**Prior art.** kapa.ai and Inkeep both ship a single script that mounts a Shadow DOM panel and streams with `fetch` and
-`getReader`, with no iframe. The stack research measured this from their bundles: kapa's is 2,130,950 bytes raw and
+**Prior art: Shadow DOM is the commercial norm.** kapa.ai and Inkeep both ship a single script that mounts a Shadow DOM
+panel and streams with `fetch` and `getReader`, with no iframe. The stack research measured this from their bundles: kapa's is 2,130,950 bytes raw and
 Inkeep's 1,655,186. olake.io sends no CSP and no `X-Frame-Options`, and its `/message-listener.js` accepts a
 `{theme: light|dark}` message from a parent window when the docs are framed ([stack report][r-stack]). So both patterns
-would work on olake.io itself.
+would work on olake.io itself, and Shadow DOM is an honest alternative there.
 
 **Decision: the iframe loader stays primary**, with Shadow DOM as the documented alternative:
 - one chat page serves as the full-page demo, the plain `<iframe>` embed and the launcher panel;
