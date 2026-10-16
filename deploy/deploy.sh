@@ -70,9 +70,14 @@ new_canary() {
 }
 
 # deploy/env.yaml plus this deploy's CANARY and GIT_SHA, for gcloud --env-vars-file (one flat string map)
-write_env_deploy() {  # write_env_deploy OUT
+# The Gemini fallback's base URL is pre-filled: without its key the app would log a config_warning at every start,
+# so the rendered envs leave FALLBACK2 out unless its key is there (a secret on Cloud Run, the env var for DigitalOcean)
+FALLBACK2_VARS='LLM_FALLBACK2_BASE_URL|LLM_FALLBACK2_MODEL|LLM_FALLBACK2_REASONING_EFFORT'
+
+write_env_deploy() {  # write_env_deploy OUT [EXCLUDE_REGEX]
+  local exclude="^(CANARY|GIT_SHA${2:+|$2})	"
   {
-    env_pairs | grep -v -E '^(CANARY|GIT_SHA)	' | while IFS="$(printf '\t')" read -r k v; do
+    env_pairs | grep -v -E "$exclude" | while IFS="$(printf '\t')" read -r k v; do
       printf '%s: %s\n' "$k" "$(yaml_quote "$v")"
     done
     printf 'CANARY: "%s"\nGIT_SHA: "%s"\n' "$CANARY" "$GIT_SHA"
@@ -117,7 +122,6 @@ cmd_primary() {
   require_env PROJECT
   local sa="$SA_NAME@$PROJECT.iam.gserviceaccount.com" pair var name ver mapping="" refresh
   new_canary
-  write_env_deploy deploy/env.deploy.yaml
   # --update-secrets only for the secrets that exist, each pinned to its newest enabled version
   for pair in $SECRET_PAIRS; do
     var=${pair%%:*}
@@ -129,6 +133,11 @@ cmd_primary() {
     mapping="${mapping:+$mapping,}$var=$name:${ver##*/}"
   done
   [ -n "$mapping" ] || echo "warning: no LLM key secrets: /ask will return the degraded answer (run: deploy/deploy.sh secrets)"
+  case ",$mapping" in
+    *,LLM_FALLBACK2_API_KEY=*) write_env_deploy deploy/env.deploy.yaml ;;
+    *) write_env_deploy deploy/env.deploy.yaml "$FALLBACK2_VARS"
+       echo "no llm-fallback2-api-key secret: the Gemini fallback is left out of the env" ;;
+  esac
   local extra=()
   [ -n "$mapping" ] && extra+=(--update-secrets "$mapping")
   refresh=$(env_value REFRESH_INTERVAL_MIN)
@@ -154,7 +163,9 @@ render_do_spec() {  # render_do_spec OUT
   {
     sed -e "s#\${DO_APP_NAME}#$DO_APP_NAME#g" -e "s#\${DO_REPO}#$DO_REPO#g" -e "s#\${DO_BRANCH}#$DO_BRANCH#g" \
         -e "s#\${DO_SIZE}#$DO_SIZE#g" .do/app.yaml | sed '/^#ENVS#$/,$d'
-    env_pairs | grep -v -E '^(CANARY|GIT_SHA)	' | while IFS="$(printf '\t')" read -r k v; do
+    local exclude='^(CANARY|GIT_SHA)	'
+    [ -n "${LLM_FALLBACK2_API_KEY:-}" ] || exclude="^(CANARY|GIT_SHA|$FALLBACK2_VARS)	"
+    env_pairs | grep -v -E "$exclude" | while IFS="$(printf '\t')" read -r k v; do
       [ -n "$v" ] || continue
       printf '      - key: %s\n        value: %s\n        scope: RUN_TIME\n' "$k" "$(yaml_quote "$v")"
     done

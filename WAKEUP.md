@@ -189,6 +189,14 @@ Put that threshold into `deploy/env.yaml` (`ABSTAIN_THRESHOLD: "0.6894"`), commi
 `uv run python -m eval.run --base-url http://127.0.0.1:8000 --retrieval-only`. It prints the same line from
 `/debug/retrieve`.
 
+In the same redeploy, revisit the LLM timeout. `LLM_TIMEOUT_S` (25 s) is also each provider's first-byte bound inside
+the 30 s `/ask` bound, so a hung primary leaves the fallback only about 5 s.
+- If the primary's p95 time to first token from the step 2 smoke test is under about 8 s, set
+  `LLM_TIMEOUT_S: "12"` to `"15"` in `deploy/env.yaml`, so a hung primary leaves time for a fallback answer inside
+  the 30 s bound.
+- Keep 25 for a reasoning model whose first token can take over 10 s. Fast failures (429, 5xx, connection refused)
+  fail over at once either way.
+
 ## 10. Fallback host and emergency path
 
 **DigitalOcean App Platform, BLR** [outward] [$: apps-s-1vcpu-2gb is $25 a month, billed per second]
