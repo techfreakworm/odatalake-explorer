@@ -19,7 +19,8 @@
 #       in the live sitemap
 #   (d) hygiene: personal paths and secret patterns in tracked files (working tree and branch history),
 #       AI attribution lines in the branch commit messages, and the author of every branch commit
-#   (e) key POC numbers quoted in docs/research.md (and a few in docs/plan.md) match poc/results/*.json
+#   (e) key POC numbers quoted in docs/research.md (and a few in docs/plan.md) match poc/results/*.json;
+#       numbers are matched in any common formatting, so the wording around them is free
 #
 # Output: PASS / WARN / FAIL / INFO lines, then a summary. Exit status 1 if any check FAILs.
 # Needs bash, git, curl, jq, awk, grep, sed, sort, tr, xargs. No credentials.
@@ -84,10 +85,12 @@ fi
 SNAP="$TMP/snap"
 mkdir -p "$SNAP/poc" && cp -R docs "$SNAP/" && cp README.md "$SNAP/" && cp -R "$RES" "$SNAP/poc/" || {
   echo "FAIL  could not snapshot docs/, README.md and $RES"; exit 1; }
+# research.md cites corpus v1 numbers "at POC commit 20b4bac"; keep that file for the (e) checks.
+git show 20b4bac:poc/results/corpus.json >"$SNAP/poc/results/.corpus-v1.json" 2>/dev/null || rm -f "$SNAP/poc/results/.corpus-v1.json"
 cd "$SNAP" || exit 2
 
 # Whitespace-normalised copy of a doc, so that a quoted phrase matches across line wraps.
-norm() { tr -s '[:space:]' ' ' <"$1"; }
+norm() { LC_ALL=C tr -s '[:space:]' ' ' <"$1"; }
 for f in $DOCS README.md; do [ -f "$f" ] && norm "$f" >"$TMP/norm.$(basename "$f")"; done
 
 # ---------------------------------------------------------------------------------------------------------
@@ -521,7 +524,9 @@ if git rev-parse --verify -q "$BASE" >/dev/null; then
     if [ -z "$hits" ]; then pass "d: no $name in any of the $nrev branch commits ($BASE..HEAD)"
     else fail "d: $name in the branch history (pushed with the branch):"; printf '%s\n' "$hits" | head -20 | detail; fi
   done
-  attr=$(git log --format='%h %B' "$BASE"..HEAD | grep -inE 'co-authored-by|claude-session|generated with|noreply@anthropic\.com|claude\.com/claude-code' || true)
+  # Trailers and the "Generated with" footer only: "regenerated with" in a commit body is not attribution.
+  attr=$(git log --format='%h %B' "$BASE"..HEAD \
+    | grep -nE '(^|[^[:alnum:]])[Gg]enerated with|[Cc]o-[Aa]uthored-[Bb]y:|[Cc]laude-[Ss]ession:|noreply@anthropic\.com|claude\.com/claude-code' || true)
   if [ -z "$attr" ]; then pass "d: no AI attribution lines in the $nrev branch commit messages"
   else fail "d: AI attribution lines in branch commit messages:"; printf '%s\n' "$attr" | detail; fi
   me=$(git config user.name); mymail=$(git config user.email)
@@ -545,187 +550,195 @@ else fail "d: tracked local files:"; printf '%s\n' "$tracked" | detail; fi
 # ---------------------------------------------------------------------------------------------------------
 section "(e) POC numbers in the docs vs $RES/*.json"
 cd "$SNAP" || exit 2
-# jq helpers: fmt(d) rounds to d decimals; commas adds thousands separators to a digit string;
-# fmtc(d) does both; pct is a percentage with one decimal and no trailing ".0".
-JQDEF='
-def fmt(d): . as $x | (if $x < 0 then "-" else "" end) as $s | (if $x < 0 then -$x else $x end) as $a
-  | pow(10; d) as $p | ($a * $p | round) as $n
-  | if d == 0 then $s + ($n | tostring)
-    else $s + (($n / $p | floor) | tostring) + "." + (("0" * d) + (($n % $p) | tostring))[-d:] end;
-def commas: if length <= 3 then . else (.[0:length-3] | commas) + "," + .[length-3:] end;
-def fmtc(d): fmt(d) | split(".") as $p
-  | ($p[0] | if startswith("-") then "-" + (.[1:] | commas) else commas end)
-    + (if ($p | length) > 1 then "." + $p[1] else "" end);
-def pct: . * 100 | fmt(1) | sub("\\.0$"; "");
-'
-# num <doc> <label> <jq expression over the slurped files .[0], .[1], ...> <json files...>
-# The jq expression builds the exact text the doc must contain (compared with whitespace normalised).
-NUM_OK=0
+# Each check takes numbers from the result JSON with jq and looks for each number in the doc, in any common
+# formatting: with or without thousands separators, rounded to any precision that keeps at least 2 significant
+# digits, and as a percentage with -p. The wording around a number is free. Small or common numbers take a
+# context pattern (-c ERE, lowercase): the number must then sit within 300 characters of a match.
+cat >"$TMP/numfind.awk" <<'AWK'
+function sig(s,   t) { t = s; gsub(/[^0-9]/, "", t); sub(/^0+/, "", t); return length(t) }
+function commas(s,   ip, fp, out) {
+  ip = s; fp = ""
+  if (index(s, ".")) { fp = substr(s, index(s, ".")); ip = substr(s, 1, index(s, ".") - 1) }
+  out = ""
+  while (length(ip) > 3) { out = "," substr(ip, length(ip) - 2) out; ip = substr(ip, 1, length(ip) - 3) }
+  return ip out fp
+}
+function isdig(c) { return c ~ /^[0-9]$/ }
+function nearctx(pos,   i) { if (ctx == "") return 1; for (i = 1; i <= nc; i++) if (pos >= cp[i] - win && pos <= cp[i] + win) return 1; return 0 }
+function found(f, neg,   start, p, pos, b, b2, a, a2, ok) {
+  start = 1
+  while ((p = index(substr(T, start), f)) > 0) {
+    pos = start + p - 1; start = pos + 1
+    b = substr(T, pos - 1, 1); b2 = substr(T, pos - 2, 1)
+    a = substr(T, pos + length(f), 1); a2 = substr(T, pos + length(f) + 1, 1)
+    ok = 1
+    if (pos > 1 && (isdig(b) || b == "." || (b == "," && isdig(b2)))) ok = 0
+    if (!neg && pos > 1 && b == "-" && !isdig(b2)) ok = 0
+    if (isdig(a) || ((a == "." || a == ",") && isdig(a2))) ok = 0
+    if (pct && a != "%" && !(a == " " && a2 == "%")) ok = 0
+    if (ok && nearctx(pos)) return 1
+  }
+  return 0
+}
+{ T = T $0 " " }
+END {
+  if (ctx != "") { L = tolower(T); s = 1; while (match(substr(L, s), ctx)) { cp[++nc] = s + RSTART - 1; s = s + RSTART + RLENGTH - 1; if (RLENGTH == 0) s++ } }
+  n = split(vals, V, " ")
+  for (i = 1; i <= n; i++) {
+    v = V[i]; neg = substr(v, 1, 1) == "-"; a = neg ? substr(v, 2) : v; x = a + 0
+    delete F; nf = 0; F[++nf] = a
+    for (d = 0; d <= 4; d++) for (e = -1; e <= 1; e++) {
+      s = sprintf("%." d "f", x + e * 1e-9); if (sig(s) >= 2 || sig(s) >= sig(a)) F[++nf] = s
+    }
+    hit = 0; list = ""
+    for (k = 1; k <= nf && !hit; k++) {
+      f = F[k]; g = commas(f)
+      if (neg) { hit = found("-" f, 1) || found("-" g, 1) || found("\342\210\222" f, 1) || found("\342\210\222" g, 1) }
+      else hit = found(f, 0) || found(g, 0)
+      list = list " " (neg ? "-" : "") g
+    }
+    if (!hit) print "MISSING\t" v "\t" list
+  }
+}
+AWK
+NUM_OK=0; NUM_VALS=0
+# num <doc> <label> [-c <context ERE>] [-p] <jq expression over the slurped files .[0], .[1], ...> <json files...>
 num() {
-  local doc="$1" label="$2" expr="$3"; shift 3
-  local want
-  if ! want=$(jq -r -s "$JQDEF $expr" "$@" 2>"$TMP/jqerr"); then
-    fail "e: $label: jq failed on $*: $(head -1 "$TMP/jqerr")"; return
+  local doc="$1" label="$2" ctx="" pct=0 expr vals miss
+  shift 2
+  while :; do
+    case "${1:-}" in
+      -c) ctx="$2"; shift 2 ;;
+      -p) pct=1; shift ;;
+      *) break ;;
+    esac
+  done
+  expr="$1"; shift
+  if ! vals=$(jq -r -s "$expr" "$@" 2>"$TMP/jqerr"); then fail "e: $label: jq failed on $*: $(head -1 "$TMP/jqerr")"; return 0; fi
+  vals=$(printf '%s\n' "$vals" | tr -s ' \n' '  ')
+  if [ -z "${vals// /}" ] || printf '%s' "$vals" | grep -q null; then fail "e: $label: no value in $* ($expr)"; return 0; fi
+  # Byte semantics (LC_ALL=C): the matcher compares raw bytes, and a failed awk run must not count as a pass.
+  if ! miss=$(LC_ALL=C awk -v vals="$vals" -v ctx="$ctx" -v pct="$pct" -v win=300 -f "$TMP/numfind.awk" \
+                "$TMP/norm.$(basename "$doc")" 2>"$TMP/awkerr") || [ -s "$TMP/awkerr" ]; then
+    fail "e: $label: the number matcher failed: $(head -1 "$TMP/awkerr")"; return 0
   fi
-  want=$(printf '%s' "$want" | tr -s '[:space:]' ' ')
-  if [ -z "$want" ] || [ "$want" = null ]; then fail "e: $label: no value in $*"; return; fi
-  if grep -qF -- "$want" "$TMP/norm.$(basename "$doc")"; then
-    NUM_OK=$((NUM_OK + 1)); [ "$VERBOSE" -eq 1 ] && pass "e: $label: '$want' ($*)"
+  NUM_VALS=$((NUM_VALS + $(printf '%s\n' $vals | grep -c .)))
+  if [ -z "$miss" ]; then
+    NUM_OK=$((NUM_OK + 1)); [ "$VERBOSE" -eq 1 ] && pass "e: $label: [$vals ] found in $doc"
   else
-    fail "e: $label: $doc does not contain '$want' (from $*)"
+    fail "e: $label: $doc does not quote $(printf '%s\n' "$miss" | awk -F'\t' '{ printf "%s%s (tried%s)", sep, $2, $3; sep = "; " }') ($*${ctx:+, near /$ctx/})"
   fi
   return 0
 }
-C=$RES/corpus.json; K=$RES/chunks.json; R=$RES/retrieval.json; L=$RES/latency_threads.json
+C=$RES/corpus.json; C1=$RES/.corpus-v1.json; K=$RES/chunks.json; R=$RES/retrieval.json; L=$RES/latency_threads.json
 A=$RES/answer.json; G=$RES/gate-canonical.json; E=$RES/embed_probe.json; F=$RES/freshness.json
-for j in $C $K $R $L $A $G $E $F; do [ -s "$j" ] || fail "e: $j is missing"; done
+RC=$RES/retrieval-canonical.json; RB=$RES/retrieval-canonical-bge-reranker.json; V=$RES/retrieval-v2.json
+GS=$RES/gate-signals.json; GR=$RES/gate-rewrite.json; EC=$RES/eval_run-canonical.json; E2=$RES/eval_run-canonical-v2-subset.json
+for j in $C $K $R $L $A $G $E $F $RC $RB $V $GS $GR $EC $E2; do [ -s "$j" ] || fail "e: $j is missing"; done
+D=$RESEARCH
 
-# corpus.json
-num $RESEARCH "sitemap and docs page count" '.[0].docs_fetch | "\(.sitemap_urls) URLs: \(.per_section.docs) under `/docs/`"' $C
-num $RESEARCH "sitemap split (blog = 85 posts + the index)" '.[0].docs_fetch | "| \(.sitemap_urls), \(.per_section.docs), \(.per_section.blog + 1), \(.sitemap_urls - .per_section.docs - .per_section.blog - 1) |"' $C
-num $RESEARCH "docs tokens" '"or \(.[0].docs.total.tokens | tostring | commas) from the POC'"'"'s Markdown"' $C
-num $RESEARCH "docs tokens (table)" '"| Docs tokens (o200k_base) | \(.[0].docs.total.tokens | tostring | commas) |"' $C
-num $RESEARCH "docs structure" '.[0].docs.total | "\(.code_blocks) code blocks, \(.tables) tables, \(.tabs) tab groups"' $C
-num $RESEARCH "admonitions" '"\(.[0].docs.total.admonitions) admonitions"' $C
-num $RESEARCH "thin pages" '.[0].docs.total.pages_under_100_tokens as $t | "\($t | length) pages under 100 tokens (\([$t[] | select(contains("/docs/fusion/"))] | length) of them among the 23 Fusion pages)"' $C
-num $RESEARCH "docs fetch time" '.[0].docs_fetch | "The POC took \(.fetch_wall_s_by_section.docs) s at concurrency \(.concurrency)"' $C
-num $RESEARCH "blog tokens" '"or \(.[0].blog.total.tokens | tostring | commas) from the POC'"'"'s Markdown"' $C
-num $RESEARCH "release-note pages" '"\(.[0].docs.by_section.release.pages) pages under `/docs/release/`"' $C
-num $RESEARCH "tokens per page" '.[0].docs.total | "| \(.tokens_per_page_p50 | tostring | commas); \(.tokens_per_page_max | tostring | commas) |"' $C
-num $RESEARCH "repo allowlist" '.[0].repos.total | "\(.files) files, \(.tokens | tostring | commas) tokens"' $C
-num $RESEARCH "docs plus repos" '.[0].combined_docs_plus_repos | "\(.documents) documents, \(.tokens | tostring | commas) tokens"' $C
-num $RESEARCH "209-page fetch" '.[0].docs_fetch | "Fetch of \(.fetched_ok) pages at concurrency \(.concurrency) | \(.fetch_wall_s) s (per page p50 \(.per_page_fetch_s_p50) s)"' $C
+# corpus.json (corpus v2) and the corpus v1 file the measurements used (git show of POC commit 20b4bac)
+num $D "sitemap and fetch counts" '.[0].docs_fetch | .sitemap_urls, .per_section.docs, .per_section.blog, .fetched_ok, .fetch_wall_s, .per_page_fetch_s_p50, .fetch_wall_s_by_section.docs' $C
+num $D "docs size" '.[0].docs.total | .tokens, .code_blocks, .tables, .admonitions, .tokens_per_page_p50, .tokens_per_page_max' $C
+num $D "tab groups" -c 'tab group' '.[0].docs.total.tabs' $C
+num $D "thin pages" -c 'under 100 tokens' '.[0].docs.total.pages_under_100_tokens as $t | ($t | length), ([$t[] | select(contains("/docs/fusion/"))] | length)' $C
+num $D "release-note pages" -c 'docs/release' '.[0].docs.by_section.release.pages' $C
+num $D "blog tokens" '.[0].blog.total.tokens' $C
+num $D "Fusion pages" -c 'fusion' '.[0].fusion_pages | .pages, .stubs, .content_tokens' $C
+num $D "corpus v2 Tier A repos" '.[0].repos.total | .files, .tokens' $C
+num $D "release notes indexed" '.[0].releases.total | .releases, .tokens' $C
+num $D "core index (combined_core_index)" '.[0].combined_core_index | .documents, .tokens' $C
+num $D "repo table" '.[0].repos.per_repo[] | .tracked_files' $C
+[ -s "$C1" ] && num $D "corpus v1 allowlist (POC commit 20b4bac)" '.[0].repos.total | .files, .tokens' $C1
 for repo in olake olake-ui olake-helm olake-fusion; do
-  num $RESEARCH "repo row $repo" ".[0].repos.per_repo[\"$repo\"] | \"| $repo | \(.sha[0:7]) (\(.commit_date[0:10])) | \(.tracked_files | tostring | commas) |\"" $C
+  sha=$(jq -r --arg r "$repo" '.repos.per_repo[$r].sha[0:7]' $C)
+  if grep -q -- "$sha" "$TMP/norm.research.md"; then NUM_OK=$((NUM_OK + 1)); else fail "e: $RESEARCH does not quote the $repo SHA $sha from $C"; fi
 done
-num $PLAN "plan: 209 pages in 12.77 s" '.[0].docs_fetch | "fetched \(.fetched_ok) pages in \(.fetch_wall_s) s at concurrency \(.concurrency)"' $C
-num $PLAN "plan: 124 - 16 = 108" '"(\(.[0].docs.total.pages) - 16 = \(.[0].docs.total.pages - 16) on 2026-10-16"' $C
-
-# chunks.json
-for i in 0 1; do
-  num $RESEARCH "chunks config $i" ".[0].configs[$i] | \"| Chunks at target \(.target) / hard max \(.hard_max) (no blog) | \(.chunks | tostring | commas) (docs \(.by_source_type.docs.n | tostring | commas), repo \(.by_source_type.repo.n)); tokens p50 \(.tokens.p50), p95 \(.tokens.p95), max \(.tokens.max); \(.over_hard_max) over hard max |\"" $K
+for t in $(jq -r '.releases.per_repo[].newest' $C); do
+  grep -q -- "$t" "$TMP/norm.research.md" || fail "e: $RESEARCH does not quote the newest release $t from $C"
 done
-num $RESEARCH "vector count range" '"\(.[0].configs | map(.chunks) | min | tostring | commas)-\(.[0].configs | map(.chunks) | max | tostring | commas) chunks without the blog"' $K
 
-# retrieval.json (seed set)
-num $RESEARCH "WordPiece truncation at 600" '.[0].per_target["600"] | "\(.embedding["BAAI/bge-small-en-v1.5"].wordpiece_over_512) of \(.chunks) chunks exceed"' $R
-num $RESEARCH "WordPiece truncation at 300" '.[0].per_target["300"] | "At 300 only \(.embedding["BAAI/bge-small-en-v1.5"].wordpiece_over_512) of \(.chunks | tostring | commas) do"' $R
-rrow() { # <label as in the doc table> <config key in retrieval.json>
-  num $RESEARCH "retrieval row: $1" ".[0].per_target[\"300\"].configs[\"$2\"] | \"| $1 | \(.\"hit@1\" | fmt(3)) | \(.\"hit@5\" | fmt(3)) | \(.\"hit@10\" | fmt(3)) | \(.\"mrr@10\" | fmt(3)) | \(.latency_ms.total_ms.p50 | fmt(2)) |\"" $R
-}
-rrow "BM25" "bm25"
-rrow "Dense bge-small-en-v1.5" "dense:BAAI/bge-small-en-v1.5"
-rrow "Dense bge-base-en-v1.5" "dense:BAAI/bge-base-en-v1.5"
-rrow "Hybrid (RRF) bge-small" "hybrid:BAAI/bge-small-en-v1.5"
-rrow "Hybrid (RRF) bge-base" "hybrid:BAAI/bge-base-en-v1.5"
-rrow "Hybrid bge-base + rerank ms-marco-MiniLM-L-6-v2" "hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2"
-rrow "Hybrid bge-base + rerank bge-reranker-base" "hybrid:BAAI/bge-base-en-v1.5+rerank:BAAI/bge-reranker-base"
-rrow "BM25 + rerank ms-marco-MiniLM-L-6-v2" "bm25+rerank:Xenova/ms-marco-MiniLM-L-6-v2"
-num $RESEARCH "embedding speed ratio" '.[0].per_target["300"].embedding as $e | "embeds the corpus \($e["BAAI/bge-base-en-v1.5"].embed_full_corpus_s / $e["BAAI/bge-small-en-v1.5"].embed_full_corpus_s | fmt(1))x faster"' $R
-num $RESEARCH "embedding times" '.[0].per_target["300"].embedding as $e | "(\($e["BAAI/bge-small-en-v1.5"].embed_full_corpus_s) s vs \($e["BAAI/bge-base-en-v1.5"].embed_full_corpus_s) s"' $R
-num $RESEARCH "seed MRR / hit@5 (section 9)" '.[0].per_target["300"].configs as $c | "BM25 \($c.bm25."mrr@10" | fmt(3)) / \($c.bm25."hit@5" | fmt(3)); hybrid bge-base \($c["hybrid:BAAI/bge-base-en-v1.5"]."mrr@10" | fmt(3)) / \($c["hybrid:BAAI/bge-base-en-v1.5"]."hit@5" | fmt(3)); + MiniLM-L6 rerank \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2"]."mrr@10" | fmt(3)) / \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2"]."hit@5" | fmt(3)); + bge-reranker-base \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:BAAI/bge-reranker-base"]."mrr@10" | fmt(3)) / \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:BAAI/bge-reranker-base"]."hit@5" | fmt(3))"' $R
-num $RESEARCH "retrieval p50 (section 9)" '.[0].per_target["300"].configs as $c | "hybrid bge-base \($c["hybrid:BAAI/bge-base-en-v1.5"].latency_ms.total_ms.p50 | fmt(2)) ms; + MiniLM-L6 rerank \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2"].latency_ms.total_ms.p50 | fmtc(2)) ms; + bge-reranker-base \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:BAAI/bge-reranker-base"].latency_ms.total_ms.p50 | fmtc(2)) ms"' $R
-num $PLAN "plan: full-corpus embedding" '.[0].per_target["300"].embedding as $e | "the full-corpus embedding took \($e["BAAI/bge-small-en-v1.5"].embed_full_corpus_s | fmt(0)) s (bge-small) or \($e["BAAI/bge-base-en-v1.5"].embed_full_corpus_s | fmt(0)) s (bge-base)"' $R
-num $PLAN "plan: embedding speed ratio" '.[0].per_target["300"].embedding as $e | ($e["BAAI/bge-small-en-v1.5"].embed_full_corpus_s) as $s | ($e["BAAI/bge-base-en-v1.5"].embed_full_corpus_s) as $b | "It embeds \($b / $s | fmt(1))x faster (\($s | fmt(0)) s vs \($b | fmt(0)) s for the corpus"' $R
-num $PLAN "plan: seed hit@5 of the rerankers" '.[0].per_target["300"].configs as $c | "seed-set hit@5 \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:BAAI/bge-reranker-base"]."hit@5" | fmt(3)) vs \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2"]."hit@5" | fmt(3))"' $R
+# chunks.json (corpus v2)
+num $D "chunks at 300" '.[0].configs[0] | .chunks, .by_source_type.docs.n, .by_source_type.repo.n, .by_source_type.release.n, .tokens.p50, .tokens.p95, .tokens.max' $K
+num $D "chunks at 600" '.[0].configs[1] | .chunks, .by_source_type.docs.n, .by_source_type.repo.n, .by_source_type.release.n, .tokens.p50, .tokens.p95, .tokens.max' $K
+num $D "chunks over hard max" -c 'over hard max' '.[0].configs[] | .over_hard_max' $K
+num $D "blog-tier chunks" '.[0].configs[] | .blog_tier.chunks' $K
 
-# latency_threads.json (+ dims and corpus embedding times from retrieval.json)
-num $RESEARCH "embed table: bge-small" '"| BAAI/bge-small-en-v1.5 | \(.[1].per_target["300"].embedding["BAAI/bge-small-en-v1.5"].dim) | \(.[0].by_threads["2"].query_embed_bge_small_ms.p50) ms | | \(.[1].per_target["300"].embedding["BAAI/bge-small-en-v1.5"].embed_full_corpus_s) s |"' $L $R
-num $RESEARCH "embed table: bge-base" '"| BAAI/bge-base-en-v1.5 | \(.[1].per_target["300"].embedding["BAAI/bge-base-en-v1.5"].dim) | \(.[0].by_threads["2"].query_embed_bge_base_ms.p50) ms | | \(.[1].per_target["300"].embedding["BAAI/bge-base-en-v1.5"].embed_full_corpus_s) s |"' $L $R
-num $RESEARCH "MiniLM rerank at 2 threads" '.[0].by_threads["2"] | "\(."rerank_ms-marco-MiniLM-L-6-v2_top10_ms".p50) / \(."rerank_ms-marco-MiniLM-L-6-v2_top20_ms".p50) ms (\(."rerank_ms-marco-MiniLM-L-6-v2_top20_trunc1000chars_ms".p50) ms for top 20 with passages cut to 1,000 chars)"' $L
-num $RESEARCH "bge-reranker-base at 2 threads" '.[0].by_threads["2"] | "\(."rerank_bge-reranker-base_top10_ms".p50 | fmtc(1)) / \(."rerank_bge-reranker-base_top20_ms".p50 | fmtc(1)) ms"' $L
-num $RESEARCH "rerank p50 (section 9)" '.[0].by_threads["2"] | "| MiniLM-L6 \(."rerank_ms-marco-MiniLM-L-6-v2_top10_ms".p50) ms; bge-reranker-base \(."rerank_bge-reranker-base_top10_ms".p50) ms |"' $L
-num $RESEARCH "query embed p50 (section 9)" '.[0].by_threads["2"] | "| bge-small \(.query_embed_bge_small_ms.p50) ms; bge-base \(.query_embed_bge_base_ms.p50) ms |"' $L
-num $RESEARCH "MiniLM top-10 rerank (5.8)" '"MiniLM-L6 takes \(.[0].by_threads["2"]."rerank_ms-marco-MiniLM-L-6-v2_top10_ms".p50) ms for the top 10 at 2 threads"' $L
-num $RESEARCH "bge-reranker-base top 10 (5.3)" '"bge-reranker-base: \(.[0].by_threads["2"]."rerank_bge-reranker-base_top10_ms".p50) ms for the top 10 at 2 threads"' $L
-num $RESEARCH "query embed at 2 threads (5.3)" '"\(.[0].by_threads["2"].query_embed_bge_small_ms.p50) ms at 2 threads in the POC"' $L
-num $PLAN "plan: MiniLM top 10 at 2 threads" '"Xenova/ms-marco-MiniLM-L-6-v2: \(.[0].by_threads["2"]."rerank_ms-marco-MiniLM-L-6-v2_top10_ms".p50) ms for the top 10 at 2 threads"' $L
-num $PLAN "plan: bge-reranker-base top 10 at 2 threads" '"BAAI/bge-reranker-base: \(.[0].by_threads["2"]."rerank_bge-reranker-base_top10_ms".p50) ms for the top 10 at 2 threads"' $L
+# retrieval.json (seed set, corpus v1)
+num $D "seed retrieval table" '.[0].per_target["300"].configs as $c | ["bm25", "dense:BAAI/bge-small-en-v1.5", "dense:BAAI/bge-base-en-v1.5", "hybrid:BAAI/bge-small-en-v1.5", "hybrid:BAAI/bge-base-en-v1.5", "hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2", "hybrid:BAAI/bge-base-en-v1.5+rerank:BAAI/bge-reranker-base", "bm25+rerank:Xenova/ms-marco-MiniLM-L-6-v2"][] as $k | $c[$k] | ."hit@1", ."hit@5", ."hit@10", ."mrr@10", .latency_ms.total_ms.p50' $R
+num $D "WordPiece truncation (corpus v1)" '.[0].per_target | ."300".embedding["BAAI/bge-small-en-v1.5"].wordpiece_over_512, ."300".chunks, ."600".embedding["BAAI/bge-small-en-v1.5"].wordpiece_over_512, ."600".chunks' $R
+num $D "full-corpus embedding" '.[0].per_target["300"].embedding | .["BAAI/bge-small-en-v1.5"].embed_full_corpus_s, .["BAAI/bge-base-en-v1.5"].embed_full_corpus_s, .["BAAI/bge-small-en-v1.5"].dim, .["BAAI/bge-base-en-v1.5"].dim' $R
+num $D "bge-small speed ratio" -c 'faster' '.[0].per_target["300"].embedding | (.["BAAI/bge-base-en-v1.5"].embed_full_corpus_s / .["BAAI/bge-small-en-v1.5"].embed_full_corpus_s * 10 | round / 10)' $R
 
-# embed_probe.json
-num $RESEARCH "API memory (section 9)" '.[0].api_rss_mb | "| \(.after_one_query | tostring | commas) MB RSS after one query; \(.after_scorer_run_concurrency_4 | tostring | commas) MB after a scorer run at concurrency 4 |"' $E
+# latency_threads.json and embed_probe.json
+num $D "2-thread latencies" '.[0].by_threads["2"] | .query_embed_bge_small_ms.p50, .query_embed_bge_base_ms.p50, ."rerank_ms-marco-MiniLM-L-6-v2_top10_ms".p50, ."rerank_ms-marco-MiniLM-L-6-v2_top20_ms".p50, ."rerank_ms-marco-MiniLM-L-6-v2_top20_trunc1000chars_ms".p50, ."rerank_bge-reranker-base_top10_ms".p50, ."rerank_bge-reranker-base_top20_ms".p50' $L
+num $D "API memory" '.[0].api_rss_mb | .after_one_query, .after_scorer_run_concurrency_4' $E
 if jq -e '.strict_csp_page | .widget_rendered == true and .ask_blocked == true and .violation.directive == "connect-src"' $E >/dev/null 2>&1 \
-   && grep -qF 'blocked by a `connect-src` violation' "$TMP/norm.research.md"; then
-  NUM_OK=$((NUM_OK + 1))
-else
-  fail "e: strict-CSP probe: $E or $RESEARCH no longer says that the widget rendered and /ask was blocked by connect-src"
-fi
+   && grep -qF 'connect-src' "$TMP/norm.research.md"; then NUM_OK=$((NUM_OK + 1))
+else fail "e: strict-CSP probe: $E no longer shows the widget rendered and /ask blocked by connect-src"; fi
 
 # answer.json (seed set, local model)
-num $RESEARCH "tokens per answer (section 9)" '.[0].tokens_per_answer | "| prompt mean \(.prompt_mean | fmtc(0)) (max \(.prompt_max | tostring | commas)); completion mean \(.completion_mean) (max \(.completion_max)) |"' $A
-num $RESEARCH "tokens per answer (5.2)" '.[0].tokens_per_answer | "averaged \(.prompt_mean | fmtc(0)) input and \(.completion_mean) output tokens"' $A
-num $RESEARCH "answered source hit" '"hit an expected source \(.[0].answered_source_hit_rate | pct)% of the time"' $A
-num $RESEARCH "answer-run retrieval p50" '"Retrieval took \(.[0].latency_ms.retrieval_ms.p50) ms p50"' $A
-num $RESEARCH "answer-run rerank p50" '"rerank \(.[0].latency_ms.rerank_ms.p50) ms p50"' $A
-num $RESEARCH "think probe" '.[0].think_probe | "from \(.default.llm_ttft_ms | fmtc(0)) ms to \(.reasoning_none.llm_ttft_ms | fmtc(0)) ms"' $A
-num $RESEARCH "seed gate (section 9)" '.[0].policy_a_gate | "threshold \(.threshold): precision \(.precision | fmt(1)), recall \(.recall | fmt(1)), false-abstain \(.false_abstain_rate | fmt(1)) (\(.n_should_abstain) should abstain, \(.n_should_answer) should answer)"' $A
-num $RESEARCH "model flag (section 9)" '.[0].policy_b_model | "precision \(.precision), recall \(.recall | fmt(1)), false-abstain \(.false_abstain_rate)"' $A
-num $RESEARCH "model flag (4.3)" '.[0].policy_b_model | "(precision \(.precision), false-abstain \(.false_abstain_rate))"' $A
-num $RESEARCH "answered hit (section 9)" '"| Answered questions that hit an expected source | \(.[0].answered_source_hit_rate) |"' $A
+num $D "tokens per answer" '.[0].tokens_per_answer | .prompt_mean, .prompt_max, .completion_mean, .completion_max' $A
+num $D "seed answer latencies" '.[0].latency_ms | .retrieval_ms.p50, .rerank_ms.p50' $A
+num $D "think probe TTFT" '.[0].think_probe | .default.llm_ttft_ms, .reasoning_none.llm_ttft_ms' $A
+num $D "answered source hit" -p '.[0].answered_source_hit_rate * 100' $A
+num $D "seed gate" -c 'seed' '.[0].policy_a_gate | .threshold, .precision, .recall, .false_abstain_rate, .n_should_abstain, .n_should_answer' $A
+num $D "model's own flag (seed)" -c 'model' '.[0].policy_b_model | .precision, .false_abstain_rate' $A
 
-# gate-canonical.json (curated set)
-num $RESEARCH "curated gate rows" '.[0].policy_a_gate | "\(.n_should_abstain) rows should abstain, the 6 unanswerable and 6 out-of-scope; \(.n_should_answer) should answer"' $G
-num $RESEARCH "best threshold" '.[0].policy_a_gate | "The best single threshold, \(.threshold | fmt(2)), reached recall \(.recall), but with precision \(.precision), false abstains on \(.false_abstain_rate_answerable | pct)% of answerable rows and \(.false_abstain_rate | pct)% of all must-answer rows"' $G
-num $RESEARCH "-0.891 recall" '.[0].per_question as $q | [$q[] | select(.must_abstain)] as $m | [$m[] | select(.top_score < -0.891)] as $c | "caught only \($c | length) of the \($m | length) (recall \(($c | length) / ($m | length) | fmt(1)))"' $G
-num $RESEARCH "-0.891 false abstains" '.[0].per_question as $q | [$q[] | select(.type == "answerable")] as $a | [$a[] | select(.top_score < -0.891)] as $fa | "on \($fa | length) of \($a | length) answerable rows (\(($fa | length) / ($a | length) | pct)%)"' $G
-num $RESEARCH "score ranges (section 9)" '.[0].by_type as $b | "answerable \($b.answerable.top_score_min | fmt(2)) to \($b.answerable.top_score_max | fmt(2)); unanswerable \($b.unanswerable.top_score_min | fmt(2)) to \($b.unanswerable.top_score_max | fmt(2)); out-of-scope \($b["out-of-scope"].top_score_min | fmt(2)) to \($b["out-of-scope"].top_score_max | fmt(2)); adversarial \($b.adversarial.top_score_min | fmt(2)) to \($b.adversarial.top_score_max | fmt(2))"' $G
-num $RESEARCH "answerable score range (4.3)" '.[0].by_type.answerable | "Answerable rows range from \(.top_score_min | fmt(2)) to \(.top_score_max | fmt(2))"' $G
-num $RESEARCH "UNK-01 score" '"(UNK-01: \([.[0].per_question[] | select(.id == "UNK-01")][0].top_score | fmt(2)))"' $G
-num $RESEARCH "ADV-03 score" '"(ADV-03: \([.[0].per_question[] | select(.id == "ADV-03")][0].top_score | fmt(2)))"' $G
-num $RESEARCH "context hit rate" '"\(.[0].context_hit_rate_top_passages | pct)%"' $G
-num $PLAN "plan: best threshold" '.[0].policy_a_gate | "threshold (\(.threshold | fmt(2))) false-abstained on \(.false_abstain_rate_answerable | pct)% of answerable rows"' $G
-# The context hit rate is over the rows that have expected sources; any denominator the doc gives must match.
+# gate-canonical.json (curated set, MiniLM-L6 rerank score)
+num $D "rerank-score gate, curated set" '.[0].policy_a_gate | .threshold, .recall, .precision' $G
+num $D "rerank-score gate rates" -p '.[0].policy_a_gate | .false_abstain_rate_answerable * 100, .false_abstain_rate * 100' $G
+num $D "rerank-score gate at -0.891" -c 'recall|answerable' '.[0].per_question as $q | [$q[] | select(.must_abstain)] as $m | [$m[] | select(.top_score < -0.891)] as $c | [$q[] | select(.type == "answerable")] as $a | [$a[] | select(.top_score < -0.891)] as $fa | ($c | length), ($m | length), ($c | length) / ($m | length), ($fa | length), ($a | length)' $G
+num $D "rerank-score gate at -0.891 (rate)" -p '.[0].per_question as $q | [$q[] | select(.type == "answerable")] as $a | ([$a[] | select(.top_score < -0.891)] | length) / ($a | length) * 100' $G
+num $D "rerank score ranges" '.[0].by_type | .answerable.top_score_min, .answerable.top_score_max, .unanswerable.top_score_min, .unanswerable.top_score_max, ."out-of-scope".top_score_min, ."out-of-scope".top_score_max, .adversarial.top_score_min, .adversarial.top_score_max' $G
+num $D "context hit rate" -p '.[0].context_hit_rate_top_passages * 100' $G
+num $D "context hit count" -c 'context' '.[0].per_question | ([.[] | select(.context_hit == true)] | length), ([.[] | select(.context_hit != null)] | length)' $G
+# Any "N% of [the] M rows" the doc gives for the context hit rate must use the rows that have expected sources.
 den=$(jq '[.per_question[] | select(.context_hit != null)] | length' $G)
-hits=$(jq '[.per_question[] | select(.context_hit == true)] | length' $G)
-rate=$(jq -r "$JQDEF"' .context_hit_rate_top_passages | pct' $G)
+rate=$(jq -r '.context_hit_rate_top_passages * 1000 | round / 10' $G)
 for d in $(grep -oE "$rate% of (the )?[0-9]+ rows" "$TMP/norm.research.md" | grep -oE '[0-9]+ rows' | grep -oE '[0-9]+'); do
-  if [ "$d" = "$den" ]; then NUM_OK=$((NUM_OK + 1))
-  else fail "e: $RESEARCH says '$rate% of $d rows', but $G computes it over the $den rows with expected sources ($hits of $den; context_hit is null on the other rows)"; fi
+  [ "$d" = "$den" ] || fail "e: $RESEARCH says '$rate% of $d rows'; $G computes it over the $den rows with expected sources"
 done
 
+# retrieval-canonical.json (82 rows, corpus v1) and the bge-reranker-base log transcription
+num $D "canonical retrieval" '.[0].per_target["300"].configs as $c | (["bm25", "dense:BAAI/bge-small-en-v1.5", "dense:BAAI/bge-base-en-v1.5", "hybrid:BAAI/bge-small-en-v1.5", "hybrid:BAAI/bge-base-en-v1.5", "hybrid:BAAI/bge-small-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2", "hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2", "bm25+rerank:Xenova/ms-marco-MiniLM-L-6-v2"][] as $k | $c[$k] | ."mrr@10", ."hit@5")' $RC
+num $D "canonical retrieval, other ranks" '.[0].per_target["300"].configs as $c | (["hybrid:BAAI/bge-small-en-v1.5", "hybrid:BAAI/bge-base-en-v1.5", "hybrid:BAAI/bge-small-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2", "bm25"][] as $k | $c[$k] | ."hit@1", ."hit@3", ."hit@10")' $RC
+num $D "canonical retrieval at 600" -c '600' '.[0].per_target["600"].configs["hybrid:BAAI/bge-small-en-v1.5"]."mrr@10"' $RC
+num $D "bge-reranker-base (log transcription)" '.[0].configs[] | ."mrr@10", ."hit@1", ."hit@3", ."hit@5", ."hit@10"' $RB
+
+# retrieval-v2.json (82 rows, corpus v2): rerankers, blog tier, categories, rank movements
+num $D "corpus v2 rerank table" '.[0].per_target["300"].configs | to_entries[] | select(.key | startswith("hybrid:")) | .value | ."mrr@10", ."hit@1", ."hit@3", ."hit@5", ."hit@10", (.latency_ms.rerank_ms.p50 // empty)' $V
+num $D "corpus v2 blog tier" '.[0].per_target["300"].blog_tier.configs[] | ."mrr@10", ."hit@1", ."hit@3", ."hit@5", ."hit@10"' $V
+num $D "corpus v2 by category" '.[0].per_target["300"].configs as $c | (["hybrid:BAAI/bge-small-en-v1.5", "hybrid:BAAI/bge-small-en-v1.5+rerank:flashrank:ms-marco-TinyBERT-L-2-v2@20"][] as $k | $c[$k].by_category[] | ."mrr@10", ."hit@10")' $V
+num $D "TinyBERT rank-1 rows" -c 'rank 1' '.[0].per_target["300"].configs as $c | $c["hybrid:BAAI/bge-small-en-v1.5"].first_hit_rank as $a | $c["hybrid:BAAI/bge-small-en-v1.5+rerank:flashrank:ms-marco-TinyBERT-L-2-v2@20"].first_hit_rank as $b | ([$b[] | select(. == 1)] | length), ([$a[] | select(. == 1)] | length), ([$b | to_entries[] | select(.value == 1 and $a[.key] != 1)] | length), ([$a | to_entries[] | select(.value == 1 and $b[.key] != 1)] | length)' $V
+num $D "rank moves (SRC-09, DST-06, SYNC-12, TRB-02, FUS-04, REL-01, FUS-07)" -c 'rank' '.[0].per_target["300"].configs as $c | $c["hybrid:BAAI/bge-small-en-v1.5"].first_hit_rank as $a | $c["hybrid:BAAI/bge-small-en-v1.5+rerank:flashrank:ms-marco-TinyBERT-L-2-v2@20"].first_hit_rank as $b | $a["SRC-09"], $a["DST-06"], $b["SYNC-12"], $b["TRB-02"], $a["FUS-04"], $a["REL-01"], $a["FUS-07"], .[1].per_target["300"].configs["hybrid:BAAI/bge-small-en-v1.5"].first_hit_rank["REL-01"], .[1].per_target["300"].configs["hybrid:BAAI/bge-small-en-v1.5"].first_hit_rank["FUS-07"]' $V $RC
+
+# gate-signals.json and gate-rewrite.json (corpus v2 dense gate, rewrite sweep)
+num $D "gate signals at 0 false abstains" '.[0].signals | .dense_max_cos.zero_false_abstain.threshold, .dense_max_cos.zero_false_abstain.recall, ."tinybert_top@10".zero_false_abstain.recall, ."minilm_top@10".zero_false_abstain.recall' $GS
+num $D "gate catches (rows)" -c 'caught|abstain' '.[0].signals | (.dense_max_cos, ."tinybert_top@10", ."minilm_top@10") | .zero_false_abstain.abstained_ids | length' $GS
+num $D "near-domain dense scores" '.[0].signals.dense_max_cos | (.highest_must_abstain[] | .[1]), (.lowest_must_answer[0:2][] | .[1])' $GS
+num $D "dense gate at 0.69 and 0.71" '.[0].sweep.dense_max_cos[] | select(.threshold == 0.69 or .threshold == 0.71) | .threshold, .gate_only_recall, (if .threshold == 0.71 then .abstain_recall else empty end)' $GR
+num $D "margin rows (OOS-05, UNK-04)" '.[0].per_question[] | select(.id == "OOS-05" or .id == "UNK-04") | .score.dense_max_cos, (if .id == "UNK-04" then .score_after_rewrite.dense_max_cos else empty end)' $GR
+num $D "rewrite cost" '.[0].rewrite_cost | .latency_ms_p50, .latency_ms_p95, .prompt_tokens_mean, .completion_tokens_mean' $GR
+
+# eval_run-canonical.json and the prompt v2 subset
+num $D "end-to-end summary" '.[0].summary | .behaviour_correct, .source_hit, .fact_coverage_mean, .judged_behavior_pass, .abstain_recall_unanswerable_out_of_scope, .false_abstain_rate_answerable, .total_wall_s' $EC
+num $D "end-to-end p50" -c '/ask' '.[0].summary.latency_ms.p50 / 1000' $EC
+num $D "false-abstain breakdown" -c 'abstain|gate|model' '.[0].abstain_breakdown | .false_abstains_all_must_answer_rows | .n, .of, .by_trigger.gate, .by_trigger.model_answerable_false, .by_trigger.scorer_abstain_pattern_on_sourced_answer' $EC
+num $D "false abstains on answerable rows" -c 'answerable' '.[0].abstain_breakdown.false_abstains_answerable_rows | .n, .of, .by_trigger.gate, .by_trigger.model_answerable_false' $EC
+num $D "weakest types" -c 'false-premise|negative|adversarial' '.[0].by_type | (."false-premise", .negative, .adversarial) | (.behaviour_correct * .n | round), .n' $EC
+num $D "prompt v2 subset" -c 'v2|behaviour|35' '([.[1].per_question[] | .id]) as $ids | ([.[0].per_question[] | select(.id as $i | $ids | index($i)) | select(.behaviour_correct == true)] | length), ([.[1].per_question[] | select(.behaviour_correct == true)] | length), (.[1].per_question | length), ([.[0].per_question[] | select(.id as $i | $ids | index($i)) | .judge.coverage // empty] | add / length), ([.[1].per_question[] | .judge.coverage // empty] | add / length)' $EC $E2
+
 # freshness.json
-num $RESEARCH "conditional GET" '"| Conditional GET to olake.io (304) | ≈ \(.[0].docs_page.if_none_match.ms | fmt(0)) ms |"' $F
-num $RESEARCH "git ls-remote range" '[.[0].git_ls_remote[].ms] | "| `git ls-remote` per repo | \(min | fmt(0))-\(max | fmt(0)) ms |"' $F
-num $RESEARCH "GitHub limits" '"| \(.[0].github_unauthenticated.rate_before.limit) per hour, \(.[0].github_authenticated.rate_before.limit | tostring | commas) per hour |"' $F
-num $RESEARCH "lastmod redesign commit" '"\(.[0].observations.docs_pages_by_sitemap_lastmod["2026-10-06"]) of the \(.[0].observations.docs_pages_by_http_last_modified | add) dates come from one site-wide redesign commit on 2026-10-06"' $F
+num $D "freshness probes" -c 'ms|per hour' '.[0] | .docs_page.if_none_match.ms, ([.git_ls_remote[].ms] | min), ([.git_ls_remote[].ms] | max), .github_unauthenticated.rate_before.limit, .github_authenticated.rate_before.limit' $F
+num $D "lastmod redesign commit" -c 'redesign' '.[0].observations | .docs_pages_by_sitemap_lastmod["2026-10-06"], (.docs_pages_by_http_last_modified | add)' $F
 
-# Table rows whose numbers the doc rounds: compare each number with the JSON value within half a unit of the
-# doc's last decimal. tolrow <doc> <ERE for the line that introduces the table> <row label> <jq expr> <json...>
-tolrow() {
-  local doc="$1" start="$2" label="$3" expr="$4"; shift 4
-  local row want nums
-  row=$(awk -v s="$start" -v l="| $label |" '
-    !on && $0 ~ s { on = 1; next }
-    on && /^ *\|/ { t = 1; x = $0; sub(/^ +/, "", x); if (index(x, l) == 1) { print x; exit }; next }
-    on && t { exit }' "$doc")
-  if [ -z "$row" ]; then warn "e: no '| $label |' row in the table after /$start/ in $doc; not checked"; return 0; fi
-  if ! want=$(jq -r -s "$JQDEF $expr" "$@" 2>"$TMP/jqerr"); then fail "e: $label: jq failed on $*: $(head -1 "$TMP/jqerr")"; return 0; fi
-  nums=$(printf '%s\n' "${row#*"| $label |"}" | grep -oE -- '-?[0-9]+(\.[0-9]+)?')
-  if [ "$(printf '%s\n' $nums | grep -c .)" -ne "$(printf '%s\n' $want | grep -c .)" ]; then
-    fail "e: $label: the doc row has [$(echo $nums)], the JSON has [$(echo $want)] ($*)"; return 0
-  fi
-  if paste <(printf '%s\n' $nums) <(printf '%s\n' $want) | awk -F'\t' '{
-       d = $1; j = $2; dec = index(d, ".") ? length(d) - index(d, ".") : 0
-       tol = 0.5 * 10 ^ (-dec) + 1e-9; x = d - j; if (x < 0) x = -x; if (x > tol) bad = 1 } END { exit bad }'; then
-    NUM_OK=$((NUM_OK + 1)); [ "$VERBOSE" -eq 1 ] && pass "e: $label: [$(echo $nums)] vs [$(echo $want)] ($*)"
-  else
-    fail "e: $label: the doc row has [$(echo $nums)], the JSON has [$(echo $want)] ($*)"
-  fi
-  return 0
-}
-RC=$RES/retrieval-canonical.json
-if [ -s "$RC" ]; then
-  crow() { tolrow $RESEARCH '[*][*]Canonical set[*][*]' "$1" ".[0].per_target[\"300\"].configs[\"$2\"] | \"\(.\"mrr@10\") \(.\"hit@5\")\"" $RC; }
-  crow "BM25" "bm25"
-  crow "Dense bge-small-en-v1.5" "dense:BAAI/bge-small-en-v1.5"
-  crow "Dense bge-base-en-v1.5" "dense:BAAI/bge-base-en-v1.5"
-  crow "Hybrid (RRF) bge-small" "hybrid:BAAI/bge-small-en-v1.5"
-  crow "Hybrid (RRF) bge-base" "hybrid:BAAI/bge-base-en-v1.5"
-else
-  info "e: $RC is missing, so the canonical-set retrieval table in $RESEARCH was not checked"
-fi
+# plan.md and the other docs quote a few of the same numbers
+num $PLAN "plan: denylist arithmetic" -c 'denylist|108' '.[0].docs.total.pages, .[0].docs.total.pages - 16' $C
+num $PLAN "plan: embedding times" -c 'embed' '.[0].per_target["300"].embedding | .["BAAI/bge-small-en-v1.5"].embed_full_corpus_s, .["BAAI/bge-base-en-v1.5"].embed_full_corpus_s' $R
+num $PLAN "plan: dense gate" -c 'threshold|gate' '.[0].signals.dense_max_cos.zero_false_abstain.threshold' $GS
 
-[ "$NUM_OK" -gt 0 ] && pass "e: $NUM_OK number checks agree between the docs and $RES/*.json"
+[ "$NUM_OK" -gt 0 ] && pass "e: $NUM_OK number checks ($NUM_VALS numbers) agree between the docs and $RES/*.json"
 
 # ---------------------------------------------------------------------------------------------------------
 printf '\n== Summary: %d PASS, %d WARN, %d FAIL\n' "$NPASS" "$NWARN" "$NFAIL"
