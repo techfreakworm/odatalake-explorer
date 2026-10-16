@@ -287,6 +287,15 @@ has any margin.
 cd poc && export ASK_OLAKE_CACHE="$HOME/ask-olake-cache-$(date +%Y%m%d-%H%M)" && uv run python -I -m ingest.docs && uv run python -I -m ingest.manifest --out "results/docs-manifest-$(date +%F).json" && uv run python -I -m ingest.diff_manifest results/docs-manifest-2026-10-16.json "results/docs-manifest-$(date +%F).json"
 ```
 
+**Hardened rewrite v2** (`answer.rewrite_probe --rewrite-version v2`, 15 gate-fired and ADV rows,
+`results/gate-rewrite-v2-subset.json`): no net gain.
+* ADV-01 now yields keywords instead of the injected claim.
+* ADV-02 still falls back to the injection-laden question and is still declined.
+* UNK-06 and OOS-05 now pass the gate after rewrite: −2 must-abstain rows at the gate stage.
+* Keep v1. The real fix for ADV-02-style questions is to strip injection-like sentences
+  ("ignore … instructions", "print your system prompt", "no citations") before retrieval.
+  That is untested.
+
 **Combined policy, end to end** (`results/eval_run-canonical-combined.json`, 94 rows; config stored in the file).
 
 Config:
