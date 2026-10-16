@@ -575,7 +575,8 @@ STEPS (in order; each step leaves a working server)
    gate score, top-5 doc_urls, provider used); the Server-Timing header; a global asyncio.Semaphore(MAX_CONCURRENCY) that
    queues rather than rejects; a per-client token bucket refilling at RATE_LIMIT_PER_MIN, with burst capacity
    RATE_LIMIT_BURST above the test-set size, so one scorer IP bursting every question never sees 429; a daily token budget
-   (DAILY_TOKEN_BUDGET), after which /ask returns the degraded answer; and CORS * without credentials, max_age 86400,
+   (DAILY_TOKEN_BUDGET). Once the budget is spent, /ask returns the graceful degraded answer from step 10 (the most
+   relevant pages, with sources set) with status 200, never a 429 or 5xx. And CORS * without credentials, max_age 86400,
    exposing x-request-id.
 9. Serve web/: /widget.js -> web/widget.js, /embed -> web/embed.html (HTTP header Content-Security-Policy:
    frame-ancestors *; a <meta> tag cannot carry frame-ancestors), / -> web/demo/index.html, /static -> web/.
@@ -886,7 +887,11 @@ for a failure pattern (api), a prompt or citation-validation fix for over- or un
 - [ ] Host: on Cloud Run, `gcloud run services describe ask-olake --region asia-south1 --format yaml | grep -i minscale` shows
       1, the probes pass and logs are flowing. On the fallback, the App Platform health checks are green.
 - [ ] Day-of checks 4-5 pass on the final URL: the olake.io-origin preflight, SSE timing, and the 50-request burst with no 429 or 5xx (section 2).
-- [ ] The rate limit cannot throttle the scorer. The fallback LLM trio is set if credits might stop after freeze (question K1).
+- [ ] The rate limit cannot throttle the scorer: `RATE_LIMIT_BURST` is above the test-set size. The paid fallback key is in the
+      chain in case the credits stop after the freeze (question K1).
+- [ ] `DAILY_TOKEN_BUDGET` has been raised for the scoring window if the credits allow. At the POC's ~2k tokens per answer,
+      5M tokens is about 2,500 answers. Running out returns the degraded answer (most relevant pages, sources set), never a
+      429 or 5xx.
 - [ ] The refresher is on or off as the kickoff answer to K5 says.
 - [ ] Submission: endpoint URL, repo URL and demo URL entered where the organizers said (question K5).
 - [ ] From 14:20, no deploys unless the endpoint is broken.
@@ -1228,7 +1233,10 @@ DEBUG=0
 ```
 
 `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `RATE_LIMIT_BURST` and `DAILY_TOKEN_BUDGET` are starting values, not measurements.
-`RATE_LIMIT_BURST` must stay above the test-set size, so that one scorer IP sending the whole set never sees a 429. Set the
+`RATE_LIMIT_BURST` must stay above the test-set size, so that one scorer IP sending the whole set (about 100 questions) never
+sees a 429. `DAILY_TOKEN_BUDGET=5000000` is about 2,500 answers at the POC's ~2k tokens per answer (`poc/results/answer.json`).
+When it runs out, `/ask` returns the degraded answer (most relevant pages, sources set), never a 429 or 5xx. Raise it
+before the scoring window if the credits allow. Set the
 others from the credits smoke test (section 2) and the 12:15 load test.
 
 ## Appendix D: dependency list

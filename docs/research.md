@@ -515,7 +515,8 @@ ordinary page the same widget worked across origins, and a second request reused
 - **`/ask` always returns `{answer, sources}`**, even on errors, never an HTML 500.
 - **Limits**: a per-client token bucket (the stack research suggests 60-120 per minute) with its burst capacity above the
   test-set size, because the scorer will probably send a burst from one IP; a global semaphore that queues; and a daily
-  token budget.
+  token budget. Once the budget is spent, `/ask` returns the degraded answer (the most relevant pages, with sources), never
+  a 429 or 5xx. The budget is raised before the scoring window if the credits allow.
 - **Caching**: an in-process answer cache. It beats provider prompt caching for RAG, because Gemini 3.8 Flash needs a
   4,096-token identical prefix before caching applies ([Gemini caching][gem-caching], [stack report][r-stack]).
 - Pydantic validation (1-2000 characters), graceful degradation, structured JSON logs with `request_id`, `Server-Timing`,
