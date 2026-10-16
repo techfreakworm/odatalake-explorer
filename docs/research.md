@@ -312,8 +312,8 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   The report's suggestion comes from a 44-question set with one annotator.
 - **Retrieval.** BM25 (bm25s) and dense (fastembed) candidates fused with RRF, k=60 [[rrf]], with **no reranker**
   (decided on the numbers below; TinyBERT over the fused top 20 is a conditional upgrade, decision R′). RRF needs no
-  tuning data, unlike a tuned score blend (§4.2). The top 10 fused chunks, at most 3 per page, go to the LLM: about 3.3k context
-  tokens (an estimate from the POC's 1,858 prompt tokens with 6 passages, `poc/results/answer.json`).
+  tuning data, unlike a tuned score blend (§4.2). The top 10 fused chunks, at most 3 per page, go to the LLM: about 3.3k prompt
+  tokens, measured at 3,294 on average (p50 3,253, max 4,545) with k=10 and prompt v3 (`poc/results/eval_run-canonical-combined.json`).
   First, the POC results on the 14 seed questions with expected sources (`poc/results/retrieval.json`; 300-token chunks;
   fuse top 50, rerank top 20; retrieval latency only, on an 18-core arm64 laptop with all ONNX threads):
 
@@ -481,7 +481,10 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   - abstain recall 0.833, against the ≥ 0.90 target;
   - false-abstain 0.072 on answerable rows, against the ≤ 0.05 target.
 
-  Treat this as a lower bound from a local 32B model. The event-day levers:
+  In the round-2 run (§6: prompt v3, k=10, a TinyBERT gate with one rewrite), false-abstain on answerable rows fell to
+  0.043, which **meets** the target, while abstain recall stayed at 0.833, which still **misses** it.
+
+  Treat these as lower bounds from a local 32B model. The event-day levers:
   - a stronger hosted model;
   - the "unsupported or undocumented" fact card for near-domain unknowns;
   - the unified short-circuit text above;
@@ -493,9 +496,10 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   - for type-mapping misses (SYNC-12, Postgres jsonb): keep tables whole in chunks, plus the exact-match boost for
     identifiers.
 
-  The recommended policy's end-to-end abstain recall, false-abstain rate and latency are measured at checkpoints 2.2 and
-  2.5 on the day: the full eval against the deployed URL, with each row's abstain reason read from the X-Ask-Reason
-  header. The gate's offline effect is measured above. On the seed set, the model's own flag added one false abstain
+  The closest end-to-end measurement is the round-2 run (§6): the same model stage as the recommended policy, with a
+  different gate. The final policy itself is measured at checkpoints 2.2 and 2.5 on the day: the full eval against the
+  deployed URL, with each row's abstain reason read from the X-Ask-Reason header. The gate's offline effect is measured
+  above. On the seed set, the model's own flag added one false abstain
   (precision 0.75, false-abstain 0.071), on a false-premise question whose retrieval missed (`poc/results/answer.json`).
 - **Honesty specifics** (decided): "not supported" or "not documented" with a fact-card citation is an answer, not an
   abstain. For pricing, SLA and enterprise questions, give no specifics and point to hello@olake.io or
@@ -720,7 +724,10 @@ ordinary page the same widget worked across origins, and a second request reused
 - **Generation caps** (a POC production lesson). In JSON mode with no `max_tokens`, one local qwen3 request generated past
   6,000 tokens at 8 tok/s, held the only LLM slot, and cascaded timeouts through the concurrency-4 queue, with abandoned
   requests still holding the slot (`poc/README.md`, "Runaway generation"). So every call passes `max_tokens` (`MAX_TOKENS`,
-  600; answers averaged 72 completion tokens, `poc/results/answer.json`), and a truncation is logged. The server's
+  600), and a truncation is logged. Answers averaged 72 completion tokens with prompt v1 and 6 passages
+  (`poc/results/answer.json`), and 166.7 (p50 146) with prompt v3 and k=10. In that run one answer hit the cap, came back
+  as truncated JSON and became a false abstain (SRC-03, `poc/results/eval_run-canonical-combined.json`). The event's answer is plain text with `[n]`
+  citations, so a truncated answer degrades instead: keep the validated, cited sentences. The server's
   timeouts are shorter than any client's: `LLM_TIMEOUT_S` 25 s per call, and the whole `/ask` bounded at about 30 s with
   the queue wait included, after which it returns the degraded 200 answer.
 - **Caching**: an in-process answer cache. It beats provider prompt caching for RAG, because Gemini 3.8 Flash needs a
@@ -739,8 +746,9 @@ ordinary page the same widget worked across origins, and a second request reused
 
 **Hosted end-to-end latency: not measured on 2026-10-16 (no hosted key).**
 - Estimate: p50 ≈ retrieval (about 14 ms) + the provider's time to first token (0.71-0.97 s for the fast non-reasoning
-  candidates, several seconds or more with reasoning, §5.2) + about 72 output tokens at that model's speed (0.2-0.7 s at
-  117-474 tok/s). That is about 1-2 s for a fast non-reasoning model, and more with reasoning.
+  candidates, several seconds or more with reasoning, §5.2) + about 167 output tokens at that model's speed (0.4-1.4 s at
+  117-474 tok/s; the POC's round-2 mean with k=10, `poc/results/eval_run-canonical-combined.json`). That is about 1-2.5 s for a fast non-reasoning
+  model, and more with reasoning.
 - It is measured at the 12:30 checkpoint (plan section 5).
 
 ## 6. Evaluation
@@ -840,11 +848,32 @@ the 94 rows.
 
   The v2 rules go into the event prompt (plan section 4.3): correct false premises with the contradicting passage cited,
   answer the genuine question inside an injection, reply in the user's language, and add 2-3 few-shot premise corrections.
+- **End to end with the round-2 policy** (`poc/results/eval_run-canonical-combined.json`, all 94 rows). The config, as poc reported it: prompt v3,
+  k=10 passages, `max_tokens` 600, a TinyBERT top-10 gate at 0.3 with one rewrite, local qwen3:32b, and qwen3:32b as the
+  judge. The file records concurrency 1, and its per-row headers show 11 rewrites. Its model stage is the recommended
+  one; only the gate differs from the final policy (§4.3).
+  - Schema valid 1.0; 5xx 0; contradictions 4.
+  - Behaviour correct 0.936 (0.84 in the v1 run); source hit 0.841 (0.695); fact coverage 0.603 (0.573); judged BEHAVIOR
+    pass 0.85 (0.75).
+  - False-abstain: 0.043 on answerable rows (3 of 69), which **meets** the ≤ 0.05 target; 0.049 on all must-answer rows
+    (4 of 82).
+  - Abstain recall on unanswerable plus out-of-scope rows: 0.833 (10 of 12), which still **misses** the ≥ 0.90 target.
+  - Behaviour by type: false-premise and negative 1.0 (0.25 and 0.4 in v1), out-of-scope 1.0, answerable 0.957,
+    adversarial 0.75, unanswerable 0.667.
+  - Where abstains came from (the `X-Ask-Reason` header per row):
+    - the gate after the rewrite declined 8 rows: all 6 out-of-scope rows, UNK-06, and ADV-02, a false decline (its
+      dense score is 0.815, so the final dense gate would pass it; `poc/results/gate-rewrite.json`);
+    - the model's answerable = false: 4 rows, UNK-01, UNK-03, UNK-05, and SYNC-12, a false abstain after a retrieval miss;
+    - unparseable output: 2 rows, both false abstains: SRC-03, which hit the 600-token cap, and SYNC-03;
+    - the no-valid-citation rule: none again.
+  - Missed abstains: UNK-02 and UNK-04 were answered.
+  - Tokens per answer over the 85 rows that called the LLM: prompt mean 3,294 (p50 3,253, max 4,545), completion mean
+    166.7 (p50 146, max 600). Local latency, not representative: p50 25.7 s, p95 48.5 s.
 - **Hosted end-to-end accuracy, latency and cost: not measured on 2026-10-16 (no hosted key).**
   - Estimate for latency: §5.8.
-  - Estimate for cost per answer: about 3.3k input and 72 output tokens times the provider's price. That gives about
-    $0.0027 on gemini-3.8-flash ($0.75 / $3.75 per 1M) and about $0.0004 on DigitalOcean gpt-oss-120b ($0.10 / $0.70 per 1M)
-    (§5.2).
+  - Estimate for cost per answer: about 3.3k input and 167 output tokens (the round-2 means above) times the provider's
+    price. That gives about $0.0031 on gemini-3.8-flash ($0.75 / $3.75 per 1M) and about $0.0004 on DigitalOcean
+    gpt-oss-120b ($0.10 / $0.70 per 1M) (§5.2).
   - Accuracy is expected to beat the local-32B lower bound above.
   - All three are measured at the 12:30 checkpoint.
 
@@ -857,7 +886,7 @@ retrieve well, and indexing the release notes moved REL-01 from rank 8 to 2.
 >   (`poc/results/retrieval-canonical.json`, §4.3).
 > - **The rerank-score gate does not generalize** from the seed set to the 94 rows (§4.3, `poc/results/gate-canonical.json`).
 > - **CPU embedding and reranking are the expensive steps, while generation tokens are small.** A rerank costs 0.2-2 s
->   and 0.5-1.5 GB of RAM; an answer averages about 1.86K prompt and 72 completion tokens (`poc/README.md`, findings 7, 8;
+>   and 0.5-1.5 GB of RAM; an answer averages about 1.86K prompt and 72 completion tokens with 6 passages, or 3.3K and 167 at k=10 (`poc/README.md`, findings 7, 8;
 >   `poc/results/answer.json`).
 > - **ollama ignores `/no_think`** and `extra_body={"think": false}` on its OpenAI-compatible API. Only
 >   `reasoning_effort="none"` disables thinking (`poc/README.md`, finding 8).
@@ -943,7 +972,7 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Credits throttle or stop during post-freeze scoring | Every row fails | The ordered provider chain: the credits, then the operator's paid key with ≥ 100 RPM (D7), then Gemma on the free tier, failing over before the first byte; a degraded mode that returns the most relevant pages; ask at kickoff (K1) |
 | Endpoint down, cold or rate-limited while scoring | Production readiness and accuracy both lose | Min instances ≥ 1, a queue rather than rejection, a very high rate limit, a synthetic probe every minute (plan section 9) |
 | The organizers match sources differently from us | Citation points lost | Canonical sitemap URLs and branch-form GitHub URLs; ask K3; matching in our own eval is lenient |
-| Over-abstaining or under-abstaining | Accuracy or honesty points lost. Both abstain targets were missed in the local end-to-end run (recall 0.833, false-abstain 0.072; `poc/results/eval_run-canonical.json`) | The reranker score alone cannot separate the cases (§4.3), so the model's `NO_ANSWER` plus citation validation decides. The off-topic gate is a dense-score short-circuit with a 0.02 margin and no rewrite, with a unified short-circuit text; it catches at most about 50-58% of the must-abstain rows, so the model does most of the abstaining. Event-day levers: a stronger hosted model, the unknowns fact card, the v2 prompt. The end-to-end numbers are measured at checkpoints 2.2 and 2.5 on the day |
+| Over-abstaining or under-abstaining | Accuracy or honesty points lost. Both abstain targets were missed in the local end-to-end run (recall 0.833, false-abstain 0.072; `poc/results/eval_run-canonical.json`) | The reranker score alone cannot separate the cases (§4.3), so the model's `NO_ANSWER` plus citation validation decides. The off-topic gate is a dense-score short-circuit with a 0.02 margin and no rewrite, with a unified short-circuit text; it catches at most about 50-58% of the must-abstain rows, so the model does most of the abstaining. Event-day levers: a stronger hosted model, the unknowns fact card, the v2 prompt. In the round-2 run false-abstain met the target (0.043) while recall stayed at 0.833 (§6); the final policy is measured at checkpoints 2.2 and 2.5 on the day |
 | Venue Wi-Fi | Slow builds and deploys | Pre-cached wheels, models, repos and base image; remote builds; phone hotspot (plan section 11) |
 | A teammate edits another track's files | Lost work | One owner per path (plan section 0.3) |
 | Stale stub pages contradict live pages (e.g. "Kafka is WIP") | Confidently wrong answers | Denylist the stubs; fact cards with explicit negatives (§3.1, §3.3) |
@@ -996,6 +1025,8 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Abstain on the model's own flag | precision 0.75, recall 1.0, false-abstain 0.071 | `poc/results/answer.json` |
 | Answered questions that hit an expected source | 0.714 | `poc/results/answer.json` |
 | Tokens per answer (6 passages) | prompt mean 1,858 (max 2,169); completion mean 71.8 (max 145) | `poc/results/answer.json` |
+| Tokens per answer (k=10, prompt v3) | prompt mean 3,294 (p50 3,253, max 4,545); completion mean 166.7 (p50 146, max 600) | `poc/results/eval_run-canonical-combined.json` |
+| End to end, round-2 policy (94 rows, local qwen3:32b) | behaviour 0.936; source hit 0.841; fact coverage 0.603; abstain recall 0.833; false-abstain 0.043 on answerable rows, 0.049 on all must-answer rows; 5xx 0 | `poc/results/eval_run-canonical-combined.json` |
 | Docs tokens from article text | 238,135 (o200k) | [docs-site report][r-docs-site], `measure_corpus.py` |
 | Full docs fetch with gzip, 4 at a time | 2.07 MB in 2.2 s | [docs-site report][r-docs-site] |
 | Pages whose content raw MDX misses | 22 of 124 | [docs-site report][r-docs-site], `hidden_content.py` |
@@ -1016,7 +1047,7 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Cost per answer, 4k in and 400 out | $0.0004-$0.0045 (Gemini 3.8 Flash the highest) | [stack report][r-stack] (`cost.py`, list prices) |
 | Widget bundles (prior art) | kapa 2,130,950 bytes, Inkeep 1,655,186 bytes; both Shadow DOM, no iframe | [stack report][r-stack] |
 | End-to-end on the curated set, local qwen3:32b (v1 prompt, concurrency 4) | schema 1.0; behaviour 0.84; source hit 0.695; fact coverage 0.573; judged BEHAVIOR 0.75; contradictions 4; abstain recall 0.833 (target ≥ 0.90 missed); false-abstain 0.072 (target ≤ 0.05 missed); 0 5xx; p50 105 s per `/ask` (local model); wall time 2,646.5 s | `poc/results/eval_run-canonical.json` |
-| Hosted end-to-end accuracy, latency and cost | Not measured on 2026-10-16 (no hosted key). Estimates: latency about 1-2 s p50 for a fast non-reasoning model (§5.8); cost about $0.0004-0.0027 per answer at 3.3k in and 72 out (§6). Measured at the 12:30 checkpoint | Method in §5.8 and §6 |
+| Hosted end-to-end accuracy, latency and cost | Not measured on 2026-10-16 (no hosted key). Estimates: latency about 1-2.5 s p50 for a fast non-reasoning model (§5.8); cost about $0.0004-0.0031 per answer at 3.3k in and 167 out (§6). Measured at the 12:30 checkpoint | Method in §5.8 and §6 |
 
 ## Sources
 

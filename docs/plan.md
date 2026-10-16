@@ -549,10 +549,12 @@ STEPS (in order; each step leaves a working server)
    about 30 s (asyncio.timeout around the pipeline, the queue wait included), after which it returns the degraded answer
    from step 10; if kickoff question K2 reports a scorer timeout under 30 s, set the bound below it. On 429, 5xx
    or a timeout, fail over to the next provider BEFORE the first streamed byte, within that bound. ALWAYS pass
-   max_tokens=MAX_TOKENS (600; the POC's answers averaged 72 completion tokens, poc/results/answer.json). In the POC, one
+   max_tokens=MAX_TOKENS (600; the POC's answers averaged 72 completion tokens with 6 passages and 167, p50 146, at k=10
+   with prompt v3: poc/results/answer.json, poc/results/eval_run-canonical-combined.json). In the POC, one
    uncapped request in JSON mode ran past 6,000 tokens, held the only LLM slot and cascaded timeouts through the queue
    (poc/README.md, "Runaway generation"). When finish_reason is "length", log max_tokens_truncated and keep only the
-   validated, cited part of the answer.
+   validated, cited part of the answer. In the POC's JSON mode a capped answer was unparseable and became a false
+   abstain (SRC-03); the plain-text answer here degrades instead.
    Pass reasoning_effort=LLM_REASONING_EFFORT only when it is set (the lowest value the model supports). Never depend on
    response_format: parse the text defensively, because some providers ignore it.
 3. Fallback A: bm25s over chunk text, top 10 (max 3 per page), a numbered context "[n] <title> (<doc_url>)\n<text>", the system prompt
@@ -911,7 +913,7 @@ Go/no-go:
 | # | Pass criterion | Command |
 |---|---|---|
 | 2.1 | The real pipeline is on the public URL, and its index version matches local | `curl -s "$URL/healthz" \| jq .index.version; cat data/index/CURRENT` |
-| 2.2 | Full eval: contract failures = 0; answerable source hit ≥ 0.75 (**target**: the POC's local-32B lower bound was 0.754, `poc/results/eval_run-canonical.json`); abstain recall ≥ 90% (**target**; the POC reached 0.833); false-abstain ≤ 5% (**target**; the POC had 0.072) | `uv run python -m eval.run --base-url "$URL" --out eval/results/cp2.json` |
+| 2.2 | Full eval: contract failures = 0; answerable source hit ≥ 0.75 (**target**: the POC's local-32B runs reached 0.754 with v1 and 0.87 in round 2, `poc/results/eval_run-canonical.json`, `poc/results/eval_run-canonical-combined.json`); abstain recall ≥ 90% (**target**; the POC reached 0.833 in both runs); false-abstain ≤ 5% (**target**; the POC had 0.072, then 0.043 in round 2) | `uv run python -m eval.run --base-url "$URL" --out eval/results/cp2.json` |
 | 2.3 | Latency: p50 ≤ 3 s and p95 ≤ 6 s (**targets**) | The same run prints p50 and p95 |
 | 2.4 | The widget loads from `$URL` on the demo page and on a foreign-origin page | Manual check in the browser |
 | 2.5 | Off-topic gate calibration, then check: set `ABSTAIN_THRESHOLD` to the lowest gate score of a must-answer row in the 2.2 run minus 0.02, write it to CLAUDE.md and the env, and redeploy. Then the gate short-circuits no must-answer eval row (0 false abstains from the gate) and still catches the clearly off-topic rows | The eval runner's gate-calibration line from the 2.2 run. After the redeploy, rerun the eval: no must-answer row may come back with `X-Ask-Reason: retrieval_gate` |
@@ -992,8 +994,8 @@ The TinyBERT rerank upgrade is decided at checkpoint 2.7, not here. MiniLM-L6 an
 - [ ] Day-of checks 4-5 pass on the final URL: the olake.io-origin preflight, SSE timing, and the 50-request burst with no 429 or 5xx (section 2).
 - [ ] The rate limit cannot throttle the scorer: `RATE_LIMIT_BURST` is above the test-set size. The paid fallback key is in the
       chain in case the credits stop after the freeze (question K1).
-- [ ] `DAILY_TOKEN_BUDGET` has been raised for the scoring window if the credits allow. At the POC's ~2k tokens per answer,
-      5M tokens is about 2,500 answers. Running out returns the degraded answer (most relevant pages, sources set), never a
+- [ ] `DAILY_TOKEN_BUDGET` has been raised for the scoring window if the credits allow. At the POC's round-2 ~3.5k tokens
+      per answer (k=10), 5M tokens is about 1,400 answers. Running out returns the degraded answer (most relevant pages, sources set), never a
       429 or 5xx.
 - [ ] The refresher is on or off as the kickoff answer to K5 says.
 - [ ] Submission: endpoint URL, repo URL and demo URL entered where the organizers said (question K5).
@@ -1137,7 +1139,9 @@ checkpoint 2.7 decides the TinyBERT rerank.
   conceptual "why Iceberg" questions.
 - Why the score gate is only an off-topic short-circuit: on the 94-row set, -0.891 on the MiniLM score caught only half
   of the unanswerable and out-of-scope rows, and the best threshold (1.18) false-abstained on 13% of answerable rows
-  (poc/results/gate-canonical.json). The end-to-end numbers are measured at checkpoints 2.2 and 2.5 (the full eval, with X-Ask-Reason per row).
+  (poc/results/gate-canonical.json). In the POC's round-2 run (prompt v3, k=10, a TinyBERT gate with one rewrite), false-abstain on answerable rows was 0.043 and
+  abstain recall 0.833 (poc/results/eval_run-canonical-combined.json). The final policy is measured at checkpoints 2.2 and
+  2.5 (the full eval, with X-Ask-Reason per row).
 - Zero valid citations after generation (decision D8, decided by data): abstain. In the canonical run this rule caused 0
   of the 13 false abstains on must-answer rows: the gate caused 7, the model's answerable=false 5 and the scorer's
   pattern 1 (poc/results/eval_run-canonical.json, abstain_breakdown).
@@ -1367,7 +1371,8 @@ DEBUG=0
 
 `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `RATE_LIMIT_BURST` and `DAILY_TOKEN_BUDGET` are starting values, not measurements.
 `RATE_LIMIT_BURST` must stay above the test-set size, so that one scorer IP sending the whole set never sees a 429. The test-set
-size is unknown; our own set has 94 rows. `DAILY_TOKEN_BUDGET=5000000` is about 2,500 answers at the POC's ~2k tokens per answer (`poc/results/answer.json`).
+size is unknown; our own set has 94 rows. `DAILY_TOKEN_BUDGET=5000000` is about 1,400 answers at the POC's round-2 ~3.5k tokens per answer, k=10
+(`poc/results/eval_run-canonical-combined.json`: 3,294 prompt and 166.7 completion tokens on average).
 When it runs out, `/ask` returns the degraded answer (most relevant pages, sources set), never a 429 or 5xx. Raise it
 before the scoring window if the credits allow. Set the
 others from the credits smoke test (section 2) and the 12:15 load test.
