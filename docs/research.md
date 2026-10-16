@@ -15,14 +15,15 @@ The runbook that carries out these decisions is [plan.md](plan.md). Open items a
 3. **Citations** (§3.5): `sources` holds canonical sitemap URLs (trailing slash, no anchor), capped at 5. For repo files,
    `SOURCE_URL_STYLE` switches between branch-form and SHA-permalink GitHub URLs (K3). Anchors and line ranges appear in
    the UI.
-4. **Architecture**: hybrid retrieval (BM25 plus local dense embeddings, RRF k=60), a local cross-encoder rerank, then one
-   grounded LLM call with `[n]` citations. A conservative off-topic gate (with one rewrite) sits before the call. The model's
-   `NO_ANSWER` and citation validation decide abstains, and every abstain is logged. The fallback is BM25-only
+4. **Architecture**: hybrid retrieval (BM25 plus local dense embeddings, RRF k=60) with no reranker, because the measured
+   rerankers did not help. The top 10 chunks go to one grounded LLM call with `[n]` citations. An off-topic gate sits
+   before the call: one rewrite, then a short-circuit, with its threshold set at 0% false abstains. The model's `NO_ANSWER`
+   and citation validation decide abstains, and every abstain is logged. The fallback is BM25-only
    with the same chunks and prompt, behind a config flag (§4).
 5. **Stack** (§5): Python 3.12 and FastAPI 0.135 or later (native SSE). The `openai` SDK drives an ordered chain of
-   OpenAI-compatible providers, with a paid key of at least 100 RPM first. Retrieval uses fastembed bge-small (ONNX, CPU),
-   bm25s and numpy vectors. The reranker is PENDING(poc). One container runs on Cloud Run asia-south1 with one instance
-   always on; DigitalOcean App Platform BLR is the fallback and an ngrok dev domain the emergency path. Latency, not cost,
+   OpenAI-compatible providers: the event credits, then the operator's paid key of at least 100 RPM, then Gemma on the
+   Gemini free tier. Retrieval uses fastembed bge-small (ONNX, CPU), bm25s and numpy vectors, with no reranker. One
+   container (2 GiB by default) runs on Cloud Run asia-south1 with one instance always on; DigitalOcean App Platform BLR is the fallback and an ngrok dev domain the emergency path. Latency, not cost,
    decides the model: answers cost $0.0004-0.0045.
 6. **Widget**: a small `widget.js` loader that injects a launcher and an iframe served from our origin (`/embed`), plus a plain
    iframe snippet and a Docusaurus `scripts` snippet (§5.6).
@@ -135,9 +136,10 @@ file; [repos report][r-repos]). The exact list is in plan Appendix A. The highes
 The POC used a broader allowlist (84 files, 143,596 tokens, `poc/results/corpus.json`), with more Go config structs.
 The event uses the reports' Tier A list.
 
-**[olake-fusion][fusion-repo] is a modified hard fork of [Apache Amoro][amoro].** The evidence: its [NOTICE][fus-notice] and DISCLAIMER, the pom
-parent `org.apache.amoro:amoro-parent:0.9-SNAPSHOT`, 119 files headed "Modified by Datazip", and 1,851 imported upstream
-commits ([repos report][r-repos]). GitHub does not flag it as a fork. Its `docs/` and `site/` folders are upstream Amoro and are not
+**[olake-fusion][fusion-repo] is a modified hard fork of [Apache Amoro][amoro].** The evidence: its [NOTICE][fus-notice] and DISCLAIMER; the
+[root POM][fus-pom], whose own coordinates are `org.apache.amoro:amoro-parent:0.9-SNAPSHOT` and whose `<parent>` is
+`org.apache:apache:23` (checked by the doc-writer at the pinned SHA); 119 files headed "Modified by Datazip"; and 1,851
+imported upstream commits ([repos report][r-repos]). GitHub does not flag it as a fork. Its `docs/` and `site/` folders are upstream Amoro and are not
 indexed, because their defaults contradict Fusion's. Snapshot expiry (`table-expire.enabled`) is off in Fusion but on
 upstream, and the target file size is 512 MB in Fusion against 128 MB in [Amoro's configuration docs][amoro-conf]
 ([repos][r-repos] and [olake-domain][r-olake-domain] reports). Amoro concepts enter only through labelled outside pages (§3.4).
@@ -227,27 +229,28 @@ with `--no-cpu-throttling` [[gcloud-deploy]], so use that flag whenever the poll
 
 ### 4.1 Options
 
-| | A. Simple | B. Hybrid + rerank + gates (chosen) | C. Agentic tool loop | D. Long-context stuffing |
+| | A. Simple | B. Hybrid + gates, no rerank (chosen; measured) | C. Agentic tool loop | D. Long-context stuffing |
 |---|---|---|---|---|
-| Retrieval | BM25 over heading-aware chunks, top 6 | BM25 + local dense, RRF k=60 [[rrf]], cross-encoder rerank, small-to-big | Tools (`search_docs`, `search_repo`, `open_page`) chosen by the LLM | None: the whole docs set goes in the prompt |
-| LLM calls per answer | 1 | 1 (2 when gate 1 triggers a rewrite) | Several | 1, very large |
+| Retrieval | BM25 over heading-aware chunks, top 10 | BM25 + local dense, RRF k=60 [[rrf]]; the top 10 chunks (max 3 per page) go to the LLM; no reranker, because the measured rerankers did not help (§4.3) | Tools (`search_docs`, `search_repo`, `open_page`) chosen by the LLM | None: the whole docs set goes in the prompt |
+| LLM calls per answer | 1 | 1 (2 when the off-topic gate triggers the rewrite) | Several | 1, very large |
 | Build effort | About 1 hour (memo estimate, unmeasured) | The 10:30-13:30 build window (plan section 3) | Not planned for v1 (memo) | Small, but rejected for serving |
 
 ### 4.2 Options against the judging criteria
 
-Qualitative: the lead's design memo plus the doc-writer's reading of the options. These are judgments, not measurements.
-PENDING(arch-prior-art report and POC retrieval numbers) will replace them with measurements where possible.
+Qualitative: the lead's design memo plus the doc-writer's reading of the options. These are judgments, except where §4.3
+gives a measured number. Prior art for this comparison is PENDING(arch-prior-art report).
 
 | Criterion (weight) | A. Simple | B. Chosen | C. Agentic | D. Long context |
 |---|---|---|---|---|
-| Answer accuracy (35) | Weak on paraphrased questions (lexical match only) | Dense recall plus rerank precision | Better on hard multi-hop questions | No retrieval misses, but the whole corpus is in every prompt |
+| Answer accuracy (35) | Weak on paraphrased questions (lexical match only); canonical MRR@10 0.68 | Hybrid recall: canonical MRR@10 0.736, hit@10 0.939 (§4.3) | Better on hard multi-hop questions | No retrieval misses, but the whole corpus is in every prompt |
 | Citations and honesty (15) | `[n]` mapping; abstain only from the model | Three abstain triggers, citation validation | More steps between a citation and the retrieved text | Citations must name pages inside one huge context |
 | Production readiness (20) | Few moving parts | More parts, but each one is local and deterministic | More failure modes (loops, tool errors) | Depends on a ~1M-token-context provider |
 | UX and embedding (15) | Same widget | Same widget; streaming | Slower first token | Slowest |
 | Engineering: latency and cost (15) | Cheapest | One LLM call; local retrieval has no marginal cost | 2-4x latency and cost (memo estimate, unmeasured) | Highest cost per answer |
 | Engineering: freshness | Rebuild chunks | Rebuild chunks and vectors incrementally | Same as B | Re-send everything each call |
 
-Decision: **B**, with **A** always available as the fallback: same chunks, same prompt, switched by `RETRIEVAL_MODE`.
+Decision: **B, hybrid RRF without a reranker (measured)**, with **A** always available as the fallback: same chunks, same
+prompt, switched by `RETRIEVAL_MODE`.
 C is a possible low-confidence escalation only if time allows. D is rejected for serving and kept as a debugging oracle.
 
 ### 4.3 Pipeline details
@@ -255,11 +258,14 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
 - **Chunking.** Split at headings and tab markers. Never split inside a code fence or table. Every chunk gets a
   `title › section` header. YAML and JSON split at keys, and Go at top-level declarations (`poc/chunking/chunker.py`). Measured
   sizes are in §9. At a 600-token target, 556 of 951 chunks exceed the 512-WordPiece input limit of the bge embedders and get
-  truncated. At 300 only 79 of 1,861 do (`poc/results/retrieval.json`), so 300 suits dense retrieval. PENDING(lead: confirm 300/450).
-- **Retrieval.** BM25 (bm25s) and dense (fastembed) candidates fused with RRF, k=60 [[rrf]]. Then a cross-encoder
-  rerank. Then small-to-big: the neighbouring chunk or parent section within about 4k context tokens, with at most 3 chunks
-  per page. POC results on the 14 seed questions that have expected sources (`poc/results/retrieval.json`; 300-token chunks;
-  fuse top 50, rerank top 20; latency is retrieval only, on an 18-core arm64 laptop with all ONNX threads):
+  truncated. At 300 only 79 of 1,861 do (`poc/results/retrieval.json`). On the canonical set, every config scores lower at
+  600 than at 300; for example, hybrid bge-small falls to MRR@10 0.719 from 0.736 (`poc/results/retrieval-canonical.json`).
+  **Decision: a 300-token target with a 450 hard max** (the POC chunker's 300 configuration). The 600-token option is dropped.
+- **Retrieval.** BM25 (bm25s) and dense (fastembed) candidates fused with RRF, k=60 [[rrf]], with **no reranker**
+  (decided on the canonical numbers below). The top 10 fused chunks, at most 3 per page, go to the LLM: about 3.3k context
+  tokens (an estimate from the POC's 1,858 prompt tokens with 6 passages, `poc/results/answer.json`).
+  First, the POC results on the 14 seed questions with expected sources (`poc/results/retrieval.json`; 300-token chunks;
+  fuse top 50, rerank top 20; retrieval latency only, on an 18-core arm64 laptop with all ONNX threads):
 
   | Config | hit@1 | hit@5 | hit@10 | MRR@10 | p50 ms |
   |---|---|---|---|---|---|
@@ -275,21 +281,41 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   With 14 questions, one question moves a hit rate by about 0.07, so differences of that size are noise. The best MRR
   (hybrid + bge-reranker-base) costs about 1.8 s per query on this machine.
 
-  **Canonical set** (the 82 rows of the curated set that have expected sources; about 300-token chunks; the lead's summary
-  of the POC run, with the JSON still to be committed, PENDING(poc)):
+  **Canonical set**: the 82 rows of the curated set that have expected sources, at 300-token chunks
+  (`poc/results/retrieval-canonical.json`; the bge-reranker-base row comes from
+  `poc/results/retrieval-canonical-bge-reranker.json`, which is a transcription of the run's log, not a JSON the bench wrote):
 
   | Config | MRR@10 | hit@5 |
   |---|---|---|
-  | BM25 | 0.68 | 0.85 |
-  | Dense bge-small-en-v1.5 | 0.69 | 0.85 |
-  | Dense bge-base-en-v1.5 | 0.70 | 0.83 |
-  | Hybrid (RRF) bge-small | 0.736 | 0.87 |
-  | Hybrid (RRF) bge-base | 0.745 | 0.89 |
+  | BM25 | 0.680 | 0.854 |
+  | Dense bge-small-en-v1.5 | 0.692 | 0.854 |
+  | Dense bge-base-en-v1.5 | 0.702 | 0.829 |
+  | Hybrid (RRF) bge-small | 0.736 | 0.866 |
+  | Hybrid (RRF) bge-base | 0.745 | 0.890 |
+  | Hybrid bge-small + rerank MiniLM-L6 | 0.746 | 0.829 |
+  | Hybrid bge-base + rerank MiniLM-L6 | 0.734 | 0.854 |
+  | BM25 + rerank MiniLM-L6 | 0.742 | 0.829 |
+  | Hybrid bge-small + rerank bge-reranker-base (log transcription) | 0.664 | 0.829 |
 
-  Hybrid clearly beats either retriever alone. bge-small comes close to bge-base, and it embeds the corpus 3.3x faster
-  (69.09 s vs 229.79 s, `poc/results/retrieval.json`). With hybrid bge-base and the MiniLM-L6 rerank, an expected source
-  is among the 6 context passages for 85.4% of the 94 rows (`poc/results/gate-canonical.json`,
-  `context_hit_rate_top_passages`). PENDING(poc: the rerank comparison on the canonical set).
+  The other ranks, from the same files (hit@1 / hit@3 / hit@10):
+  - Hybrid (RRF) bge-small, the chosen config: 0.634 / 0.829 / 0.939.
+  - Hybrid (RRF) bge-base: 0.646 / 0.817 / 0.927.
+  - Hybrid bge-small + MiniLM-L6: 0.671 / 0.780 / 0.939.
+  - BM25: 0.549 / 0.793 / 0.915.
+  - Hybrid bge-small + bge-reranker-base (log transcription): 0.549 / 0.744 / 0.890.
+
+  Findings:
+  - Hybrid clearly beats either retriever alone.
+  - bge-small comes close to bge-base, and it embeds the corpus 3.3x faster (69.09 s vs 229.79 s,
+    `poc/results/retrieval.json`).
+  - The MiniLM-L6 rerank leaves MRR flat (0.746 vs 0.736) and makes hit@3 and hit@5 worse (0.780 vs 0.829, 0.829 vs 0.866).
+  - bge-reranker-base makes MRR worse (0.664, log transcription).
+  - At 600-token chunks every config scores lower.
+
+  **Decision: no reranker in the ranking path.** A reranker is only an optional patch-hour experiment. The context gets the
+  top 10 chunks, not 6, because hit@10 is 0.939. With 6 passages (hybrid bge-base plus MiniLM-L6), an expected source was in
+  the context for 70 of the 82 rows with expected sources (85.4%, `poc/results/gate-canonical.json`,
+  `context_hit_rate_top_passages`).
 - **Grounding.** One system prompt (plan section 4.3): answer only from numbered passages, cite `[n]` per claim, and copy
   configs exactly. Fixed `NO_ANSWER` and `OUT_OF_SCOPE` markers. Prompt injection is treated as data.
 - **Abstain: the reranker score cannot decide it.** On the 18 seed questions, a gate on the top MiniLM-L6 rerank score at
@@ -302,19 +328,40 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   - The score ranges overlap. A near-domain unknown scores high (UNK-01: 6.28), and an injection-wrapped real question
     scores very low (ADV-03: -6.36). Answerable rows range from -2.67 to 7.78.
 - **Abstain policy** (decided by the lead after this result):
-  1. The gate is only a cheap off-topic short-circuit, at a conservative threshold (about -4 for MiniLM-L6).
-     `ABSTAIN_THRESHOLD` now means this off-topic threshold.
-  2. Below it, ONE LLM rewrite turns the question into search keywords, which strips injections, pasted logs and
-     chit-chat. Retrieval runs again, and the bot declines only if the score is still below the threshold.
+  1. The gate is only a cheap off-topic short-circuit. Its threshold (`ABSTAIN_THRESHOLD`) is chosen at 0% false abstains
+     on must-answer rows, measured AFTER the one-rewrite step. The signal is PENDING(poc): the highest dense cosine, the
+     highest BM25 score, or a TinyBERT score.
+  2. Below the threshold, ONE LLM rewrite turns the question into search keywords, which strips injections, pasted logs and
+     chit-chat. Retrieval runs again, and the bot short-circuits only if the score is still below the threshold. Measuring
+     after the rewrite matters: on the MiniLM score, two injection-wrapped answerable rows scored below -4 (ADV-02 -4.23,
+     ADV-03 -6.36), and so did two near-domain unknowns (UNK-05 -4.44, UNK-06 -5.52) whose BEHAVIOR items need contact
+     pointers (`poc/results/gate-canonical.json`). So one unified short-circuit text serves both cases:
+     "I couldn't find this in the OLake docs or repos. I can help with OLake setup, sources, sync modes, catalogs, Fusion
+     maintenance, deployment and troubleshooting. If your question is about OLake, ask in the OLake Slack or GitHub
+     Discussions; for commercial or security questions, contact hello@olake.io."
   3. The real abstain decision comes from the model (the `NO_ANSWER` marker or "answerable" flag) plus citation validation.
      With no valid citation left, it abstains.
   4. Negative and false-premise answers say "not supported", or correct the premise, with the citation of the page that
      lists what is supported. They never say "the docs don't mention X". The scorer skips abstain matching on those rows.
 
   Every abstain is logged with its reason. **Targets**: abstain recall ≥ 90% on unanswerable plus out-of-scope rows, and
-  false-abstain ≤ 5% on answerable rows. PENDING(poc: the combined policy's abstain recall, false-abstain on all must-answer
-  rows, how often the rewrite fires, and its latency). On the seed set, the model's own flag added one false abstain
-  (precision 0.75, false-abstain 0.071), on a false-premise question whose retrieval missed (`poc/results/answer.json`).
+  false-abstain ≤ 5% on answerable rows.
+
+  **Measured end to end, and both abstain targets were MISSED.** The POC API ran with the v1 prompt and a local qwen3:32b,
+  on all 94 rows (`poc/results/eval_run-canonical.json`):
+  - abstain recall 0.833, against the ≥ 0.90 target;
+  - false-abstain 0.072 on answerable rows, against the ≤ 0.05 target.
+
+  Treat this as a lower bound from a local 32B model. The event-day levers:
+  - a stronger hosted model;
+  - the "unsupported or undocumented" fact card for near-domain unknowns;
+  - the unified short-circuit text above;
+  - the v2 prompt, which corrects false premises and answers the real question inside injection attempts (the POC made it
+    selectable by env var in POC commit 300e9c2).
+
+  PENDING(poc): the combined policy's abstain recall, false-abstain on all must-answer rows, how often the rewrite fires,
+  and its latency. On the seed set, the model's own flag added one false abstain (precision 0.75, false-abstain 0.071), on a
+  false-premise question whose retrieval missed (`poc/results/answer.json`).
 - **Honesty specifics** (decided): "not supported" or "not documented" with a fact-card citation is an answer, not an
   abstain. For pricing, SLA and enterprise questions, give no specifics and point to hello@olake.io or
   [the contact page][contact], as [/olake-go/][go-faq] does. Default credentials are stated only as the docs state them,
@@ -417,20 +464,19 @@ RAM.**
   ([stack report][r-stack]) the corpus is far too slow to embed at startup. Only the query is embedded at runtime: 2.3 ms
   p50 in the stack bench, 5.4 ms at 2 threads in the POC.
 
-**Reranker: PENDING(poc canonical comparison).** The candidates:
+**Reranker (decided): none in the ranking path.** On the canonical set, the MiniLM-L6 rerank left MRR flat and lowered hit@3
+and hit@5, and bge-reranker-base lowered MRR to 0.664 (§4.3; `poc/results/retrieval-canonical.json`, and the log transcription
+`poc/results/retrieval-canonical-bge-reranker.json`). A reranker is only an optional patch-hour experiment. Measured costs,
+for reference:
 - FlashRank TinyBERT-L-2: about 4 MB; 13.9 ms for 20 candidates and 41.7 ms for 50 ([stack report][r-stack]).
 - fastembed MiniLM-L-6: 215 ms for 20 and 863 ms for 50 at low load ([stack report][r-stack]); 205.9 ms for the top 10 at
   2 threads (POC).
 - bge-reranker-base: 922.3 ms for the top 10 at 2 threads, and about 1.5 GB more RSS (POC).
 
-The stack research recommends no reranker by default, or TinyBERT if the eval shows a gain. Both choices are measured on
-the canonical set, PENDING(poc):
-- **Reranker**: none, TinyBERT, MiniLM-L6 or bge-reranker-base, compared on source hit and latency.
-- **Off-topic gate signal**: the TinyBERT score, the MiniLM score, the highest dense cosine or the highest BM25 score. The
-  winner is the signal that separates off-topic rows best at 0% false abstains on must-answer rows.
-
-Placeholders until the POC reports: `RERANK_MODEL=<poc pick>`, `GATE_SIGNAL=<poc pick>`, `ABSTAIN_THRESHOLD=<threshold at 0%
-false abstains>`.
+**Off-topic gate signal: PENDING(poc).** The candidates are the highest dense cosine, the highest BM25 score, and a TinyBERT
+score (TinyBERT used only for the gate). The winner separates off-topic rows best at 0% false abstains on must-answer rows,
+measured after the one-rewrite step (§4.3). Placeholders: `GATE_SIGNAL=<poc pick>`,
+`ABSTAIN_THRESHOLD=<threshold at 0% false abstains>`.
 
 ### 5.4 Vector store
 None. Retrieval stays in process. Stack-report benchmarks at 20k chunks:
@@ -455,7 +501,7 @@ inactivity ([Supabase pricing][supabase]). Decision: bm25s plus numpy, fused wit
 
 | Option | Role | Facts | Sources |
 |---|---|---|---|
-| Google Cloud Run, asia-south1 (Mumbai) | **Primary** | 41.5 ms HTTPS round trip from the venue area, against 261.7-387.9 ms to US and EU regions. min-instances=1 idles at about $0.32 a day (1 vCPU, 0.5 GiB). `--source .` builds remotely, so no image upload over venue Wi-Fi. HTTP startup and liveness probes. `--no-cpu-throttling` keeps CPU for a background refresher. Needs a billing account | [stack report][r-stack] (gcping, pricing math); [Cloud Run pricing][cr-pricing]; [gcloud run deploy][gcloud-deploy]; [health checks][cr-health] |
+| Google Cloud Run, asia-south1 (Mumbai) | **Primary** | 41.5 ms HTTPS round trip from the venue area, against 261.7-387.9 ms to US and EU regions. With min-instances=1, idle cost is about $0.65 a day at the default 2 GiB, or $0.43 at 1 GiB (sizing below). `--source .` builds remotely, so no image upload over venue Wi-Fi. HTTP startup and liveness probes. `--no-cpu-throttling` keeps CPU for a background refresher. Needs a billing account | [stack report][r-stack] (gcping, pricing math); [Cloud Run pricing][cr-pricing]; [gcloud run deploy][gcloud-deploy]; [health checks][cr-health] |
 | DigitalOcean App Platform, BLR | **Fallback** | BLR is available for dynamic apps. `apps-s-1vcpu-1gb` costs $12 a month and `apps-s-1vcpu-2gb` $25, billed per second, so one day costs well under $1. The app spec has `health_check` and `liveness_health_check`. Images must be AMD64 Linux; under 1 GiB is recommended. Traffic passes through Cloudflare. SSE buffering and a 100 s request cap appear only in community threads and are unverified, so the widget must be able to fall back to `POST /ask` | [availability][do-avail]; [pricing][do-app-pricing]; [app spec][do-spec]; [stack report][r-stack]; community threads on [SSE][do-sse] and [the 100 s limit][do-100s] |
 | ngrok free dev domain, from the laptop | **Emergency** | One stable dev domain (`<name>.ngrok-free.app`); 1 GB a month outbound, 20,000 HTTP requests a month, 4,000 a minute. The browser interstitial applies to HTML pages only, not to API calls. SSE is not documented | [ngrok free plan][ngrok] |
 | Cloudflare quick tunnel | Avoid | No SSE, a new random URL each run, and 200 in-flight requests at most | [quick tunnels][tunnel] |
@@ -463,14 +509,22 @@ inactivity ([Supabase pricing][supabase]). Decision: bm25s plus numpy, fused wit
 | Render free | Avoid | Spins down when idle and serves a loading page | [Render free][render] |
 | Hugging Face Docker Space | Only if PRO is already paid | Docker Spaces need a paid plan to create, and free hardware sleeps when unused. The container runs as uid 1000 on port 7860 | [Spaces overview][hf-overview]; [Docker Spaces][hf-docker] |
 
-**Sizing (decided):** 1 vCPU, a request timeout of about 60 s, and min-instances 1. Memory depends on the models (figures in
-§5.3):
-- 1 GiB for bge-small with no reranker or TinyBERT;
-- 2 GiB with MiniLM-L6;
-- 4 GiB with bge-base or bge-reranker-base. The POC measured 1.4-2.6 GB RSS with bge-base plus MiniLM.
+**Sizing (decided):** 1 vCPU, a request timeout of about 60 s, and min-instances 1. Memory: **2 GiB by default**, which
+leaves headroom because the onnxruntime memory arena grows under bursts. **1 GiB is the minimum**, and it fits bge-small with
+no reranker (189 MiB idle, [stack report][r-stack]). Use 4 GiB if the bge-base upgrade or a reranker experiment is enabled;
+the POC measured 1.4-2.6 GB RSS with bge-base plus MiniLM (`poc/results/embed_probe.json`).
 
-The DigitalOcean fallback is sized the same way: `apps-s-1vcpu-1gb` ($12 a month), `apps-s-1vcpu-2gb` ($25), or a 4 GiB size
-such as `apps-d-1vcpu-4gb` ($49) ([pricing][do-app-pricing]). Add `--no-cpu-throttling` on Cloud Run when the in-app refresher
+Idle cost with min-instances=1, at the idle rates of $0.0000025 per vCPU-second and per GiB-second
+([Cloud Run pricing][cr-pricing], [stack report][r-stack]):
+
+| Memory (1 vCPU) | Idle cost per day |
+|---|---|
+| 1 GiB | about $0.43 |
+| 2 GiB (default) | about $0.65 |
+| 4 GiB | about $1.08 |
+
+The DigitalOcean fallback is sized the same way: `apps-s-1vcpu-2gb` ($25 a month) by default, `apps-s-1vcpu-1gb` ($12) at
+the minimum, or a 4 GiB size such as `apps-d-1vcpu-4gb` ($49) ([pricing][do-app-pricing]). Add `--no-cpu-throttling` on Cloud Run when the in-app refresher
 runs. On Cloud Run,
 `--min-instances` is set per revision and `--min` service-wide. `--cpu-boost` is on by default for new services, and
 `--update-secrets` maps env vars to Secret Manager versions ([gcloud run deploy][gcloud-deploy],
@@ -523,15 +577,17 @@ ordinary page the same widget worked across origins, and a second request reused
   a non-root container user, and secrets only in env or Secret Manager.
 
 ### 5.8 Latency and cost targets
-**Targets** (unmeasured end to end): `/ask` p50 ≤ 3 s and p95 ≤ 6 s; stream time to first token ≤ 1.2 s; retrieval plus
-rerank ≤ 150 ms on 2 vCPU. Measured so far:
-- Of the rerankers, only TinyBERT fits the 150 ms target (13.9 ms for 20 candidates). MiniLM-L6 takes 205.9 ms for the
-  top 10 at 2 threads.
-- Hybrid retrieval without a rerank takes 13.53 ms p50 on all cores (§4.3).
+**Targets**: `/ask` p50 ≤ 3 s and p95 ≤ 6 s; stream time to first token ≤ 1.2 s; retrieval ≤ 150 ms on 2 vCPU. Measured so far:
+- Hybrid retrieval with no reranker takes 13.53 ms p50 on all cores (§4.3), well inside the retrieval target. With a
+  reranker it would not be: MiniLM-L6 takes 205.9 ms for the top 10 at 2 threads.
 - The container reaches `/readyz` 1.24-1.28 s after start ([stack report][r-stack]).
 - The generator's time to first token depends far more on its reasoning setting than on anything we control (§5.2).
 
-PENDING(POC: end-to-end latency with a hosted model).
+**Hosted end-to-end latency: not measured on 2026-10-16 (no hosted key).**
+- Estimate: p50 ≈ retrieval (about 14 ms) + the provider's time to first token (0.71-0.97 s for the fast non-reasoning
+  candidates, several seconds or more with reasoning, §5.2) + about 72 output tokens at that model's speed (0.2-0.7 s at
+  117-474 tok/s). That is about 1-2 s for a fast non-reasoning model, and more with reasoning.
+- It is measured at the 12:30 checkpoint (plan section 5).
 
 ## 6. Evaluation
 
@@ -562,15 +618,36 @@ The lead built it from the two research sets below in three steps:
   phrases were checked against their sources with none missing. For each unanswerable item, the answer was confirmed
   absent by searching the GitHub code, issues and releases and grepping the docs, blog and site source.
 
-**POC results so far** (seed set, 18 questions, of which 14 have expected sources; small and noisy):
+**POC results so far.** The seed set had 18 questions, 14 with expected sources (small and noisy). The curated set is
+the 94 rows.
 - Retrieval: the table in §4.3 (`poc/results/retrieval.json`).
 - Answering (`poc/results/answer.json`, local qwen3:32b, so its latency says nothing about a hosted model): the answered
   questions hit an expected source 71.4% of the time. The abstain gate result is in §4.3. Retrieval took 13.7 ms p50 and the
   rerank 331.9 ms p50. On the local model's OpenAI-compatible API, only `reasoning_effort=none` turned thinking off: time to
   first token fell from 32,961 ms to 13,920 ms in the think probe. So set the hosted provider's lowest reasoning
   setting, and measure it at the 12:15 load test.
-- PENDING: end-to-end accuracy with the event's model on the curated set, the threshold curve, latency and cost per answer
-  with a hosted model.
+- **End to end on the curated 94 rows** (`poc/results/eval_run-canonical.json`): the POC API with the v1 prompt, a local
+  qwen3:32b and the same model as judge, at concurrency 4.
+  - Schema valid: 1.0.
+  - Behaviour correct: 0.84.
+  - Source hit: 0.695.
+  - Fact coverage: 0.573.
+  - Judged BEHAVIOR pass: 0.75.
+  - Contradictions: 4.
+  - 5xx responses: 0.
+  - Abstain recall on unanswerable plus out-of-scope rows: 0.833, which **misses** the ≥ 0.90 target.
+  - False-abstain on answerable rows: 0.072, which **misses** the ≤ 0.05 target.
+  - Weakest types: false-premise rows (behaviour 0.25) and negative rows (0.4).
+
+  This run is a lower bound from a local 32B model; its latency (p50 105 s per `/ask`) says nothing about a hosted model.
+  The event-day levers are listed in §4.3.
+- **Hosted end-to-end accuracy, latency and cost: not measured on 2026-10-16 (no hosted key).**
+  - Estimate for latency: §5.8.
+  - Estimate for cost per answer: about 3.3k input and 72 output tokens times the provider's price. That gives about
+    $0.0027 on gemini-3.8-flash ($0.75 / $3.75 per 1M) and about $0.0004 on DigitalOcean gpt-oss-120b ($0.10 / $0.70 per 1M)
+    (§5.2).
+  - Accuracy is expected to beat the local-32B lower bound above.
+  - All three are measured at the 12:30 checkpoint.
 
 ## 7. Prior art and what judges probe
 
@@ -593,10 +670,10 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Credits throttle or stop during post-freeze scoring | Every row fails | A personal fallback trio (env only); a degraded mode that returns the most relevant pages; ask at kickoff (K1) |
+| Credits throttle or stop during post-freeze scoring | Every row fails | The ordered provider chain: the credits, then the operator's paid key with ≥ 100 RPM (D7), then Gemma on the free tier, failing over before the first byte; a degraded mode that returns the most relevant pages; ask at kickoff (K1) |
 | Endpoint down, cold or rate-limited while scoring | Production readiness and accuracy both lose | Min instances ≥ 1, a queue rather than rejection, a very high rate limit, a synthetic probe every minute (plan section 9) |
 | The organizers match sources differently from us | Citation points lost | Canonical sitemap URLs and branch-form GitHub URLs; ask K3; matching in our own eval is lenient |
-| Over-abstaining or under-abstaining | Accuracy or honesty points lost | The reranker score alone cannot separate the cases (§4.3). The model's `NO_ANSWER` plus citation validation decides; the off-topic gate stays conservative, with one rewrite; measured on the 94-row set, PENDING(poc) |
+| Over-abstaining or under-abstaining | Accuracy or honesty points lost. Both abstain targets were missed in the local end-to-end run (recall 0.833, false-abstain 0.072; `poc/results/eval_run-canonical.json`) | The reranker score alone cannot separate the cases (§4.3), so the model's `NO_ANSWER` plus citation validation decides. The off-topic gate is calibrated at 0% false abstains after one rewrite, with a unified short-circuit text. Event-day levers: a stronger hosted model, the unknowns fact card, the v2 prompt. The combined policy's numbers are PENDING(poc) |
 | Venue Wi-Fi | Slow builds and deploys | Pre-cached wheels, models, repos and base image; remote builds; phone hotspot (plan section 11) |
 | A teammate edits another track's files | Lost work | One owner per path (plan section 0.3) |
 | Stale stub pages contradict live pages (e.g. "Kafka is WIP") | Confidently wrong answers | Denylist the stubs; fact cards with explicit negatives (§3.1, §3.3) |
@@ -631,8 +708,8 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Abstain gate on the top rerank score, seed set (18 rows) | threshold -0.891: precision 1.0, recall 1.0, false-abstain 0.0 (3 should abstain, 14 should answer) | `poc/results/answer.json` |
 | Abstain gate, curated set (94 rows; 12 should abstain) | -0.891: recall 0.5, false-abstain 4.3% of answerable rows. Best threshold 1.18: recall 0.917, precision 0.44, false-abstain 13% of answerable and 17.1% of must-answer rows | `poc/results/gate-canonical.json` (the -0.891 figures recomputed from `per_question`) |
 | Top rerank score range by type, curated set | answerable -2.67 to 7.78; unanswerable -5.52 to 6.28; out-of-scope -11.21 to 0.78; adversarial -6.36 to 2.95 | `poc/results/gate-canonical.json` (`by_type`) |
-| Expected source among the 6 context passages, curated set | 85.4% of 94 rows | `poc/results/gate-canonical.json` |
-| Retrieval MRR@10 / hit@5, curated set (82 rows with sources) | BM25 0.68 / 0.85; hybrid bge-small 0.736 / 0.87; hybrid bge-base 0.745 / 0.89 | The lead's summary of the POC canonical run; JSON PENDING(poc) |
+| Expected source among the 6 context passages, curated set (hybrid bge-base + MiniLM-L6) | 70 of the 82 rows with expected sources (85.4%) | `poc/results/gate-canonical.json` (`context_hit_rate_top_passages`) |
+| Retrieval MRR@10 / hit@5 / hit@10, curated set (82 rows with sources, 300-token chunks) | BM25 0.680 / 0.854 / 0.915; hybrid bge-small 0.736 / 0.866 / 0.939; hybrid bge-base 0.745 / 0.890 / 0.927; hybrid bge-small + MiniLM-L6 0.746 / 0.829 / 0.939; hybrid bge-small + bge-reranker-base 0.664 / 0.829 / 0.890 (log transcription) | `poc/results/retrieval-canonical.json`; `poc/results/retrieval-canonical-bge-reranker.json` (log transcription) |
 | API memory (hybrid bge-base + MiniLM-L6) | 1,419 MB RSS after one query; 2,609 MB after a scorer run at concurrency 4 | `poc/results/embed_probe.json` |
 | Strict-CSP host page (`connect-src 'self'`) | The Shadow DOM widget renders, but `/ask` is blocked by `connect-src` | `poc/results/embed_probe.json` |
 | Abstain on the model's own flag | precision 0.75, recall 1.0, false-abstain 0.071 | `poc/results/answer.json` |
@@ -651,13 +728,14 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | olake issues that are bot TODOs | 99 of 321 | [repos report][r-repos] |
 | Grounded eval questions written | 40 (ingestion) + 50 (ops) | [eval-ingestion][r-eval-ingestion] and [eval-ops][r-eval-ops] reports |
 | HTTPS round trip to Cloud Run regions (venue area) | Mumbai 41.5 ms; Delhi 53.4 ms; Singapore 53.0 ms; Iowa 261.7 ms; Belgium 360.2 ms; South Carolina 387.9 ms | [stack report][r-stack] (gcping, warm medians, n=7) |
-| Cloud Run min-instance idle cost (1 vCPU, 0.5 GiB) | about $0.324 a day | [stack report][r-stack], from [Cloud Run pricing][cr-pricing] |
+| Cloud Run min-instance idle cost (1 vCPU) | 0.5 GiB about $0.324 a day; 1 GiB about $0.43; 2 GiB about $0.65; 4 GiB about $1.08 | [stack report][r-stack]; computed from the [Cloud Run pricing][cr-pricing] idle rates of $0.0000025 per vCPU-second and per GiB-second |
 | Container image and idle memory | lean 73 MB / 59 MiB; with fastembed and bge-small 180 MB / 189 MiB | [stack report][r-stack] (docker save, docker stats) |
 | Cold start to `/readyz` | 1.24-1.28 s | [stack report][r-stack] |
 | Reranker latency, 20 / 50 candidates (low load) | FlashRank TinyBERT 13.9 / 41.7 ms; fastembed MiniLM-L-6 215 / 863 ms | [stack report][r-stack] |
 | Cost per answer, 4k in and 400 out | $0.0004-$0.0045 (Gemini 3.8 Flash the highest) | [stack report][r-stack] (`cost.py`, list prices) |
 | Widget bundles (prior art) | kapa 2,130,950 bytes, Inkeep 1,655,186 bytes; both Shadow DOM, no iframe | [stack report][r-stack] |
-| End-to-end accuracy, latency and cost with the event's model | PENDING | Curated eval set at the event |
+| End-to-end on the curated set, local qwen3:32b (v1 prompt, concurrency 4) | schema 1.0; behaviour 0.84; source hit 0.695; fact coverage 0.573; judged BEHAVIOR 0.75; contradictions 4; abstain recall 0.833 (target ≥ 0.90 missed); false-abstain 0.072 (target ≤ 0.05 missed); 0 5xx; p50 105 s per `/ask` (local model); wall time 2,646.5 s | `poc/results/eval_run-canonical.json` |
+| Hosted end-to-end accuracy, latency and cost | Not measured on 2026-10-16 (no hosted key). Estimates: latency about 1-2 s p50 for a fast non-reasoning model (§5.8); cost about $0.0004-0.0027 per answer at 3.3k in and 72 out (§6). Measured at the 12:30 checkpoint | Method in §5.8 and §6 |
 
 ## Sources
 
@@ -729,6 +807,7 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 [values]: https://github.com/datazip-inc/olake-helm/blob/c63f10c48cd4dc2cbe3a130c6190ccedf0dafa83/helm/olake/values.yaml
 [fus-claude]: https://github.com/datazip-inc/olake-fusion/blob/15ca160b298bf038f78f6639ec7aae67e4d4e33a/CLAUDE.md
 [fus-notice]: https://github.com/datazip-inc/olake-fusion/blob/15ca160b298bf038f78f6639ec7aae67e4d4e33a/NOTICE
+[fus-pom]: https://github.com/datazip-inc/olake-fusion/blob/15ca160b298bf038f78f6639ec7aae67e4d4e33a/pom.xml
 [amoro-conf]: https://amoro.apache.org/docs/latest/configurations/
 [pg-tab]: https://olake.io/docs/connectors/postgres/?config-type=olake-cli#1-create-configuration-file
 [gh-snippet]: https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-a-permanent-link-to-a-code-snippet

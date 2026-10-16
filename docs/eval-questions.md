@@ -59,16 +59,21 @@ JUDGE_BASE_URL=... JUDGE_MODEL=... JUDGE_API_KEY=... \
 ```
 
 Output: a summary and per-type table on stdout, with per-question rows in `poc/results/eval_run.json` (change the path with `--out`).
-Other flags: `--judge-concurrency` (default 2) and `--timeout` (default 180 s). Before the POC scorer can score this table,
-two changes the lead asked of the POC owner must land: split Must mention on `<br>`, and treat adversarial rows that have
-expected sources as answer rows. PENDING(poc).
+Other flags: `--judge-concurrency` (default 2) and `--timeout` (default 180 s). The POC scorer follows this file since commit
+1582e17: it splits Must mention on `<br>`, sends `BEHAVIOR:` items to the judge, and treats adversarial rows that have
+expected sources as answer rows.
 
 Event repo (plan section 4.5, D2): `uv run python -m eval.run --base-url "$URL" [--ids SET-01,SRC-14] [--types answerable]
 [--concurrency 4] [--judge] --out eval/results/<HHMM>.json`. It implements the same method and also sends
 `X-Request-ID: eval-<ID>`, so failures can be matched to server logs.
 
-**Target**: a full run with the judge finishes within 5 minutes at concurrency 4. The harness reports `ask_wall_s`,
-`judge_wall_s` and `total_wall_s`. PENDING(POC: measured wall time for this set).
+**Runtime, measured.** On 2026-10-16 the full run took 2,646.5 s: 2,201.9 s of asking and 444.5 s of judging, with p50 105 s
+per `/ask` (`poc/results/eval_run-canonical.json`). That was against the POC API on a LOCAL qwen3:32b at concurrency 4,
+which decoded at about 10 tok/s under contention (the POC owner's observation). It says nothing about a hosted model.
+
+**Runtime, hosted estimate (unmeasured).** 94 rows × 2-4 s per answer / concurrency 8 ≈ 25-50 s, plus the judge at about
+20-40 s, so about 1-2 minutes. Verified at the 11:30 checkpoint (plan section 5). The harness reports `ask_wall_s`,
+`judge_wall_s` and `total_wall_s`.
 
 ## Categories and types
 
