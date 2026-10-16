@@ -353,8 +353,10 @@ def _build(*, offline: bool, outside: bool, do_prune: bool, index_root: Path, mo
                                                                     "items": factcard_misses}},
         build_info={"command": "index.build", "offline": offline, "outside": outside})
     removed = prune(index_root) if do_prune else []
-    # the poll state restarts from this build: its sitemap ETag, no repo or tag shortcuts
-    save_state({"sitemap_etag": manifest["docs"].get("sitemap_etag")})
+    if index_root.resolve() == INDEX_DIR.resolve():
+        # the refresher's poll state follows the main index only (an A/B build elsewhere leaves it alone):
+        # it restarts from this build's sitemap ETag, with no repo or tag shortcuts
+        save_state({"sitemap_etag": manifest["docs"].get("sitemap_etag")})
     report(corpus, manifest, stats, removed, time.perf_counter() - t0)
     return manifest
 
@@ -389,10 +391,11 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--offline", action="store_true", help="re-extract from cached HTML, clones and API responses")
     ap.add_argument("--no-outside", action="store_true", help="leave the curated outside pages (tier 4) out")
     ap.add_argument("--prune", action="store_true", help="keep only CURRENT and the previous version")
-    ap.add_argument("--index-dir", type=Path, default=INDEX_DIR, help="index root (default: INDEX_DIR)")
+    ap.add_argument("--out-root", "--index-dir", dest="out_root", type=Path, default=INDEX_DIR,
+                    help="index root to write (default: INDEX_DIR, i.e. data/index); A/B builds go to .cache/index-ab")
     args = ap.parse_args(argv)
     logs.setup()
-    build(offline=args.offline, outside=not args.no_outside, do_prune=args.prune, index_root=args.index_dir)
+    build(offline=args.offline, outside=not args.no_outside, do_prune=args.prune, index_root=args.out_root)
 
 
 if __name__ == "__main__":

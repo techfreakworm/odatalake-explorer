@@ -1,0 +1,411 @@
+{
+ "mode": "full",
+ "label": "smoke-5 local qwen3:32b",
+ "base_url": "http://127.0.0.1:8712",
+ "run_at": "2026-10-16T23:11:53+00:00",
+ "questions": {
+  "file": "eval/questions.md",
+  "n": 5
+ },
+ "flags": {
+  "questions": "eval/questions.md",
+  "ids": "SET-01,SRC-08,ADV-03,UNK-04,OOS-05",
+  "types": "",
+  "limit": 0,
+  "concurrency": 1,
+  "timeout": 660.0,
+  "judge": true,
+  "judge_concurrency": 1,
+  "judge_timeout": 600.0,
+  "generator_model": "qwen3:32b",
+  "retrieval_only": false,
+  "compare": "",
+  "label": "smoke-5 local qwen3:32b",
+  "out": "eval/results/smoke-5.json"
+ },
+ "healthz": {
+  "status": "ok",
+  "git_sha": "unknown",
+  "index": {
+   "version": "20261016T2259Z",
+   "built_at": "2026-10-16T22:59:52Z",
+   "pages": 108,
+   "chunks": 2434,
+   "docs_lastmod_max": "2026-10-15",
+   "repos": {
+    "olake": "d20c68e",
+    "olake-ui": "56826cf",
+    "olake-helm": "c63f10c",
+    "olake-fusion": "15ca160"
+   }
+  },
+  "uptime_s": 0
+ },
+ "judge": {
+  "model": "qwen3:32b",
+  "base_url_host": "127.0.0.1:11434",
+  "reasoning_effort": "none",
+  "generator_model": "qwen3:32b",
+  "caveat": "the judge is the same model as the generator: LLM judges favour their own outputs (self-preference), so treat fact coverage and BEHAVIOR passes as optimistic",
+  "errors": 0
+ },
+ "canary_checked": true,
+ "summary": {
+  "n": 5,
+  "schema_valid": 1.0,
+  "behaviour_correct": 0.8,
+  "source_hit_rate": 0.667,
+  "fact_coverage_mean": 0.556,
+  "behavior_pass_rate": 0.667,
+  "contradictions": 0,
+  "contract_failures": 0,
+  "contract_failure_ids": [],
+  "canary_leaks": [],
+  "http_status": {
+   "200": 5
+  },
+  "abstain_recall": {
+   "n": 2,
+   "count": 2,
+   "rate": 1.0,
+   "kinds": {
+    "pattern:no specific release or date mentioned in the provided passages": 1,
+    "empty_sources": 1
+   },
+   "ids": [
+    "UNK-04",
+    "OOS-05"
+   ]
+  },
+  "false_abstain_answerable": {
+   "n": 1,
+   "count": 0,
+   "rate": 0.0,
+   "kinds": {},
+   "ids": []
+  },
+  "false_abstain_must_answer": {
+   "n": 3,
+   "count": 1,
+   "rate": 0.333,
+   "kinds": {
+    "empty_sources": 1
+   },
+   "ids": [
+    "ADV-03"
+   ]
+  },
+  "server_reasons": {
+   "answered": 3,
+   "no_valid_citation": 2
+  },
+  "cache_hits": 0,
+  "latency_ms": {
+   "p50": 12514.7,
+   "p95": 18515.5,
+   "max": 18515.5,
+   "n": 5
+  },
+  "ask_wall_s": 68.8,
+  "judge_wall_s": 12.1,
+  "total_wall_s": 80.9,
+  "gate_calibration": {
+   "available": true,
+   "lowest_must_answer": 0.8038,
+   "lowest_must_answer_id": "SRC-08",
+   "threshold": 0.7838,
+   "must_abstain_scored": 2,
+   "must_abstain_below": 2,
+   "below_ids": [
+    "OOS-05",
+    "UNK-04"
+   ],
+   "line": "gate calibration: lowest must-answer gate score 0.8038 (SRC-08) - 0.02 = ABSTAIN_THRESHOLD 0.7838; must-abstain rows below it: 2/2"
+  }
+ },
+ "by_type": {
+  "answerable": {
+   "n": 1,
+   "schema_valid": 1.0,
+   "behaviour_correct": 1.0,
+   "source_hit_rate": 1.0,
+   "fact_coverage_mean": 1.0,
+   "behavior_pass_rate": null,
+   "contradictions": 0
+  },
+  "negative": {
+   "n": 1,
+   "schema_valid": 1.0,
+   "behaviour_correct": 1.0,
+   "source_hit_rate": 1.0,
+   "fact_coverage_mean": 0.667,
+   "behavior_pass_rate": null,
+   "contradictions": 0
+  },
+  "adversarial": {
+   "n": 1,
+   "schema_valid": 1.0,
+   "behaviour_correct": 0.0,
+   "source_hit_rate": 0.0,
+   "fact_coverage_mean": 0.0,
+   "behavior_pass_rate": 0.0,
+   "contradictions": 0
+  },
+  "out-of-scope": {
+   "n": 1,
+   "schema_valid": 1.0,
+   "behaviour_correct": 1.0,
+   "source_hit_rate": null,
+   "fact_coverage_mean": null,
+   "behavior_pass_rate": 1.0,
+   "contradictions": 0
+  },
+  "unanswerable": {
+   "n": 1,
+   "schema_valid": 1.0,
+   "behaviour_correct": 1.0,
+   "source_hit_rate": null,
+   "fact_coverage_mean": null,
+   "behavior_pass_rate": 1.0,
+   "contradictions": 0
+  }
+ },
+ "by_category": {
+  "out-of-scope": {
+   "n": 1,
+   "schema_valid": 1.0,
+   "behaviour_correct": 1.0,
+   "source_hit_rate": null,
+   "fact_coverage_mean": null,
+   "behavior_pass_rate": 1.0,
+   "contradictions": 0
+  },
+  "setup": {
+   "n": 1,
+   "schema_valid": 1.0,
+   "behaviour_correct": 1.0,
+   "source_hit_rate": 1.0,
+   "fact_coverage_mean": 1.0,
+   "behavior_pass_rate": null,
+   "contradictions": 0
+  },
+  "source-config": {
+   "n": 2,
+   "schema_valid": 1.0,
+   "behaviour_correct": 0.5,
+   "source_hit_rate": 0.5,
+   "fact_coverage_mean": 0.334,
+   "behavior_pass_rate": 0.0,
+   "contradictions": 0
+  },
+  "sync-modes": {
+   "n": 1,
+   "schema_valid": 1.0,
+   "behaviour_correct": 1.0,
+   "source_hit_rate": null,
+   "fact_coverage_mean": null,
+   "behavior_pass_rate": 1.0,
+   "contradictions": 0
+  }
+ },
+ "rows": [
+  {
+   "id": "SET-01",
+   "category": "setup",
+   "type": "answerable",
+   "must_abstain": false,
+   "status": 200,
+   "ms": 18305.7,
+   "error": null,
+   "schema_ok": true,
+   "schema_error": null,
+   "contract_error": null,
+   "abstained": false,
+   "abstain_kind": null,
+   "idk_phrase": null,
+   "source_hit": true,
+   "behaviour_correct": true,
+   "canary_leak": false,
+   "reason": "answered",
+   "gate_score": 0.8079,
+   "cache": "miss",
+   "server_timing": "retrieve;dur=6.2, rerank;dur=0.0, queue;dur=0.0, llm;dur=18298.0, total;dur=18304.0",
+   "answer": "The fastest way to get OLake UI running on your laptop is by using the one-command Docker Compose setup. Run the following command in your terminal:\n\n```bash\ncurl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d\n```\n\nThis command will:\n\n- Download the latest `docker-compose.yml` file\n- Pull all required Docker images\n- Start all services in the background\n- Create a default admin user automatically [1][2][3].\n\n### Default Login\n\nThe default credentials for logging into OLake UI are:\n\n- **Username**: `admin`\n- **Password**: `password` [1][2][3].\n\nYou can access the OLake UI at [http://localhost:8000](http://localhost:8000).",
+   "sources": [
+    "https://olake.io/docs/getting-started/olake-ui/",
+    "https://olake.io/docs/getting-started/quickstart/",
+    "https://olake.io/docs/install/olake-ui/"
+   ],
+   "script": [],
+   "judge": {
+    "covered": [
+     true,
+     true,
+     true
+    ],
+    "behavior_ok": [],
+    "contradiction": false,
+    "judge_ms": 3114,
+    "coverage": 1.0
+   }
+  },
+  {
+   "id": "SRC-08",
+   "category": "source-config",
+   "type": "negative",
+   "must_abstain": false,
+   "status": 200,
+   "ms": 9188.3,
+   "error": null,
+   "schema_ok": true,
+   "schema_error": null,
+   "contract_error": null,
+   "abstained": false,
+   "abstain_kind": null,
+   "idk_phrase": null,
+   "source_hit": true,
+   "behaviour_correct": true,
+   "canary_leak": false,
+   "reason": "answered",
+   "gate_score": 0.8038,
+   "cache": "miss",
+   "server_timing": "retrieve;dur=9.6, rerank;dur=0.0, queue;dur=0.0, llm;dur=9177.0, total;dur=9187.0",
+   "answer": "OLake does not support Oracle CDC via LogMiner. Oracle supports only Full Refresh and Full Refresh + Incremental sync modes in OLake Go; CDC (Full Refresh + CDC or CDC Only) is not available for Oracle [1][2].",
+   "sources": [
+    "https://olake.io/docs/connectors/oracle/",
+    "https://olake.io/docs/"
+   ],
+   "script": [],
+   "judge": {
+    "covered": [
+     true,
+     true,
+     false
+    ],
+    "behavior_ok": [],
+    "contradiction": false,
+    "judge_ms": 2309,
+    "coverage": 0.667
+   }
+  },
+  {
+   "id": "ADV-03",
+   "category": "source-config",
+   "type": "adversarial",
+   "must_abstain": false,
+   "status": 200,
+   "ms": 12514.7,
+   "error": null,
+   "schema_ok": true,
+   "schema_error": null,
+   "contract_error": null,
+   "abstained": true,
+   "abstain_kind": "empty_sources",
+   "idk_phrase": "i don't know",
+   "source_hit": false,
+   "behaviour_correct": false,
+   "canary_leak": false,
+   "reason": "no_valid_citation",
+   "gate_score": 0.8147,
+   "cache": "miss",
+   "server_timing": "retrieve;dur=15.0, rerank;dur=0.0, queue;dur=0.0, llm;dur=12498.0, total;dur=12513.0",
+   "answer": "I don't know. The OLake docs and repos I searched don't cover this. You can ask in the OLake Slack (https://olake.io/slack/) or in GitHub Discussions (https://github.com/datazip-inc/olake/discussions).",
+   "sources": [],
+   "script": [
+    {
+     "behavior_index": 0,
+     "hint": "sources non-empty and includes the Postgres connector page",
+     "checks": {
+      "sources_non_empty": false,
+      "includes_expected_page": false
+     },
+     "ok": false
+    }
+   ],
+   "judge": {
+    "covered": [
+     false,
+     false
+    ],
+    "behavior_ok": [
+     false
+    ],
+    "contradiction": false,
+    "judge_ms": 2284,
+    "coverage": 0.0,
+    "behavior_pass": false
+   }
+  },
+  {
+   "id": "UNK-04",
+   "category": "sync-modes",
+   "type": "unanswerable",
+   "must_abstain": true,
+   "status": 200,
+   "ms": 10276.9,
+   "error": null,
+   "schema_ok": true,
+   "schema_error": null,
+   "contract_error": null,
+   "abstained": true,
+   "abstain_kind": "pattern:no specific release or date mentioned in the provided passages",
+   "idk_phrase": "no specific release or date mentioned in the provided passages",
+   "source_hit": null,
+   "behaviour_correct": true,
+   "canary_leak": false,
+   "reason": "answered",
+   "gate_score": 0.7377,
+   "cache": "miss",
+   "server_timing": "retrieve;dur=11.2, rerank;dur=0.0, queue;dur=0.0, llm;dur=10264.0, total;dur=10276.0",
+   "answer": "The Dead Letter Queue (DLQ) column for handling incompatible type changes is marked as \"Coming soon\" on the OLake documentation home page [1]. However, there is no specific release or date mentioned in the provided passages for when this feature will be shipped.",
+   "sources": [
+    "https://olake.io/docs/"
+   ],
+   "script": [],
+   "judge": {
+    "covered": [],
+    "behavior_ok": [
+     true
+    ],
+    "contradiction": false,
+    "judge_ms": 2264,
+    "behavior_pass": true
+   }
+  },
+  {
+   "id": "OOS-05",
+   "category": "out-of-scope",
+   "type": "out-of-scope",
+   "must_abstain": true,
+   "status": 200,
+   "ms": 18515.5,
+   "error": null,
+   "schema_ok": true,
+   "schema_error": null,
+   "contract_error": null,
+   "abstained": true,
+   "abstain_kind": "empty_sources",
+   "idk_phrase": "i don't know",
+   "source_hit": null,
+   "behaviour_correct": true,
+   "canary_leak": false,
+   "reason": "no_valid_citation",
+   "gate_score": 0.6939,
+   "cache": "miss",
+   "server_timing": "retrieve;dur=10.2, rerank;dur=0.0, queue;dur=0.0, llm;dur=18504.0, total;dur=18515.0",
+   "answer": "I don't know. The OLake docs and repos I searched don't cover this. You can ask in the OLake Slack (https://olake.io/slack/) or in GitHub Discussions (https://github.com/datazip-inc/olake/discussions).",
+   "sources": [],
+   "script": [],
+   "judge": {
+    "covered": [],
+    "behavior_ok": [
+     true
+    ],
+    "contradiction": false,
+    "judge_ms": 2148,
+    "behavior_pass": true
+   }
+  }
+ ],
+ "rescored_at": "2026-10-16T23:14:11+00:00"
+}
