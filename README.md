@@ -280,7 +280,49 @@ deploy/deploy.sh smoke "$URL"                         # /healthz, /readyz, /ask 
 - **Fact-card cite cap of 2.** A cited fact card adds at most 2 of its cite_urls to `sources`, the connector page
   named in the question first (`app/retrieval.py`, `MAX_CARD_SOURCES`), out of 5 sources at most. Otherwise a
   6-page card could fill the source list.
-- **API deviations.** TBD(api): api's list, including the failover changes.
+- **Failover** (`09c26a7`, `a184a65`). The plan failed over on 429, 5xx, timeouts and connection errors before the
+  first byte.
+  - The app fails over on any provider error before the first visible byte: also a 4xx such as a revoked key or an
+    unknown model, and a malformed stream.
+  - After the first byte there is no failover; a broken stream is salvaged.
+  - Any LLM failure returns the degraded 200 answer.
+- **429 handling** (`09c26a7`).
+  - When another provider is behind it, the SDK's Retry-After sleep (up to 2 minutes) is skipped and the chain fails
+    over at once; the last provider caps Retry-After at 2 s. Without this a 429 would eat the 30 s `/ask` bound.
+  - On a 400 that names a parameter, the call adapts once per provider: `max_tokens` becomes
+    `max_completion_tokens`, or `temperature`, `stream_options` or `reasoning_effort` is dropped (logged as
+    `llm_param_adapted`).
+  - Each attempt's first-byte bound is the smaller of `LLM_TIMEOUT_S` and the time left in `ASK_TIMEOUT_S`, so a hung
+    primary still leaves time for the fallback.
+- **Citations after the baseline** (`c3f3f50`, after `a184a65`): the ADV-03 fix.
+  - Every question is followed by a cite reminder.
+  - An answer with no `[n]` is retried once with its own text plus "add [n] citations". The same retry applies to an
+    answer cut off at the token cap or an empty one.
+  - On local qwen3, ADV-03 went from `no_valid_citation` to answered with 2 sources (api's 6-row check).
+  - The system prompt is the plan's text verbatim, pinned by tests (`e7363a1`). The few-shot examples are two premise
+    corrections on topics no eval row uses.
+- **Ranking rules as built.**
+  - Release-note demotion x0.3 per series: the docs' ingestion and Fusion notes, and per repo and tag series on
+    GitHub, so the olake-helm worker and chart tags are separate.
+  - The BM25 identifier boost: x(1 + 0.5 per identifier), at most x2.
+  - Go/Fusion twins are pages with cosine at or above 0.95; the non-preferred twin is ranked x0.5.
+  - Tier 3-4 chunks move below the last tier-1 chunk whose dense score passes the gate.
+  - The connector-page boost is x1.6, and S3 counts only when the question names the S3 source.
+- **API surface.**
+  - `POST /debug/retrieve` exists only with `DEBUG=1`.
+  - `HEAD` works on the GET routes, and there is an `X-Ask-Cache` header.
+  - `/ask/stream` keeps the `/ask` shape on 422, and a body over 64 KiB is a 422.
+  - Every load outcome is a 200 with the top 3 pages: queue timeout, ask timeout, LLM failure, spent budget, rate limit.
+  - The rate key is the right-most `X-Forwarded-For` hop.
+  - `/embed` sends a second, strict CSP next to `frame-ancestors *`.
+- **Cache and streaming.**
+  - The answer cache is an exact-match LRU of 1,024 entries keyed by the normalized question and the index version.
+  - Degraded answers are not cached, history bypasses the cache, and `Cache-Control: no-cache` skips the lookup.
+  - The SSE stream holds back at least 16 characters (the canary) and holds the start until no marker is possible.
+- **Widget** (`7968e89`, `c50811e`).
+  - The loader is 2,137 B gzipped, plus the iframe app.
+  - Markdown becomes an allow-listed node tree built with `createElement` and `textContent`, never HTML strings.
+  - The SSE parser is shared with 19 node tests that cover XSS and SSE.
 - **D2: ported, not rebuilt.** The `poc/` modules were ported (ingest, chunker, retrieval, eval) instead of rewritten
   at the event. The operator approved this, and is not competing for prizes.
 - **The LLM and the judge are local.** All end-to-end numbers come from ollama `qwen3:32b` on the laptop. It is also
