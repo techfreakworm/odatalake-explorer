@@ -788,7 +788,8 @@ D2 (11:00-11:30) eval/run.py, following the "Scoring method" section of eval/que
    for the 82 rows that have sources and report hit@1/5/10 and MRR, with no LLM. This is the fast loop for retrieval changes;
    the POC's equivalent took under 4 minutes for 94 questions and 13 configs. End-to-end runs need the hosted provider.
    For the judge (JUDGE_* env), use the strongest model available: the POC's local judge flipped 2 of 14 verdicts between
-   thinking on and off.
+   thinking on and off. Prefer a different model family than the generator (judges favour their own outputs), at
+   temperature 0, and hand-check 10-15 verdicts once (research.md §7.1).
 D3 (11:35-12:00) First real deploy (index from data/index/ baked into the image). Smoke test from the phone. Build the
    index on the laptop and COPY data/index/ into the image. Never embed during the Docker build or at container start:
    the full-corpus embedding took 69 s (bge-small) or 230 s (bge-base) on an 18-core laptop (poc/results/retrieval.json).
@@ -875,7 +876,7 @@ Go/no-go:
 | 2.2 | Full eval: contract failures = 0; answerable source hit ≥ 0.75 (**target**: the POC's local-32B lower bound was 0.754, `poc/results/eval_run-canonical.json`); abstain recall ≥ 90% (**target**; the POC reached 0.833); false-abstain ≤ 5% (**target**; the POC had 0.072) | `uv run python -m eval.run --base-url "$URL" --out eval/results/cp2.json` |
 | 2.3 | Latency: p50 ≤ 3 s and p95 ≤ 6 s (**targets**) | The same run prints p50 and p95 |
 | 2.4 | The widget loads from `$URL` on the demo page and on a foreign-origin page | Manual check in the browser |
-| 2.5 | Off-topic gate check: with `GATE_SIGNAL` and `ABSTAIN_THRESHOLD` from CLAUDE.md, the gate short-circuits no must-answer eval row (0 false abstains from the gate) and still catches the out-of-scope rows; the logs show how often the rewrite fired | Run the eval against the local server teeing `logs/app.jsonl`, then `jq -r 'select(.abstain_reason=="retrieval_gate") | .request_id' logs/app.jsonl` and compare the IDs with the eval types |
+| 2.5 | Off-topic gate check: with `GATE_SIGNAL` and `ABSTAIN_THRESHOLD` from CLAUDE.md, the gate short-circuits no must-answer eval row (0 false abstains from the gate) and still catches the out-of-scope rows; the logs show how often the rewrite fired | Run the eval against the local server teeing `logs/app.jsonl`, then `jq -r 'select(.abstain_reason=="retrieval_gate").request_id' logs/app.jsonl` and compare the IDs with the eval types |
 | 2.6 | Day-of checks 4-5 on the deployed URL: the preflight from the olake.io origin, SSE chunk timing, and a 50-request burst with no 429 or 5xx | The commands under "Day-of checks 4-5" in section 2 |
 
 Go/no-go:

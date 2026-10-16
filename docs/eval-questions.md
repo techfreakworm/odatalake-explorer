@@ -158,7 +158,9 @@ answerable rows; p50 ≤ 3 s and p95 ≤ 6 s.
 - **False-premise rows.** Trust the judged BEHAVIOR check over the deterministic rule. In the v2 A/B, FP-02 accepted a
   false premise and still passed the "did not abstain" rule (`poc/README.md`, finding 9b).
 - **The judge.** Use the strongest model available: the POC's local judge flipped 2 of 14 verdicts between thinking on
-  and off (`poc/README.md`, "Eval").
+  and off (`poc/README.md`, "Eval"). Prefer a different model family than the generator, at temperature 0, and
+  hand-check 10-15 verdicts: LLM judges show position, verbosity and self-enhancement biases
+  ([research.md §7.1](research.md#71-prior-art)).
 - **Retrieval-only changes.** Check them with a retrieval-only run first; the POC's took under 4 minutes for 94
   questions and 13 configs. End-to-end runs need the hosted provider (`poc/README.md`, "Eval").
 

@@ -243,7 +243,7 @@ with `--no-cpu-throttling` [[gcloud-deploy]], so use that flag whenever the poll
 ### 4.2 Options against the judging criteria
 
 Qualitative: the lead's design memo plus the doc-writer's reading of the options. These are judgments, except where §4.3
-gives a measured number. Prior art for this comparison is PENDING(arch-prior-art report).
+gives a measured number. The prior art and literature follow the table.
 
 | Criterion (weight) | A. Simple | B. Chosen | C. Agentic | D. Long context |
 |---|---|---|---|---|
@@ -253,6 +253,31 @@ gives a measured number. Prior art for this comparison is PENDING(arch-prior-art
 | UX and embedding (15) | Same widget | Same widget; streaming | Slower first token | Slowest |
 | Engineering: latency and cost (15) | Cheapest | One LLM call; local retrieval has no marginal cost | 2-4x latency and cost (memo estimate, unmeasured) | Highest cost per answer |
 | Engineering: freshness | Rebuild chunks | Rebuild chunks and vectors incrementally | Same as B | Re-send everything each call |
+
+**Prior art and literature** (from the [arch-prior-art report][r-arch], which links each source):
+- **The report's ranking.** It scored three similar designs with the same weights (score × weight / 5). Its "Recommended"
+  design, close to our B (a sufficiency gate, citation verification, streaming, cache, freshness, hardening), scored 86 of
+  100. An "Ambitious" agentic design with a long-context fallback scored 67 (range about 62-77), and a "Simple fallback"
+  close to our A scored 67. It also says to build A first as the safety net, then add B's features in rubric-weight order.
+- **Hybrid with RRF.** In Cormack et al.'s pilot, k=60 was near-optimal but "not critical", and RRF beat the best single
+  system by 4-5% on average [[rrf]]. BEIR found BM25 a robust zero-shot baseline that dense retrievers often fail to beat
+  [[lit-beir]]. In Bruch et al.'s tests, a convex combination of normalized scores beat RRF and could be tuned with few
+  samples [[lit-bruch]]. We keep RRF with the standard k=60 because the POC measured it on the curated set (§4.3).
+- **Chunk headers.** Anthropic's Contextual Retrieval cut the top-20 retrieval failure rate from 5.7% to 3.7% with
+  contextual embeddings, to 2.9% when contextual BM25 was added, and to 1.9% with a Cohere rerank on top
+  [[lit-contextual]]. dsRAG reports a similar gain from contextual chunk headers [[lit-dsrag]]. On OLake, the report's
+  probe measured +11 to +14 points of Hit@1 from a breadcrumb prefix (44 questions). Every I1 chunk header carries that
+  breadcrumb.
+- **Rerankers.** The published gains come from hosted rerankers (the Anthropic numbers above, and
+  [Ask Astro][pa-ask-astro-blog]). On OLake, small open cross-encoders lowered Hit@1 in the report's probe (hybrid with
+  breadcrumbs 0.864; + MiniLM-L6 0.773; + jina-reranker-v1-turbo 0.750; 44 questions), and they did not help in the POC on
+  the 94-row set (§4.3). A hosted reranker is untested on OLake.
+- **Long context (D).** Li et al. found that long context beats RAG on average. Their Self-Route (RAG first, long context
+  only when the model says it cannot answer) comes close while using 38-61% of the long-context tokens [[lit-selfroute]].
+  Accuracy drops when the relevant passage sits in the middle of a long context [[lit-litm]]. Anthropic suggests skipping
+  RAG below about 200k tokens [[lit-contextual]]; the docs alone are 264,265 o200k tokens (§3).
+- **Corrective and agentic loops (C).** CRAG adds a retrieval evaluator and a web-search branch. On PopQA its
+  generation-only time per question was 0.512 s, against 0.363 s for plain RAG [[lit-crag]].
 
 Decision: **B, hybrid RRF without a reranker (measured)**, with **A** always available as the fallback: same chunks, same
 prompt, switched by `RETRIEVAL_MODE`.
@@ -338,7 +363,12 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
 - **Abstain policy** (decided by the lead after this result):
   1. The gate is only a cheap off-topic short-circuit. Its threshold (`ABSTAIN_THRESHOLD`) is chosen at 0% false abstains
      on must-answer rows, measured AFTER the one-rewrite step. The signal is PENDING(poc): the highest dense cosine, the
-     highest BM25 score, or a TinyBERT score.
+     highest BM25 score, or a TinyBERT score. Prior evidence for the dense signal comes from the arch report's probe
+     (bge-small; 44 answerable, 14 on-topic unanswerable and 6 off-topic questions). The top-1 dense cosine separated
+     off-topic questions perfectly (AUROC 1.0; off-topic 0.512-0.608, answerable 0.732-0.924). It separated on-topic
+     unanswerables only partly (AUROC 0.886; normalized BM25 0.409). At the threshold that keeps 95% of answerable
+     questions answered, it refused 36% of the unanswerables, which is why the model, not the score, decides near-domain
+     abstains ([arch-prior-art report][r-arch]).
   2. Below the threshold, ONE LLM rewrite turns the question into search keywords, which strips injections, pasted logs and
      chit-chat. Retrieval runs again, and the bot short-circuits only if the score is still below the threshold. Measuring
      after the rewrite matters: on the MiniLM score, two injection-wrapped answerable rows scored below -4 (ADV-02 -4.23,
@@ -720,7 +750,37 @@ the 94 rows.
 ## 7. Prior art and what judges probe
 
 ### 7.1 Prior art
-PENDING(arch-prior-art report).
+
+From the [arch-prior-art report][r-arch]. Each row links the original source.
+
+| Project | What it does | What we take from it |
+|---|---|---|
+| [Ask Astro][pa-ask-astro] (Astronomer, Airflow docs) | Ingests docs, blog, GitHub PRs and StackOverflow. Per question: 2 LLM rewrites plus the original, up to 100 docs each, a Cohere rerank to 8, a relevancy check, then the answer. A curated question set reruns on every change. Hybrid plus rerank improved about 13.5% more answers, after embedding-only search missed the term "Astro SDK" ([blog][pa-ask-astro-blog]) | Exact product terms need lexical retrieval (BM25 plus the exact-match boost). Rerun the eval on every change (the plan's patch loop) |
+| [DocsGPT][pa-docsgpt] | A self-hosted assistant that cites sources, with guardrails against injection and ungrounded answers. The widget comes from one script tag or a React package ([widget docs][pa-docsgpt-widget]). The README describes no eval method | One script tag is the norm |
+| [Onyx][pa-onyx] (formerly Danswer) | A hybrid vector plus keyword index, with a search-quality regression over ground-truth doc links ([README][pa-onyx-sq]) | A retrieval-only regression: the plan's `--retrieval-only` eval mode |
+| [chat-langchain][pa-chatlc] | Now a managed agent over the docs. Its link checker follows redirects and checks for soft 404s ([link_check_tools.py][pa-chatlc-links]). Its guardrail test checks the prompt's wording only, with no LLM calls ([test_guardrails_scope.py][pa-chatlc-guard]) | Test behaviour with real calls, not prompt text. olake.io serves its 285 redirect stubs with HTTP 200, so sources come only from chunk metadata |
+| Supabase Clippy ([2023 post][pa-clippy]) | MDX sections in pgvector with a similarity threshold, a docs-only prompt and SSE streaming. Per-file checksums re-embed only changed docs ([template][pa-clippy-repo]) | Incremental rebuilds by content hash (the freshness design) |
+| [Verba][pa-verba] (Weaviate), [AutoFlow][pa-autoflow] (PingCAP) | Verba is archived; its reranking was planned and never shipped. AutoFlow is a Graph RAG docs bot with an embeddable JS snippet | Nothing new for a one-day build |
+| kapa.ai ([eval guide][pa-kapa-eval], [widget][pa-kapa-widget]) | Evaluates with about 100 real questions, 15-20% of them unanswerable. Factuality is graded A/B/C = 1/0.5/0, the indexed docs are frozen during an eval, and the judge is a top model with reasoning, repeated and watched for self-preference. The widget is one script tag, full screen on mobile, with an optional uncertain-answer callout | 12 of our 94 rows (12.8%) are unanswerable or out of scope, a little under kapa's share. Use the strongest judge (POC) |
+| [Mintlify assistant][pa-mintlify], [Inkeep][pa-inkeep] | Mintlify says it doesn't have enough information, with an optional deflection email, and re-indexes on publish. Inkeep ships a Docusaurus plugin | Abstain with a next step (the unified short-circuit text, §4.3) |
+| [Algolia DocSearch Ask AI][pa-algolia] | Enabled by an `askAi` assistant id. olake.io runs DocSearch without it (§3) | The judges' everyday baseline is keyword search |
+
+**What the literature adds** (same report):
+- **Insufficient context.** On questions whose context was insufficient, models hallucinated 15.4% (GPT-4o) to 40.4%
+  (Gemini 1.5 Pro) of the time [[lit-suffctx]], and RGB's best negative-rejection rate was 45% [[lit-rgb]]. So the model's
+  `NO_ANSWER` needs citation validation behind it.
+- **Scoring abstains.** The CRAG benchmark scores a wrong answer -1 and "I don't know" 0 [[lit-cragbench]]: the same
+  trade-off as our two abstain targets.
+- **Citation support.** ALCE found that even the best models lack complete citation support half of the time on ELI5
+  [[lit-alce]]. The server validates every `[n]`.
+- **LLM judges.** GPT-4 as a judge agreed with humans over 80% of the time, but showed position, verbosity and
+  self-enhancement biases [[lit-mtbench]]. Only the largest judges align reasonably, and they are lenient [[lit-judges]].
+  Hamel Husain recommends binary labels and aligning the judge with human labels [[lit-hamel]]. The report's resulting
+  rule: a judge from a different model family than the generator, temperature 0, and 10-15 hand-labelled checks.
+- **Caching.** Semantic caches risk wrong-answer hits: GPTCache's README warns of false positives [[lit-gptcache]], and
+  static similarity thresholds give no correctness guarantee [[lit-vcache]]. OLake questions differ in critical details
+  (Postgres vs MySQL, Go vs Fusion), so the plan keeps an exact-match cache only.
+- **Latency.** Feedback within about 1 s keeps the user's flow [[lit-nng]], so the widget streams tokens.
 
 ### 7.2 What the rubric lets judges probe
 
@@ -733,6 +793,25 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Production readiness (20) | Bad input, bursts of requests, a slow or failing LLM, prompt injection, health endpoints, logs | 422 with an error shape; a queue instead of rejection; timeout, retry and fallback provider; injection rules; `/healthz` and `/readyz`; JSON logs with request IDs |
 | UX and easy embedding (15) | Embedding on a foreign page with one line, mobile, keyboard use, readable citations | The loader plus iframe on any origin; demo page; source cards; mobile full screen |
 | Engineering (15) | Index age, latency, cost per answer | `/healthz` manifest and UI footer; p50 and p95; tokens and cost per answer in logs; exact-match cache |
+
+**Probes from published benchmarks.** The [arch-prior-art report][r-arch] maps each probe to a source:
+- Unanswerable questions (kapa's 15-20%; RGB's negative rejection [[lit-rgb]]; MTRAG [[lit-mtrag]]): the UNK and OOS rows,
+  and the abstain policy (§4.3).
+- False premises (a CRAG question type [[lit-cragbench]]; FreshQA finds that all models struggle [[lit-freshqa]]): the FP
+  rows and prompt rule 4.
+- Version and deprecation facts (FreshQA): REL-01. The Postgres page says wal2json-based CDC is deprecated in favour of
+  pgoutput.
+- Go-vs-Fusion ambiguity (AmbigQA: over half of NQ-open is ambiguous [[lit-ambigqa]]). The report found 12 page pairs
+  with 8-gram Jaccard ≥ 0.30, up to 0.95 (the Fusion and Go offline-environments-generic pages). Chunks carry `product`.
+- Follow-up questions (MTRAG: 110 conversations of about 7.7 turns): `/ask` is single-turn (kickoff question K10), and
+  multi-turn history is on the plan's cut list.
+- Direct and indirect prompt injection (OWASP LLM01:2025 [[lit-owasp]]; promptfoo's RAG red-team plugins
+  [[lit-promptfoo]]): the ADV rows and prompt rule 6.
+- Citations that do not support the claim (ALCE [[lit-alce]]): citation validation.
+- Stale links: olake.io returns HTTP 200 for its 285 redirect stubs, so a status-only link check passes stale URLs.
+  Sources come only from chunk metadata.
+- Latency and concurrency, empty or huge input, mobile layout, the one-line embed: practitioner judgement, backed by NN/g
+  [[lit-nng]] and the kapa and DocsGPT widget defaults.
 
 ## 8. Risks and mitigations
 
@@ -847,6 +926,47 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 [r-olake-domain]: reports/olake-domain.md
 [r-eval-ingestion]: reports/eval-ingestion.md
 [r-eval-ops]: reports/eval-ops.md
+[r-arch]: reports/arch-prior-art.md
+[pa-ask-astro]: https://github.com/astronomer/ask-astro
+[pa-ask-astro-blog]: https://www.astronomer.io/blog/ask-astro-enhanced-retrieval-augmented-generation-cohere-rerank/
+[pa-docsgpt]: https://github.com/arc53/DocsGPT
+[pa-docsgpt-widget]: https://docs.docsgpt.cloud/Extensions/chat-widget
+[pa-onyx]: https://github.com/onyx-dot-app/onyx
+[pa-onyx-sq]: https://github.com/onyx-dot-app/onyx/blob/main/backend/tests/regression/search_quality/README.md
+[pa-chatlc]: https://github.com/langchain-ai/chat-langchain
+[pa-chatlc-links]: https://github.com/langchain-ai/chat-langchain/blob/master/src/tools/link_check_tools.py
+[pa-chatlc-guard]: https://github.com/langchain-ai/chat-langchain/blob/master/tests/evals/test_guardrails_scope.py
+[pa-clippy]: https://supabase.com/blog/chatgpt-supabase-docs
+[pa-clippy-repo]: https://github.com/supabase-community/nextjs-openai-doc-search
+[pa-verba]: https://github.com/weaviate/Verba
+[pa-autoflow]: https://github.com/pingcap/autoflow
+[pa-kapa-eval]: https://www.kapa.ai/blog/how-to-properly-evaluate-ai-assistants-for-technical-documentation
+[pa-kapa-widget]: https://docs.kapa.ai/integrations/website-widget/configuration/legacy
+[pa-mintlify]: https://www.mintlify.com/docs/assistant
+[pa-inkeep]: https://docs.inkeep.com/integrations/docusaurus/chat-button
+[pa-algolia]: https://docsearch.algolia.com/docs/v4/docsearch
+[lit-contextual]: https://www.anthropic.com/news/contextual-retrieval
+[lit-beir]: https://arxiv.org/abs/2104.08663
+[lit-bruch]: https://arxiv.org/abs/2210.11934
+[lit-dsrag]: https://github.com/D-Star-AI/dsRAG
+[lit-selfroute]: https://arxiv.org/html/2407.16833
+[lit-litm]: https://arxiv.org/abs/2307.03172
+[lit-crag]: https://arxiv.org/html/2401.15884
+[lit-suffctx]: https://arxiv.org/html/2411.06037
+[lit-rgb]: https://arxiv.org/html/2309.01431
+[lit-cragbench]: https://arxiv.org/html/2406.04744v2
+[lit-alce]: https://arxiv.org/html/2305.14627
+[lit-mtbench]: https://arxiv.org/abs/2306.05685
+[lit-judges]: https://arxiv.org/abs/2406.12624
+[lit-hamel]: https://hamel.dev/blog/posts/evals/
+[lit-owasp]: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+[lit-promptfoo]: https://www.promptfoo.dev/docs/red-team/rag/
+[lit-nng]: https://www.nngroup.com/articles/response-times-3-important-limits/
+[lit-gptcache]: https://github.com/zilliztech/GPTCache
+[lit-vcache]: https://arxiv.org/abs/2502.03771
+[lit-freshqa]: https://arxiv.org/abs/2310.03214
+[lit-mtrag]: https://arxiv.org/abs/2501.03468
+[lit-ambigqa]: https://arxiv.org/abs/2004.10645
 [sitemap]: https://olake.io/sitemap.xml
 [rrf]: https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf
 [mdn-es]: https://developer.mozilla.org/en-US/docs/Web/API/EventSource/EventSource

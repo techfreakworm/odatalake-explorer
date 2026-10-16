@@ -14,7 +14,7 @@ separate repo. This repo holds the research, the event runbook, and the measurem
 | [docs/open-questions.md](docs/open-questions.md) | Questions for the organizers at kickoff, ordered by impact, and the operator's decisions with deadlines |
 | [docs/research.md](docs/research.md) | Findings, comparisons, and the decisions with their reasons, plus the measurement table |
 | [docs/eval-questions.md](docs/eval-questions.md) | The eval question table and how it is scored |
-| [docs/reports/](docs/reports/) | Sanitized copies of the research agents' outputs (docs site, repos, OLake domain, stack, eval sets and their verifiers): the evidence behind the numbers in research.md |
+| [docs/reports/](docs/reports/) | Sanitized copies of the research agents' outputs (docs site, repos, OLake domain, stack, architecture and prior art, eval sets and their verifiers): the evidence behind the numbers in research.md |
 
 ## POC
 
