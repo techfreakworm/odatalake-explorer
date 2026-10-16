@@ -259,7 +259,7 @@ result once.
 
 | Time | Action |
 |---|---|
-| 07:30 | At home, re-crawl the docs with the POC in this research repo (`cd poc && uv run python -I -m ingest.docs`). Then ask Claude Code to list the pages whose extracted Markdown changed since the 2026-10-16 crawl, and re-check every eval row that cites one. Open PRs could change correct answers around the event (research.md §3.6). The event build fetches the live site again at 10:40. |
+| 07:30 | At home, re-crawl the docs with the POC in this research repo (`cd poc && uv run python -I -m ingest.docs`). Then ask Claude Code to list the pages whose extracted Markdown changed since the 2026-10-16 crawl, and re-check every eval row that cites one. Open PRs could change correct answers around the event (research.md §3.6). The event build fetches the live site again at 10:40. Also re-check the volatile eval row REL-01: `gh api repos/datazip-inc/olake/releases/latest --jq '.tag_name + " " + .published_at'`. If the tag is newer than v0.12.1, update REL-01's expected source and must-mention items in this repo and in the kit's `eval/questions.md`. |
 | 09:30 | Arrive at HustleHub H203, 24th Main Rd, Sector 2, HSR Layout ([event page][ev]). Check-in runs 10:00-10:30. Have the ID ready. |
 | 09:45 | Join the Wi-Fi and check the hotspot as backup. Run `gh auth status`, `docker info` and `claude --version`. |
 | 10:00-10:30 | Kickoff. Ask the questions below, and write the answers into the kit's `CLAUDE.md` under "Kickoff answers". |
@@ -614,7 +614,9 @@ D1 (10:40-11:00) Hello-world deploy of B's stub. Write the Dockerfile: python:3.
 D2 (11:00-11:30) eval/run.py, following the "Scoring method" section of eval/questions.md: parse the table, POST each question to
    --base-url with X-Request-ID eval-<ID>, run the deterministic checks, and use the optional --judge LLM judge.
    Parse the table exactly: split cells on unescaped |, unescape \| to |, and split BOTH Expected sources and Must
-   mention on <br> (never on ';'). '—' means none.
+   mention on <br> (never on ';'). '—' means none. Score by Type as eval/questions.md says: adversarial rows WITH
+   sources are answer rows (plus a judge check); a Must-mention item starting "BEHAVIOR:" goes to the judge only, never to
+   string matching; a "Script:" hint inside it may become a deterministic check (e.g. sources non-empty).
    Flags: --ids, --types, --limit, --concurrency (default 4), --out. Print a summary by Type and Category, plus p50/p95.
    Exit code 1 on any contract failure.
 D3 (11:35-12:00) First real deploy (index from data/index/ baked into the image). Smoke test from the phone. Build the
@@ -789,8 +791,15 @@ Pick the questions at 13:30 from rows that passed the last three eval runs:
 2. a troubleshooting question, or an "is X supported?" question, where a fact card turns "not supported" into a cited answer;
 3. an unanswerable question.
 
-A spare: a "latest version" question that shows the docs release notes next to the newer GitHub release. Write the IDs
-here on the day: `DEMO1=`, `DEMO2=`, `DEMO3=`.
+A spare: a "latest version" question that shows the docs release notes next to the newer GitHub release.
+
+Candidates from [eval-questions.md](eval-questions.md), to use only if they pass:
+- SET-05 (Helm install on EKS);
+- SRC-16 (Snowflake or BigQuery as a source: not supported);
+- UNK-01 (Fusion v0.2.0 release date: not published);
+- REL-01 as the spare (latest release).
+
+Write the IDs here on the day: `DEMO1=`, `DEMO2=`, `DEMO3=`.
 
 | Time | Show | Say (one line each) |
 |---|---|---|

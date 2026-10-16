@@ -382,8 +382,20 @@ Method: [eval-questions.md](eval-questions.md). The POC scorer (`poc/eval/score.
 (exactly `answer` and `sources`), the source hit with normalized URLs, behaviour by question type (abstain or decline
 where expected), latency p50 and p95, and must-mention fact coverage judged by an LLM.
 
-**Question sources.** Two research runs wrote grounded question sets on 2026-10-16, and the lead curates the final set
-from them (PENDING(lead), [eval-questions.md](eval-questions.md)):
+**The curated set** ([eval-questions.md](eval-questions.md)) has 94 rows:
+- by type: 69 answerable, 5 negative, 4 false-premise, 4 adversarial, 6 out-of-scope, 6 unanswerable;
+- by difficulty: 41 easy, 38 medium, 15 hard;
+- 18 rows cite repo files or GitHub releases or issues ([`reports/eval-curated.json`](reports/eval-curated.json)).
+
+The lead built it from the two research sets below in three steps:
+- Independent adversarial verifiers checked both sets. They matched 258/258 evidence snippets on the ingestion set and
+  corrected facts against the code ([verify-eval-ingestion](reports/verify-eval-ingestion.md)). On the ops set, all 43
+  unique sources returned HTTP 200 and 243/243 key phrases matched ([verify-eval-ops](reports/verify-eval-ops.md)).
+- The lead dropped 3 near-duplicates.
+- The lead added 7 rows, checked on 2026-10-16. They target rendered-HTML-only content, a stale-page trap, a list question
+  and freshness (REL-01, which must be re-checked on the morning of the event).
+
+**Question sources:**
 - [eval-ingestion report][r-eval-ingestion]: 40 questions (setup 7, sources 14, sync 11, destinations 8). 36 answerable and 4 negative, 20 easy /
   14 medium / 6 hard. 152 evidence quotes were checked against the fetched pages. 6 questions cite repo files, and 4 of
   those cannot be answered from the docs alone. A stdlib BM25 probe over 1,039 chunks put the best expected page at
