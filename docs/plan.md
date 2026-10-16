@@ -213,8 +213,8 @@ The log-streaming component is required for tailing Cloud Run logs, and the tail
       uv run --with fastembed python -c "from fastembed.rerank.cross_encoder import TextCrossEncoder as R; [R(m, cache_dir='$FASTEMBED_CACHE_PATH') for m in ('Xenova/ms-marco-MiniLM-L-6-v2','BAAI/bge-reranker-base')]"
       uv run --with flashrank python -c "from flashrank import Ranker; Ranker(model_name='ms-marco-TinyBERT-L-2-v2', cache_dir='$FASTEMBED_CACHE_PATH/flashrank')"
       ```
-      bge-small is the default embedder and bge-base the upgrade. The gate uses the dense score. FlashRank TinyBERT is the
-      conditional 12:30 rerank upgrade (RERANK=tinybert, checkpoint 2.7). MiniLM-L6 and bge-reranker-base are rejected
+      bge-small is the default embedder and bge-base the upgrade. The gate uses the dense score. FlashRank TinyBERT is
+      OPTIONAL: the conditional 12:30 rerank upgrade (RERANK=tinybert, checkpoint 2.7). MiniLM-L6 and bge-reranker-base are rejected
       and cached only to reproduce the POC.
 - [ ] Docker base image: `docker pull --platform linux/amd64 python:3.12-slim`. The plan pins Python 3.12, as the POC does.
       DigitalOcean requires AMD64 Linux images ([research.md §5.5](research.md#55-host)), and an Apple-silicon laptop builds
@@ -772,7 +772,8 @@ YOU OWN: Dockerfile, .dockerignore, deploy/, .do/, eval/, README.md, pyproject.t
 CONTRACTS: I2 (what you deploy and test), I3 (what eval/run.py parses), I4 (what deploy/env.yaml and the secrets hold).
 
 D1 (10:40-11:00) Deploy B's stub to Cloud Run. Write the Dockerfile: FROM python:3.12-slim (linux/amd64), uv sync
-   --frozen --no-dev, the fastembed models downloaded at build time, COPY data/index/, a non-root user, and CMD uvicorn
+   --frozen --no-dev --extra rerank (the optional flashrank extra, Appendix D), the fastembed and FlashRank TinyBERT models
+   downloaded at build time, COPY data/index/, a non-root user, and CMD uvicorn
    app.main:app --host 0.0.0.0 --port ${PORT:-8080}. Add .dockerignore (.cache, .env, .git, logs).
    deploy/deploy.sh primary: first the one-time secret setup (PROJECT set; each key in the chain gets its own secret):
      gcloud iam service-accounts create ask-olake-run
@@ -1354,9 +1355,10 @@ others from the credits smoke test (section 2) and the 12:15 load test.
 ## Appendix D: dependency list
 
 This list is the POC's dependency list (`poc/pyproject.toml`) minus `psutil`, which the POC uses only for measurements.
-FastAPI is pinned at 0.135 or later for native SSE (`fastapi.sse`) [[fastapi-sse]]. Include `flashrank` from the start
-and bake its TinyBERT model into the image like the fastembed models, so switching to `RERANK=tinybert` at 12:30 needs no
-install. The gate uses the dense score and needs no extra model. Versions are locked by `uv lock` at the event.
+FastAPI is pinned at 0.135 or later for native SSE (`fastapi.sse`) [[fastapi-sse]]. `flashrank` is OPTIONAL: the `rerank`
+extra serves only `RERANK=tinybert` (decision R′, checkpoint 2.7). Build the image with `uv sync --extra rerank` and bake
+the TinyBERT model in like the fastembed models, so the 12:30 switch needs no install; with `RERANK=off` the app never
+imports it. The gate uses the dense score and needs no extra model. Versions are locked by `uv lock` at the event.
 
 ```toml
 [project]
@@ -1368,6 +1370,9 @@ dependencies = [
   "beautifulsoup4", "lxml", "tiktoken", "bm25s", "PyStemmer",
   "fastembed", "numpy", "pyyaml",
 ]
+
+[project.optional-dependencies]
+rerank = ["flashrank"]  # optional: RERANK=tinybert only (decision R′)
 ```
 
 ## Appendix E: README skeleton
