@@ -74,10 +74,10 @@ secrets=$(git grep -nE '(^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{
 if [ -z "$secrets" ]; then result PASS secrets "plan §8 grep finds nothing"; else
   result FAIL secrets "possible keys in tracked files:"; printf '%s\n' "$secrets" | head -n 10 | sed 's/^/      | /'; fi
 
-# Generic home-directory paths anywhere except docs/ and poc/ (both are clean today) and data/ (the corpus
-# snapshot quotes example paths from the upstream OLake docs, e.g. /Users/john/... and /home/user/olake/).
-# The operator's real home directory must not appear anywhere at all.
-paths=$(git grep -nE '/Users/|/home/[a-z]' -- . ':!docs' ':!poc' ':!data')
+# Generic home-directory paths anywhere except docs/ and poc/ (both are clean today), data/ (the corpus snapshot
+# quotes example paths from the upstream OLake docs: a macOS user "john" and a Linux "user") and this script (it
+# holds the pattern). The operator's real home directory must not appear anywhere at all.
+paths=$(git grep -nE '/Users/|/home/[a-z]' -- . ':!docs' ':!poc' ':!data' ':!scripts/verify.sh')
 if [ "${#HOME}" -gt 5 ]; then
   home_hits=$(git grep -nF "$HOME" -- .)
 else
