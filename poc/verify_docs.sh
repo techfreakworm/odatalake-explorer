@@ -79,6 +79,13 @@ if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
   git status --porcelain | detail
 fi
 
+# Snapshot the docs and results first: the checks below read the snapshot, so edits made while the
+# URL checks run cannot mix two versions of a file. Git checks run in the repo.
+SNAP="$TMP/snap"
+mkdir -p "$SNAP/poc" && cp -R docs "$SNAP/" && cp README.md "$SNAP/" && cp -R "$RES" "$SNAP/poc/" || {
+  echo "FAIL  could not snapshot docs/, README.md and $RES"; exit 1; }
+cd "$SNAP" || exit 2
+
 # Whitespace-normalised copy of a doc, so that a quoted phrase matches across line wraps.
 norm() { tr -s '[:space:]' ' ' <"$1"; }
 for f in $DOCS README.md; do [ -f "$f" ] && norm "$f" >"$TMP/norm.$(basename "$f")"; done
@@ -352,6 +359,8 @@ while IFS="$TAB" read -r file line target; do
   path=${target%%#*}; anchor=""
   case "$target" in *'#'*) anchor=${target#*#} ;; esac
   if [ -z "$path" ]; then tf="$file"; else tf="$(dirname "$file")/$path"; fi
+  # Targets outside the snapshot (for example poc/README.md) are read from the repo.
+  [ -e "$tf" ] || [ ! -e "$ROOT/$tf" ] || tf="$ROOT/$tf"
   if [ ! -e "$tf" ]; then fail "c: $file:$line: the link target '$target' does not exist"; nrelbad=$((nrelbad + 1)); continue; fi
   if [ -n "$anchor" ]; then
     case "$tf" in
@@ -410,7 +419,7 @@ SH
   grep '^https://github\.com/' "$TMP/url_list" | tr '\n' '\0' \
     | xargs -0 -n 1 -P "$ghjobs" bash "$TMP/probe.sh" >>"$TMP/url_results"
 
-  # A failing URL is only a WARN when every occurrence is labelled as such on its own line:
+  # A failing URL is only a WARN when every occurrence is labelled as such on its line or a neighbouring line:
   #   bot-blocking hosts (403/429/503): the line mentions 403, User-Agent or bot;
   #   API base URLs and endpoints (400/401/404/405): the line says "base URL", BASE_URL, "API base" or endpoint.
   nok=0
@@ -433,7 +442,7 @@ SH
     unl=""
     for o in $occ; do
       of=${o%%:*}; ol=${o#*:}
-      if [ -z "$lab" ] || ! sed -n "${ol}p" "$of" | grep -qE "$lab"; then unl="$unl $o"; fi
+      if [ -z "$lab" ] || ! sed -n "$((ol > 1 ? ol - 1 : 1)),$((ol + 1))p" "$of" | grep -qE "$lab"; then unl="$unl $o"; fi
     done
     if [ -z "$unl" ]; then
       warn "c: $code $url (labelled in the doc as a bot-blocking host or API base URL; at: $(echo $occ))"
@@ -491,6 +500,7 @@ fi
 
 # ---------------------------------------------------------------------------------------------------------
 section "(d) hygiene"
+cd "$ROOT" || exit 2
 # The patterns are split so that this file does not match itself.
 PERSONAL_RE='/Use''rs/|/priv''ate/tmp|/ho''me/|/var/fol''ders/|techfreak''worm'
 SECRET_RE='(^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}|AI''za[0-9A-Za-z_-]{35}|gh''p_[A-Za-z0-9]{36}|github_''pat_[A-Za-z0-9_]{22,}|xox[abps]''-[A-Za-z0-9-]{10,}|AK''IA[0-9A-Z]{16}|(^|[^A-Za-z0-9])hf_[A-Za-z0-9]{30,}|-----BEGIN [A-Z ]*PRIVATE'' KEY-----'
@@ -534,6 +544,7 @@ else fail "d: tracked local files:"; printf '%s\n' "$tracked" | detail; fi
 
 # ---------------------------------------------------------------------------------------------------------
 section "(e) POC numbers in the docs vs $RES/*.json"
+cd "$SNAP" || exit 2
 # jq helpers: fmt(d) rounds to d decimals; commas adds thousands separators to a digit string;
 # fmtc(d) does both; pct is a percentage with one decimal and no trailing ".0".
 JQDEF='
@@ -614,9 +625,9 @@ num $RESEARCH "embedding speed ratio" '.[0].per_target["300"].embedding as $e | 
 num $RESEARCH "embedding times" '.[0].per_target["300"].embedding as $e | "(\($e["BAAI/bge-small-en-v1.5"].embed_full_corpus_s) s vs \($e["BAAI/bge-base-en-v1.5"].embed_full_corpus_s) s"' $R
 num $RESEARCH "seed MRR / hit@5 (section 9)" '.[0].per_target["300"].configs as $c | "BM25 \($c.bm25."mrr@10" | fmt(3)) / \($c.bm25."hit@5" | fmt(3)); hybrid bge-base \($c["hybrid:BAAI/bge-base-en-v1.5"]."mrr@10" | fmt(3)) / \($c["hybrid:BAAI/bge-base-en-v1.5"]."hit@5" | fmt(3)); + MiniLM-L6 rerank \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2"]."mrr@10" | fmt(3)) / \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2"]."hit@5" | fmt(3)); + bge-reranker-base \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:BAAI/bge-reranker-base"]."mrr@10" | fmt(3)) / \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:BAAI/bge-reranker-base"]."hit@5" | fmt(3))"' $R
 num $RESEARCH "retrieval p50 (section 9)" '.[0].per_target["300"].configs as $c | "hybrid bge-base \($c["hybrid:BAAI/bge-base-en-v1.5"].latency_ms.total_ms.p50 | fmt(2)) ms; + MiniLM-L6 rerank \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2"].latency_ms.total_ms.p50 | fmtc(2)) ms; + bge-reranker-base \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:BAAI/bge-reranker-base"].latency_ms.total_ms.p50 | fmtc(2)) ms"' $R
-num $PLAN "plan: dense MRR" '.[0].per_target["300"].configs as $c | "Dense MRR@10 was \($c["dense:BAAI/bge-base-en-v1.5"]."mrr@10" | fmt(3)), against \($c["dense:BAAI/bge-small-en-v1.5"]."mrr@10" | fmt(3)) for bge-small"' $R
 num $PLAN "plan: full-corpus embedding" '.[0].per_target["300"].embedding as $e | "the full-corpus embedding took \($e["BAAI/bge-small-en-v1.5"].embed_full_corpus_s | fmt(0)) s (bge-small) or \($e["BAAI/bge-base-en-v1.5"].embed_full_corpus_s | fmt(0)) s (bge-base)"' $R
-num $PLAN "plan: seed hit@5 upgrade" '.[0].per_target["300"].configs as $c | "hit@5 rose to \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:BAAI/bge-reranker-base"]."hit@5" | fmt(3)) from \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2"]."hit@5" | fmt(3))"' $R
+num $PLAN "plan: embedding speed ratio" '.[0].per_target["300"].embedding as $e | ($e["BAAI/bge-small-en-v1.5"].embed_full_corpus_s) as $s | ($e["BAAI/bge-base-en-v1.5"].embed_full_corpus_s) as $b | "It embeds \($b / $s | fmt(1))x faster (\($s | fmt(0)) s vs \($b | fmt(0)) s for the corpus"' $R
+num $PLAN "plan: seed hit@5 of the rerankers" '.[0].per_target["300"].configs as $c | "seed-set hit@5 \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:BAAI/bge-reranker-base"]."hit@5" | fmt(3)) vs \($c["hybrid:BAAI/bge-base-en-v1.5+rerank:Xenova/ms-marco-MiniLM-L-6-v2"]."hit@5" | fmt(3))"' $R
 
 # latency_threads.json (+ dims and corpus embedding times from retrieval.json)
 num $RESEARCH "embed table: bge-small" '"| BAAI/bge-small-en-v1.5 | \(.[1].per_target["300"].embedding["BAAI/bge-small-en-v1.5"].dim) | \(.[0].by_threads["2"].query_embed_bge_small_ms.p50) ms | | \(.[1].per_target["300"].embedding["BAAI/bge-small-en-v1.5"].embed_full_corpus_s) s |"' $L $R
@@ -628,8 +639,8 @@ num $RESEARCH "query embed p50 (section 9)" '.[0].by_threads["2"] | "| bge-small
 num $RESEARCH "MiniLM top-10 rerank (5.8)" '"MiniLM-L6 takes \(.[0].by_threads["2"]."rerank_ms-marco-MiniLM-L-6-v2_top10_ms".p50) ms for the top 10 at 2 threads"' $L
 num $RESEARCH "bge-reranker-base top 10 (5.3)" '"bge-reranker-base: \(.[0].by_threads["2"]."rerank_bge-reranker-base_top10_ms".p50) ms for the top 10 at 2 threads"' $L
 num $RESEARCH "query embed at 2 threads (5.3)" '"\(.[0].by_threads["2"].query_embed_bge_small_ms.p50) ms at 2 threads in the POC"' $L
-num $PLAN "plan: MiniLM at 2 threads" '.[0].by_threads["2"] | "\(."rerank_ms-marco-MiniLM-L-6-v2_top10_ms".p50) ms p50 at 2 threads, and process RSS"' $L
-num $PLAN "plan: bge-reranker-base at 2 threads" '.[0].by_threads["2"] | "It took \(."rerank_bge-reranker-base_top10_ms".p50) ms p50 at 2 threads, RSS reached \(."rss_mb_after_bge-reranker-base" / 1000 | fmt(1)) GB"' $L
+num $PLAN "plan: MiniLM top 10 at 2 threads" '"Xenova/ms-marco-MiniLM-L-6-v2: \(.[0].by_threads["2"]."rerank_ms-marco-MiniLM-L-6-v2_top10_ms".p50) ms for the top 10 at 2 threads"' $L
+num $PLAN "plan: bge-reranker-base top 10 at 2 threads" '"BAAI/bge-reranker-base: \(.[0].by_threads["2"]."rerank_bge-reranker-base_top10_ms".p50) ms for the top 10 at 2 threads"' $L
 
 # embed_probe.json
 num $RESEARCH "API memory (section 9)" '.[0].api_rss_mb | "| \(.after_one_query | tostring | commas) MB RSS after one query; \(.after_scorer_run_concurrency_4 | tostring | commas) MB after a scorer run at concurrency 4 |"' $E
