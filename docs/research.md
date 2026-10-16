@@ -483,8 +483,9 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
   - abstain recall 0.833, against the ≥ 0.90 target;
   - false-abstain 0.072 on answerable rows, against the ≤ 0.05 target.
 
-  In the round-2 run (§6: prompt v3, k=10, a TinyBERT gate with one rewrite), false-abstain on answerable rows fell to
-  0.043, which **meets** the target, while abstain recall stayed at 0.833, which still **misses** it.
+  In the round-2 proxy run (§6: prompt v3, k=10, a TinyBERT gate with one rewrite), false-abstain on answerable rows fell
+  to 0.043, which **meets** the target, while abstain recall stayed at 0.833, which still **misses** it. The judge passed
+  all 6 unanswerable rows' BEHAVIOR items, though: the two "missed" ones say what is not documented, with sources.
 
   Treat these as lower bounds from a local 32B model. The event-day levers:
   - a stronger hosted model;
@@ -496,10 +497,13 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
     even when no passage names the feature (SRC-08); call a "coming soon" feature not available or documented yet, with no
     date (UNK-04); decline another tool's configuration (OOS-03);
   - for type-mapping misses (SYNC-12, Postgres jsonb): keep tables whole in chunks, plus the exact-match boost for
-    identifiers.
+    identifiers;
+  - plain-text generation with no JSON mode, plus one retry and then salvage on unparseable or truncated output: 2 of the
+    4 false abstains in the round-2 run were JSON-parse failures (§6);
+  - two untested patch-hour ideas (§6): strip injection-like sentences before retrieval, and a per-claim support check.
 
-  The closest end-to-end measurement is the round-2 run (§6): the same model stage as the recommended policy, with a
-  different gate. The final policy itself is measured at checkpoints 2.2 and 2.5 on the day: the full eval against the
+  The closest end-to-end measurement is the round-2 run (§6), a measured proxy: the same model stage as the recommended
+  policy, with a different gate. The final policy itself is measured at checkpoints 2.2 and 2.5 on the day: the full eval against the
   deployed URL, with each row's abstain reason read from the X-Ask-Reason header. The gate's offline effect is measured
   above. On the seed set, the model's own flag added one false abstain
   (precision 0.75, false-abstain 0.071), on a false-premise question whose retrieval missed (`poc/results/answer.json`).
@@ -729,7 +733,8 @@ ordinary page the same widget worked across origins, and a second request reused
   600), and a truncation is logged. Answers averaged 72 completion tokens with prompt v1 and 6 passages
   (`poc/results/answer.json`), and 166.7 (p50 146) with prompt v3 and k=10. In that run one answer hit the cap, came back
   as truncated JSON and became a false abstain (SRC-03, `poc/results/eval_run-canonical-combined.json`). The event's answer is plain text with `[n]`
-  citations, so a truncated answer degrades instead: keep the validated, cited sentences. The server's
+  citations and no JSON mode, so an unparseable or truncated answer gets one retry and is then salvaged: the validated,
+  cited sentences are kept. The server's
   timeouts are shorter than any client's: `LLM_TIMEOUT_S` 25 s per call, and the whole `/ask` bounded at about 30 s with
   the queue wait included, after which it returns the degraded 200 answer.
 - **Caching**: an in-process answer cache. It beats provider prompt caching for RAG, because Gemini 3.8 Flash needs a
@@ -850,28 +855,44 @@ the 94 rows.
 
   The v2 rules go into the event prompt (plan section 4.3): correct false premises with the contradicting passage cited,
   answer the genuine question inside an injection, reply in the user's language, and add 2-3 few-shot premise corrections.
-- **End to end with the round-2 policy** (`poc/results/eval_run-canonical-combined.json`, all 94 rows). The config, from the file's `config` block:
-  corpus v2 with 300-token chunks; hybrid bge-small with no reranker; k=10 passages; a FlashRank TinyBERT top-10 gate
-  below 0.3 with one rewrite (rewrite prompt v1; it fired on 11 rows, p50 1,273.9 ms); prompt v3; local qwen3:32b in JSON
-  mode with reasoning off and `max_tokens` 600; the scorer at concurrency 1; qwen3:32b as the judge. Its model stage is
-  the recommended one; only the gate differs from the final policy (§4.3).
+- **End to end with the round-2 policy** (`poc/results/eval_run-canonical-combined.json`, all 94 rows). The config, from the
+  file's `config` block: corpus v2 with 300-token chunks; hybrid bge-small with no reranker; k=10 passages; a FlashRank
+  TinyBERT top-10 gate below 0.3 with one rewrite (rewrite prompt v1); prompt v3; local qwen3:32b in JSON mode with
+  reasoning off and `max_tokens` 600; the scorer at concurrency 1; qwen3:32b as the judge.
+  **This is a measured proxy, not the exact recommended policy.** The model stage is the recommended one, but the
+  recommended gate is the dense score with no rewrite. The gate-stage difference is measured offline in
+  `poc/results/gate-rewrite.json`: the dense gate alone caught 7 of the 12 must-abstain rows at 0 false abstains (5 of 12
+  at the 0.69 starting value).
   - Schema valid 1.0; 5xx 0; contradictions 4.
   - Behaviour correct 0.936 (0.84 in the v1 run); source hit 0.841 (0.695); fact coverage 0.603 (0.573); judged BEHAVIOR
     pass 0.85 (0.75).
   - False-abstain: 0.043 on answerable rows (3 of 69), which **meets** the ≤ 0.05 target; 0.049 on all must-answer rows
     (4 of 82).
   - Abstain recall on unanswerable plus out-of-scope rows: 0.833 (10 of 12), which still **misses** the ≥ 0.90 target.
-  - Behaviour by type: false-premise and negative 1.0 (0.25 and 0.4 in v1), out-of-scope 1.0, answerable 0.957,
-    adversarial 0.75, unanswerable 0.667.
-  - Where abstains came from (the `X-Ask-Reason` header per row):
-    - the gate after the rewrite declined 8 rows: all 6 out-of-scope rows, UNK-06, and ADV-02, a false decline (its
-      dense score is 0.815, so the final dense gate would pass it; `poc/results/gate-rewrite.json`);
-    - the model's answerable = false: 4 rows, UNK-01, UNK-03, UNK-05, and SYNC-12, a false abstain after a retrieval miss;
-    - unparseable output: 2 rows, both false abstains: SRC-03, which hit the 600-token cap, and SYNC-03;
-    - the no-valid-citation rule: none again.
-  - Missed abstains: UNK-02 and UNK-04 were answered.
-  - Tokens per answer over the 85 rows that called the LLM: prompt mean 3,294 (p50 3,253, max 4,545), completion mean
-    166.7 (p50 146, max 600). Local latency, not representative: p50 25.7 s, p95 48.5 s.
+  - Behaviour by type: negative 1.0 (5 of 5; 2 of 5 in v1); false-premise 1.0 (4 of 4 answered; 1 of 4 in v1), but judged
+    BEHAVIOR passed only 2 of 4; out-of-scope 1.0 (6 of 6); adversarial 0.75 (3 of 4); unanswerable 0.667 (4 of 6);
+    answerable 0.957.
+  - Where abstains came from (the `X-Ask-Reason` header per row, and the file's `abstain_breakdown`): 8 declines by the
+    gate after the rewrite, 4 model abstains and 2 unparseable answers. Of these, the must-abstain rows were declined 7
+    times by the gate after the rewrite (all 6 out-of-scope rows and UNK-06) and 3 times by the model (UNK-01, UNK-03,
+    UNK-05). The no-valid-citation rule caused none again.
+  - False abstains (4):
+    - SRC-03 and SYNC-03: unparseable JSON; SRC-03 had hit the 600-token cap;
+    - SYNC-12: the model's answerable = false after a retrieval miss;
+    - ADV-02: declined after the injectable rewrite (POC commit 6a48f4f). Its dense score is 0.815, so the recommended
+      dense gate would pass it (`poc/results/gate-rewrite.json`).
+  - Two of the 4 false abstains were JSON-parse failures. That supports the plan's plain-text generation with the
+    `NO_ANSWER` and `OUT_OF_SCOPE` markers and `[n]` parsing, with no JSON mode (plan section 4.3).
+  - Missed abstains (2): UNK-02 (TinyBERT gate score 0.994) and UNK-04 (0.73). Both answers cite the closest pages and miss
+    the don't-know pattern, so the deterministic check counts them as answered. The judge passed both BEHAVIOR items: UNK-02
+    says no AWS or Glue numbers are documented, and UNK-04 says no release date or version is given. So judged behaviour on
+    the unanswerable rows was 6 of 6.
+  - Local cost: the rewrite fired on 11 of 94 rows (p50 1,273.9 ms, about 196 tokens each). Generation over the 85 rows that
+    called the LLM averaged 3,294 prompt tokens (p50 3,253, max 4,545) and 167 completion tokens (p50 146, max 600); 1 answer
+    hit the cap. The whole run took 2,985 s; local latency is not representative (p50 25.7 s, p95 48.5 s).
+  - Optional patch-hour ideas, both untested: strip injection-like sentences ("ignore … instructions", "print your system
+    prompt", "no citations") before retrieval (`poc/README.md`), and a per-claim support check to lift recall on
+    unanswerable rows.
 - **Hosted end-to-end accuracy, latency and cost: not measured on 2026-10-16 (no hosted key).**
   - Estimate for latency: §5.8.
   - Estimate for cost per answer: about 3.3k input and 167 output tokens (the round-2 means above) times the provider's
@@ -975,7 +996,7 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Credits throttle or stop during post-freeze scoring | Every row fails | The ordered provider chain: the credits, then the operator's paid key with ≥ 100 RPM (D7), then Gemma on the free tier, failing over before the first byte; a degraded mode that returns the most relevant pages; ask at kickoff (K1) |
 | Endpoint down, cold or rate-limited while scoring | Production readiness and accuracy both lose | Min instances ≥ 1, a queue rather than rejection, a very high rate limit, a synthetic probe every minute (plan section 9) |
 | The organizers match sources differently from us | Citation points lost | Canonical sitemap URLs and branch-form GitHub URLs; ask K3; matching in our own eval is lenient |
-| Over-abstaining or under-abstaining | Accuracy or honesty points lost. Both abstain targets were missed in the local end-to-end run (recall 0.833, false-abstain 0.072; `poc/results/eval_run-canonical.json`) | The reranker score alone cannot separate the cases (§4.3), so the model's `NO_ANSWER` plus citation validation decides. The off-topic gate is a dense-score short-circuit with a 0.02 margin and no rewrite, with a unified short-circuit text; it catches at most about 50-58% of the must-abstain rows, so the model does most of the abstaining. Event-day levers: a stronger hosted model, the unknowns fact card, the v2 prompt. In the round-2 run false-abstain met the target (0.043) while recall stayed at 0.833 (§6); the final policy is measured at checkpoints 2.2 and 2.5 on the day |
+| Over-abstaining or under-abstaining | Accuracy or honesty points lost. Both abstain targets were missed in the local end-to-end run (recall 0.833, false-abstain 0.072; `poc/results/eval_run-canonical.json`) | The reranker score alone cannot separate the cases (§4.3), so the model's `NO_ANSWER` plus citation validation decides. The off-topic gate is a dense-score short-circuit with a 0.02 margin and no rewrite, with a unified short-circuit text; it catches at most about 50-58% of the must-abstain rows, so the model does most of the abstaining. Event-day levers: a stronger hosted model, the unknowns fact card, the v2 prompt. In the round-2 proxy run false-abstain met the target (0.043) while recall stayed at 0.833 (§6); the final policy is measured at checkpoints 2.2 and 2.5 on the day |
 | Venue Wi-Fi | Slow builds and deploys | Pre-cached wheels, models, repos and base image; remote builds; phone hotspot (plan section 11) |
 | A teammate edits another track's files | Lost work | One owner per path (plan section 0.3) |
 | Stale stub pages contradict live pages (e.g. "Kafka is WIP") | Confidently wrong answers | Denylist the stubs; fact cards with explicit negatives (§3.1, §3.3) |
@@ -1029,7 +1050,7 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Answered questions that hit an expected source | 0.714 | `poc/results/answer.json` |
 | Tokens per answer (6 passages) | prompt mean 1,858 (max 2,169); completion mean 71.8 (max 145) | `poc/results/answer.json` |
 | Tokens per answer (k=10, prompt v3) | prompt mean 3,294 (p50 3,253, max 4,545); completion mean 166.7 (p50 146, max 600) | `poc/results/eval_run-canonical-combined.json` |
-| End to end, round-2 policy (94 rows, local qwen3:32b) | behaviour 0.936; source hit 0.841; fact coverage 0.603; abstain recall 0.833; false-abstain 0.043 on answerable rows, 0.049 on all must-answer rows; 5xx 0 | `poc/results/eval_run-canonical-combined.json` |
+| End to end, round-2 proxy run (TinyBERT gate plus one rewrite; 94 rows, local qwen3:32b) | behaviour 0.936; source hit 0.841; fact coverage 0.603; abstain recall 0.833; false-abstain 0.043 on answerable rows, 0.049 on all must-answer rows; 5xx 0 | `poc/results/eval_run-canonical-combined.json` |
 | Docs tokens from article text | 238,135 (o200k) | [docs-site report][r-docs-site], `measure_corpus.py` |
 | Full docs fetch with gzip, 4 at a time | 2.07 MB in 2.2 s | [docs-site report][r-docs-site] |
 | Pages whose content raw MDX misses | 22 of 124 | [docs-site report][r-docs-site], `hidden_content.py` |

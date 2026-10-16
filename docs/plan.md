@@ -552,11 +552,12 @@ STEPS (in order; each step leaves a working server)
    max_tokens=MAX_TOKENS (600; the POC's answers averaged 72 completion tokens with 6 passages and 167, p50 146, at k=10
    with prompt v3: poc/results/answer.json, poc/results/eval_run-canonical-combined.json). In the POC, one
    uncapped request in JSON mode ran past 6,000 tokens, held the only LLM slot and cascaded timeouts through the queue
-   (poc/README.md, "Runaway generation"). When finish_reason is "length", log max_tokens_truncated and keep only the
-   validated, cited part of the answer. In the POC's JSON mode a capped answer was unparseable and became a false
-   abstain (SRC-03); the plain-text answer here degrades instead.
-   Pass reasoning_effort=LLM_REASONING_EFFORT only when it is set (the lowest value the model supports). Never depend on
-   response_format: parse the text defensively, because some providers ignore it.
+   (poc/README.md, "Runaway generation"). If the output is unparseable or truncated (finish_reason "length"; log
+   max_tokens_truncated), retry once within the 30 s bound; if that fails too, salvage the cited sentences that validate.
+   Pass reasoning_effort=LLM_REASONING_EFFORT only when it is set (the lowest value the model supports). Generate plain
+   text with the NO_ANSWER and OUT_OF_SCOPE markers and [n] citations; do NOT use JSON mode. In the POC's round-2 run, 2
+   of the 4 false abstains were JSON-parse failures, one of them an answer cut at the 600-token cap (SRC-03). Never
+   depend on response_format either: parse the text defensively, because some providers ignore it.
 3. Fallback A: bm25s over chunk text, top 10 (max 3 per page), a numbered context "[n] <title> (<doc_url>)\n<text>", the system prompt
    below, parse [n], keep only valid n, renumber in order of first use so [1] = sources[0]. sources = the deduped citation
    URLs in citation order, capped at 5: doc_url for most chunks; cite_urls for a factcard chunk; for repo chunks, doc_url
@@ -972,6 +973,9 @@ Each loop takes about 15 minutes. The last fix deploy is at 14:15.
 
 Typical fixes, cheapest first: a missing page or extraction bug (ingest), a source-type boost or a wrong k (api), a prompt rule
 for a failure pattern (api), a prompt or citation-validation fix for over- or under-abstaining (api), UI rendering of code or tables (widget).
+Two untested ideas, only if the eval shows the failure (research.md §6): strip injection-like sentences ("ignore …
+instructions", "print your system prompt", "no citations") before retrieval, for ADV-02-style questions; and a per-claim
+support check, to lift recall on unanswerable rows.
 The TinyBERT rerank upgrade is decided at checkpoint 2.7, not here. MiniLM-L6 and bge-reranker-base stay rejected
 (research.md §4.3).
 
@@ -1139,7 +1143,7 @@ checkpoint 2.7 decides the TinyBERT rerank.
   conceptual "why Iceberg" questions.
 - Why the score gate is only an off-topic short-circuit: on the 94-row set, -0.891 on the MiniLM score caught only half
   of the unanswerable and out-of-scope rows, and the best threshold (1.18) false-abstained on 13% of answerable rows
-  (poc/results/gate-canonical.json). In the POC's round-2 run (prompt v3, k=10, a TinyBERT gate with one rewrite), false-abstain on answerable rows was 0.043 and
+  (poc/results/gate-canonical.json). In the POC's round-2 proxy run (prompt v3, k=10, a TinyBERT gate with one rewrite), false-abstain on answerable rows was 0.043 and
   abstain recall 0.833 (poc/results/eval_run-canonical-combined.json). The final policy is measured at checkpoints 2.2 and
   2.5 (the full eval, with X-Ask-Reason per row).
 - Zero valid citations after generation (decision D8, decided by data): abstain. In the canonical run this rule caused 0
