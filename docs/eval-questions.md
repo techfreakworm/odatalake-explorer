@@ -9,8 +9,9 @@ stand-in for that set. It is a curated table of questions with expected sources 
 - drive the 13:30-14:30 patch hour, which fixes failures ranked by rubric weight (plan section 7);
 - produce the numbers in the README.
 
-The table at the end of this file is parsed by the POC loader (`poc/eval/questions.py`). The event repo copies the whole file
-to `eval/questions.md` (plan section 1.5).
+The table at the end of this file is parsed by the POC loader (`poc/eval/questions.py`). Both list columns are split on `<br>`,
+so a POC loader that still splits Must mention on `;` must be updated first (the lead has asked the POC owner;
+PENDING(poc parser update)). The event repo copies the whole file to `eval/questions.md` (plan section 1.5).
 
 ## How to run
 
@@ -99,8 +100,9 @@ answerable rows; p50 ≤ 3 s and p95 ≤ 6 s.
 - `Expected sources`: full URLs separated by `<br>`. Use the sitemap form for docs (trailing slash, no anchor) and
   `https://github.com/datazip-inc/<repo>/blob/<branch>/<path>` for repo files. Any one match counts as a hit.
   Out-of-scope, unanswerable and adversarial rows use `—`.
-- `Must mention`: short, checkable facts (a value, a config key, a command) separated by `;`, so a fact cannot contain `;`.
-  On `—` rows, write the expected behaviour instead, e.g. `says it does not know; sources empty; points to OLake Slack or GitHub Discussions`.
+- `Must mention`: short, checkable facts (a value, a config key, a command) separated by `<br>`, like Expected sources.
+  A fact may contain `;`, e.g. `user needs REPLICATION SLAVE, REPLICATION CLIENT and SELECT; MySQL 5.7+`. On `—` rows,
+  write the expected behaviour instead, e.g. `says it does not know<br>sources empty<br>points to OLake Slack or GitHub Discussions`.
 - A literal `|` inside a cell must be written `\|`.
 - Every expected source must be a URL that resolves. Every must-mention fact must appear on one of the expected source pages.
 

@@ -136,12 +136,13 @@ SSE events from `/ask/stream`, in order. The format follows the [SSE spec][sse-s
 
 **I3. Eval table** (`eval/questions.md`, copied from [eval-questions.md](eval-questions.md)):
 `| ID | Category | Type | Question | Expected sources | Must mention |`. `Type` is one of `answerable`, `negative`,
-`out-of-scope`, `unanswerable`, `false-premise`, `adversarial`. Expected sources are separated by `<br>`, and must-mention facts by `;`.
+`out-of-scope`, `unanswerable`, `false-premise`, `adversarial`. Both Expected sources and Must mention items are separated by `<br>`,
+because verified facts can contain semicolons. A literal `|` inside any cell is written `\|`.
 Out-of-scope, unanswerable and adversarial rows use `—` for Expected sources and put the expected behaviour in Must mention.
 
 **I4. Environment variables** (`.env.example`; the template is in [Appendix C](#appendix-c-envexample)): `LLM_BASE_URL`, `LLM_API_KEY`,
 `LLM_MODEL`, `LLM_FALLBACK_BASE_URL`, `LLM_FALLBACK_API_KEY`, `LLM_FALLBACK_MODEL`, `INDEX_DIR`, `RETRIEVAL_MODE`
-(`hybrid` or `bm25`), `RERANK` (`on` or `off`), `ABSTAIN_THRESHOLD`, `SOURCE_URL_STYLE` (`branch` or `sha`, for repo sources;
+(`hybrid` or `bm25`), `RERANK` (`on` or `off`), `RERANK_MODEL`, `ABSTAIN_THRESHOLD` (calibrated per `RERANK_MODEL`), `SOURCE_URL_STYLE` (`branch` or `sha`, for repo sources;
 kickoff question K3 decides), `BLOG` (`on` or `off`, decision D4), `GITHUB_TOKEN` (optional; makes conditional GitHub requests
 free), `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `PUBLIC_BASE_URL`, `REFRESH_INTERVAL_MIN` (`0` = off), `LOG_LEVEL`.
 
@@ -258,6 +259,7 @@ result once.
 
 | Time | Action |
 |---|---|
+| 07:30 | At home, re-crawl the docs with the POC in this research repo (`cd poc && uv run python -I -m ingest.docs`). Then ask Claude Code to list the pages whose extracted Markdown changed since the 2026-10-16 crawl, and re-check every eval row that cites one. Open PRs could change correct answers around the event (research.md §3.6). The event build fetches the live site again at 10:40. |
 | 09:30 | Arrive at HustleHub H203, 24th Main Rd, Sector 2, HSR Layout ([event page][ev]). Check-in runs 10:00-10:30. Have the ID ready. |
 | 09:45 | Join the Wi-Fi and check the hotspot as backup. Run `gh auth status`, `docker info` and `claude --version`. |
 | 10:00-10:30 | Kickoff. Ask the questions below, and write the answers into the kit's `CLAUDE.md` under "Kickoff answers". |
@@ -266,7 +268,7 @@ result once.
 **Kickoff questions, short list** (full list with defaults: [open-questions.md §A](open-questions.md#a-questions-for-the-organizers-at-kickoff)):
 1. Credits: which provider, which models and rate limits, and do the keys keep working through scoring and demos (until 17:30)?
 2. Scoring run: when does it run, at what concurrency, with what timeout, and does it retry?
-3. How are `sources` matched: exact URL, trailing slash, anchors, GitHub branch URL or permalink?
+3. How are `sources` matched: exact URL, trailing slash, anchors, GitHub branch URL or permalink? Do GitHub release notes and issues count as acceptable citations?
 4. What does an acceptable "don't know" look like, and is `sources: []` OK?
 5. Submission: where to submit, which fields, and can the URL change after 14:30? May the service restart or auto-refresh its index after freeze?
 6. Pre-existing work: are prepared plans, prompts and eval questions OK? Must all code be written today?
@@ -462,8 +464,9 @@ STEPS (in order; each step leaves a working server)
    with one index-facts line: "Docs indexed <built_at>; latest releases: olake <tag> (<date>), olake-ui <tag> (<date>)".
    It comes from the manifest and the release-gh chunks.
 4. Load data/index/CURRENT at startup. /readyz returns 503 until the index and models are loaded and one warm-up query ran.
-5. Hybrid: dense (the fastembed model named in manifest.json) plus BM25, RRF with k=60, top 30, then a cross-encoder
-   rerank (model in CLAUDE.md), then top k. Small-to-big: add the neighbouring chunk (ord ± 1) of the top hits, at most
+5. Hybrid: dense (the fastembed model named in manifest.json) plus BM25, fused with RRF k=60. Rerank the top 10 with
+   RERANK_MODEL (default Xenova/ms-marco-MiniLM-L-6-v2) and keep the top 6 for the context. The top rerank score is
+   also the gate-1 score, so ABSTAIN_THRESHOLD must match RERANK_MODEL. Small-to-big: add the neighbouring chunk (ord ± 1) of the top hits, at most
    3 chunks per page and about 4k context tokens. Apply the CLAUDE.md "Corpus" ranking rules: tier weights (a blog or
    outside chunk never outranks a tier-1 chunk that passes gate 1); demote release notes older than the latest two minors
    x0.3; boost the connector page named in the question x1.6; expand the query with the synonym map (OLake = OLake Go =
@@ -610,6 +613,8 @@ D1 (10:40-11:00) Hello-world deploy of B's stub. Write the Dockerfile: python:3.
    host-specific commands from docs/plan.md section 1.4. Deploy, then curl /healthz and /ask from a phone.
 D2 (11:00-11:30) eval/run.py, following the "Scoring method" section of eval/questions.md: parse the table, POST each question to
    --base-url with X-Request-ID eval-<ID>, run the deterministic checks, and use the optional --judge LLM judge.
+   Parse the table exactly: split cells on unescaped |, unescape \| to |, and split BOTH Expected sources and Must
+   mention on <br> (never on ';'). '—' means none.
    Flags: --ids, --types, --limit, --concurrency (default 4), --out. Print a summary by Type and Category, plus p50/p95.
    Exit code 1 on any contract failure.
 D3 (11:35-12:00) First real deploy (index from data/index/ baked into the image). Smoke test from the phone. Build the
@@ -668,7 +673,7 @@ Run these from the event repo with `URL=$PUBLIC_BASE_URL`. A local server is on 
 
 | # | Pass criterion | Command |
 |---|---|---|
-| 1.1 | Index v1 exists, and its `docs` + `release` page count equals the sitemap's `/docs/` count (124 on 2026-10-16, `poc/results/corpus.json`), minus pages the build logged as empty | `jq '{version, built_at, counts}' data/index/$(cat data/index/CURRENT)/manifest.json` |
+| 1.1 | Index v1 exists, and its `docs` + `release` page count equals the sitemap's `/docs/` count minus the 16 denylisted pages (124 - 16 = 108 on 2026-10-16; `poc/results/corpus.json`, plan Appendix A) | `jq '{version, built_at, counts}' data/index/$(cat data/index/CURRENT)/manifest.json` |
 | 1.2 | Local `/ask` meets the contract and has at least one source | `curl -s localhost:8000/ask -H 'content-type: application/json' -d '{"question":"How do I install OLake?"}' \| jq -e 'keys==["answer","sources"] and (.sources\|length)>0'` |
 | 1.3 | The stub or real app is live on the primary host | `curl -s "$URL/healthz" \| jq .status` |
 | 1.4 | The eval runner runs | `uv run python -m eval.run --base-url http://localhost:8000 --limit 10` |
@@ -686,6 +691,7 @@ Go/no-go:
 | 2.2 | Full eval: contract failures = 0; answerable source hit ≥ PENDING(POC baseline) (**target**); abstain recall ≥ 90% (**target**); false-abstain ≤ 5% (**target**) | `uv run python -m eval.run --base-url "$URL" --out eval/results/cp2.json` |
 | 2.3 | Latency: p50 ≤ 3 s and p95 ≤ 6 s (**targets**) | The same run prints p50 and p95 |
 | 2.4 | The widget loads from `$URL` on the demo page and on a foreign-origin page | Manual check in the browser |
+| 2.5 | Reranker A/B, measured rather than assumed: MiniLM-L6 (default) vs bge-reranker-base, both reranking the top 10, on the same eval rows. Each run uses its own calibrated `ABSTAIN_THRESHOLD`. Keep the upgrade only if source hit and fact coverage improve, p95 stays ≤ 6 s (**target**), and the host has ≥ 4 GB of RAM | `RERANK_MODEL=BAAI/bge-reranker-base ABSTAIN_THRESHOLD=<calibrated> uv run uvicorn app.main:app --port 8001` locally, then run `uv run python -m eval.run` against ports 8000 and 8001 and compare the two summaries |
 
 Go/no-go:
 - 2.1 fails: switch to the fallback host now (section 11). No more debugging the primary.
@@ -847,12 +853,19 @@ Judging: accuracy 35, citations and honesty 15, production readiness 20, UX and 
 - After a change, run your brief's acceptance checks. Never break the /ask contract.
 
 ## Parameters (set by the lead; change only through the lead)
-- Chunk target / hard max (tokens, o200k_base): 300 / 450 (provisional. At 600, 556 of 951 chunks exceed bge's 512-WordPiece
-  limit; poc/results/retrieval.json). PENDING(lead confirm)
-- Embedding model (fastembed): BAAI/bge-base-en-v1.5 (768-dim; best dense MRR in the POC) or BAAI/bge-small-en-v1.5 (384-dim,
-  about 3x faster to embed). Reranker: Xenova/ms-marco-MiniLM-L-6-v2 on the top 10 (205.9 ms p50 at 2 threads), or
-  BAAI/bge-reranker-base (best MRR, but 922.3 ms p50 at 2 threads for the top 10 and about 1.5 GB more RAM). PENDING(lead decision)
-- RRF k = 60; candidates 30 (default, tune); final context ≈ 4k tokens; max 3 chunks per page
+Provisional until the canonical eval re-runs in the POC; the 12:30 checkpoint measures the reranker choice.
+- Chunks: target 300 / hard max 450 tokens (o200k_base). At a 600 target, 556 of 951 chunks exceed bge's 512-WordPiece limit
+  and get truncated (poc/results/retrieval.json).
+- Embedder: BAAI/bge-base-en-v1.5 (768-dim). Dense MRR@10 was 0.567, against 0.463 for bge-small, and a query takes
+  15.8 ms p50 at 2 threads (poc/results/retrieval.json, latency_threads.json). Embed on the laptop and ship the vectors.
+- Reranker (RERANK_MODEL), default Xenova/ms-marco-MiniLM-L-6-v2 on the top 10: 205.9 ms p50 at 2 threads, and process RSS
+  about 0.7 GB with bge-small loaded (poc/results/latency_threads.json). Its top score is the abstain gate.
+  Upgrade path: BAAI/bge-reranker-base on the top 10. It took 922.3 ms p50 at 2 threads, RSS reached 2.3 GB, and seed-set hit@5
+  rose to 0.929 from 0.786 (poc/results/retrieval.json, latency_threads.json). Use it only if the 12:30 A/B confirms the
+  gain AND the host has at least 4 GB of RAM.
+- ABSTAIN_THRESHOLD is calibrated per reranker. The POC value for MiniLM-L6 is -0.891 (poc/results/answer.json); re-calibrate
+  before switching to bge-reranker-base.
+- RRF k = 60; rerank the top 10; 6 passages in the context, about 4k context tokens at most; max 3 chunks per page
 - Blog rank weight when BLOG=on: PENDING(A/B on the eval set at the event, decision D4)
 - ABSTAIN_THRESHOLD default: -0.891, provisional and valid only for the MiniLM-L6 reranker's score scale. On the 18 seed
   questions this gate on the top rerank score abstained on all 3 should-abstain questions and on none of the 14
@@ -875,8 +888,8 @@ Judging: accuracy 35, citations and honesty 15, production readiness 20, UX and 
   /docs/tutorials/enable-oplogs/, /docs/archive/kubernetes/, /docs/core/configs/catalog/, /docs/core/configs/state/,
   /docs/core/architecture/, /docs/fusion/core/architecture/, /docs/fusion/community/issues-and-prs/,
   /docs/fusion/community/code-of-conduct/, /docs/fusion/community/contributing/, /docs/fusion/community/channels/,
-  /docs/fusion/core/terminologies/, /docs/fusion/core/compatibility/query-engines/
-  (also reported as stubs, decision pending: /docs/core/configs/source/, /docs/core/configs/writer/)
+  /docs/fusion/core/terminologies/, /docs/fusion/core/compatibility/query-engines/, /docs/core/configs/source/,
+  /docs/core/configs/writer/ (16 pages; keep this list in config so it can be reversed)
 - Repo Tier A:
   - olake: README.md, drivers/*/README.md, destination/iceberg/README.md, protocol/root.go (CLI commands and flags),
     drivers/*/resources/spec.json, destination/iceberg/resources/spec.json, destination/parquet/resources/spec.json
@@ -907,7 +920,7 @@ Judging: accuracy 35, citations and honesty 15, production readiness 20, UX and 
   https://cloud.google.com/bigquery/docs/blms-rest-catalog,
   https://docs.snowflake.com/en/user-guide/tables-iceberg-query-using-external-query-engine-snowflake-horizon, https://docs.temporal.io/
 - Synonyms (query expansion): OLake = OLake Go = OLake ingestion; Fusion = OLake Fusion = Maintenance (the OLake UI module);
-  Strict CDC = strict_cdc = CDC Only.
+  Strict CDC = strict_cdc = CDC Only; MariaDB -> MySQL (the MySQL connector covers MariaDB).
 - Ranking rules: tier weights (tier 3-4 never outrank a tier-1 chunk that passes gate 1); demote release notes older than the
   latest two minors x0.3; boost the connector page named in the question x1.6; prefer product=fusion when the question names
   Fusion or compaction, else product=go among near-duplicate twins.
@@ -963,11 +976,12 @@ CORS * without credentials on every route. Headers: X-Request-ID (echo the incom
 ### I3 eval table (eval/questions.md)
 | ID | Category | Type | Question | Expected sources | Must mention |
 Type: answerable | negative | out-of-scope | unanswerable | false-premise | adversarial.
-Expected sources separated by <br>; must-mention separated by ;. Rows with no sources use —.
+Expected sources AND must-mention items are both separated by <br> (facts may contain ';'); a literal | in a cell is \|.
+Rows with no sources use —.
 
 ### I4 env
 LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_FALLBACK_BASE_URL, LLM_FALLBACK_API_KEY, LLM_FALLBACK_MODEL, INDEX_DIR,
-RETRIEVAL_MODE (hybrid|bm25), RERANK (on|off), ABSTAIN_THRESHOLD, SOURCE_URL_STYLE (branch|sha), BLOG (on|off),
+RETRIEVAL_MODE (hybrid|bm25), RERANK (on|off), RERANK_MODEL, ABSTAIN_THRESHOLD (per RERANK_MODEL), SOURCE_URL_STYLE (branch|sha), BLOG (on|off),
 GITHUB_TOKEN (optional), MAX_CONCURRENCY, RATE_LIMIT_PER_MIN, PUBLIC_BASE_URL, REFRESH_INTERVAL_MIN (0 = off), LOG_LEVEL,
 DEBUG (local only)
 ~~~~
@@ -1032,7 +1046,9 @@ LLM_FALLBACK_MODEL=
 INDEX_DIR=data/index
 RETRIEVAL_MODE=hybrid
 RERANK=on
-ABSTAIN_THRESHOLD=
+RERANK_MODEL=Xenova/ms-marco-MiniLM-L-6-v2
+# Calibrated per RERANK_MODEL; the POC value for MiniLM-L6 is -0.891 (poc/results/answer.json)
+ABSTAIN_THRESHOLD=-0.891
 SOURCE_URL_STYLE=branch
 BLOG=off
 # Optional: a GitHub token makes conditional GitHub API requests free (unauthenticated limit: 60 per hour)
