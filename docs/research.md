@@ -194,7 +194,8 @@ then Amoro (concepts only, labelled), then issues (only as "known issue #N") ([o
 - **Docs `sources`**: the canonical sitemap URL. Use https, the apex host, a trailing slash, the original case (paths are
   case-sensitive, and one sitemap URL has capital letters), and no query or fragment. Canonical tags match the sitemap form
   on 267 of 267 pages. Slashless, http and www forms all 301 to it. Cite only URLs in the current sitemap. Never cite a legacy
-  path: 305 of them return HTTP 200 with a meta-refresh rather than a 3xx. Never cite a stub. Dedupe and cap at 5
+  path: the site's 285 redirect entries cover 305 legacy paths, which return HTTP 200 with a meta-refresh rather than a
+  3xx (the [arch-prior-art report][r-arch] counts the same 285 entries). Never cite a stub. Dedupe and cap at 5
   ([docs-site report][r-docs-site]).
 - **UI deep links**: add `#anchor` only if that id exists on the page. Ids follow github-slugger: 163/163 slugs matched,
   and 296/296 internal anchors resolve. 191 of 1,274 anchors (15%) sit inside hidden tabs. For those, use the site's own
@@ -282,8 +283,9 @@ gives a measured number. The prior art and literature follow the table.
   breadcrumb.
 - **Rerankers.** The published gains come from hosted rerankers (the Anthropic numbers above, and
   [Ask Astro][pa-ask-astro-blog]). On OLake, small open cross-encoders lowered Hit@1 in the report's probe (hybrid with
-  breadcrumbs 0.864; + MiniLM-L6 0.773; + jina-reranker-v1-turbo 0.750; 44 questions), and they did not help in the POC on
-  the 94-row set (§4.3). A hosted reranker is untested on OLake.
+  breadcrumbs 0.864; + MiniLM-L6 0.773; + jina-reranker-v1-turbo 0.750; 44 questions). In the POC on the 94-row set the
+  heavier cross-encoders did not help, while the tiny TinyBERT@20 raised MRR@10 from 0.744 to 0.778 on corpus v2 and is a
+  conditional upgrade (§4.3). A hosted reranker is untested on OLake.
 - **Long context (D).** Li et al. (2024) found that long context beats RAG on average (Gemini-1.5-Pro 49.70 vs 37.33;
   GPT-4o 48.67 vs 32.60). Their Self-Route (RAG first, long context only when the model says it cannot answer) comes
   close while using 38-61% of the long-context tokens [[lit-selfroute]]. Accuracy drops when the relevant passage sits in
@@ -463,7 +465,7 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
      locally (p50 1,174.8 ms; 191.7 prompt and 11.9 completion tokens on average). So the rewrite is optional, only with a
      TinyBERT gate. If it is ever used, its prompt emits keywords only (no sentences, about 12 tokens at most), and its
      output is never shown to the user. A hardened rewrite prompt of that kind, with an output sanitizer, was no net gain
-     on the 15 gate-fired and adversarial rows: ADV-01 then produced keywords, but ADV-02 was still declined, and UNK-06
+     on the 14 gate-fired and adversarial rows: ADV-01 then produced keywords, but ADV-02 was still declined, and UNK-06
      and OOS-05 passed the gate (`poc/results/gate-rewrite-v2-subset.json`). A short-circuit returns one unified text, which also suits the near-domain
      unknowns the gate catches, such as UNK-06 (SOC 2), whose BEHAVIOR item needs the contact pointer:
      "I couldn't find this in the OLake docs or repos. I can help with OLake setup, sources, sync modes, catalogs, Fusion
@@ -502,8 +504,8 @@ C is a possible low-confidence escalation only if time allows. D is rejected for
     4 false abstains in the round-2 run were JSON-parse failures (§6);
   - two untested patch-hour ideas (§6): strip injection-like sentences before retrieval, and a per-claim support check.
 
-  The closest end-to-end measurement is the round-2 run (§6), a measured proxy: the same model stage as the recommended
-  policy, with a different gate. The final policy itself is measured at checkpoints 2.2 and 2.5 on the day: the full eval against the
+  The closest end-to-end measurement is the round-2 run (§6): a close proxy of the recommended model stage, with a
+  different gate; §6 lists the differences. The final policy itself is measured at checkpoints 2.2 and 2.5 on the day: the full eval against the
   deployed URL, with each row's abstain reason read from the X-Ask-Reason header. The gate's offline effect is measured
   above. On the seed set, the model's own flag added one false abstain
   (precision 0.75, false-abstain 0.071), on a false-premise question whose retrieval missed (`poc/results/answer.json`).
@@ -859,8 +861,12 @@ the 94 rows.
   file's `config` block: corpus v2 with 300-token chunks; hybrid bge-small with no reranker; k=10 passages; a FlashRank
   TinyBERT top-10 gate below 0.3 with one rewrite (rewrite prompt v1); prompt v3; local qwen3:32b in JSON mode with
   reasoning off and `max_tokens` 600; the scorer at concurrency 1; qwen3:32b as the judge.
-  **This is a measured proxy, not the exact recommended policy.** The model stage is the recommended one, but the
-  recommended gate is the dense score with no rewrite. The gate-stage difference is measured offline in
+  **This is a measured proxy, not the exact recommended policy**: a close proxy of the recommended model stage. The
+  differences: it ran JSON mode with an `answerable` flag, where the event generates plain text with the `NO_ANSWER` and
+  `OUT_OF_SCOPE` markers; its prompt v3 has neither the plan's rule 5 sentence on other tools' configuration nor rule 15
+  on "coming soon" features (`poc/answer/pipeline.py`); it ran a local qwen3:32b, where the event uses a hosted model;
+  and its gate was TinyBERT plus a rewrite, where the recommended gate is the dense score with no rewrite. The gate-stage
+  difference is measured offline in
   `poc/results/gate-rewrite.json`: the dense gate alone caught 7 of the 12 must-abstain rows at 0 false abstains (5 of 12
   at the 0.69 starting value).
   - Schema valid 1.0; 5xx 0; contradictions 4.
@@ -934,7 +940,7 @@ From the [arch-prior-art report][r-arch]. Each row links the original source.
 | [Ask Astro][pa-ask-astro] (Astronomer, Airflow docs; Apache-2.0) | Ingests docs, blog, GitHub PRs and StackOverflow into Weaviate. Per question: 2 LLM rewrites plus the original, up to 100 docs each, a Cohere rerank to 8, a relevancy check, then the answer. A curated question set reruns on every change. Hybrid plus rerank improved about 13.5% more answers, after embedding-only search missed the term "Astro SDK" ([blog][pa-ask-astro-blog]) | Exact product terms need lexical retrieval (BM25 plus the exact-match boost). Rerun the eval on every change (the plan's patch loop) |
 | [DocsGPT][pa-docsgpt] (MIT; 18.3k stars) | A self-hosted assistant that cites sources, with guardrails against injection and ungrounded answers. The widget comes from one script tag or a React package ([widget docs][pa-docsgpt-widget]). The README describes no eval method | One script tag is the norm |
 | [Onyx][pa-onyx] (formerly Danswer) | A hybrid vector plus keyword index, with a search-quality regression over ground-truth doc links ([README][pa-onyx-sq]) | A retrieval-only regression: the plan's `--retrieval-only` eval mode |
-| [chat-langchain][pa-chatlc] | Now a managed deep agent that searches the docs. Its link checker follows redirects and checks for soft 404s ([link_check_tools.py][pa-chatlc-links]). Its guardrail test checks the prompt's wording only, with no LLM calls ([test_guardrails_scope.py][pa-chatlc-guard]) | Test behaviour with real calls, not prompt text. olake.io serves its 285 redirect stubs with HTTP 200, so sources come only from chunk metadata |
+| [chat-langchain][pa-chatlc] | Now a managed deep agent that searches the docs. Its link checker follows redirects and checks for soft 404s ([link_check_tools.py][pa-chatlc-links]). Its guardrail test checks the prompt's wording only, with no LLM calls ([test_guardrails_scope.py][pa-chatlc-guard]) | Test behaviour with real calls, not prompt text. olake.io serves its redirect stubs (285 entries covering 305 legacy paths) with HTTP 200, so sources come only from chunk metadata |
 | Supabase Clippy ([2023 post][pa-clippy]) | MDX sections in pgvector with a similarity threshold, a docs-only prompt and SSE streaming. Per-file checksums re-embed only changed docs ([template][pa-clippy-repo]) | Incremental rebuilds by content hash (the freshness design) |
 | [Verba][pa-verba] (Weaviate), [AutoFlow][pa-autoflow] (PingCAP) | Verba is archived; its reranking was planned and never shipped. AutoFlow is a Graph RAG docs bot with an embeddable JS snippet | Nothing new for a one-day build |
 | kapa.ai ([eval guide][pa-kapa-eval], [widget][pa-kapa-widget]) | Evaluates with about 100 real questions, 15-20% of them unanswerable. Factuality is graded A/B/C = 1/0.5/0 and uncertainty pass/fail, the indexed docs are frozen during an eval, and the judge is a top model with reasoning, repeated and watched for self-preference. The widget is one script tag, full screen on mobile, with an optional uncertain-answer callout | 12 of our 94 rows (12.8%) are unanswerable or out of scope, a little under kapa's share. Use the strongest judge (POC) |
@@ -981,7 +987,8 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 - Direct and indirect prompt injection (OWASP LLM01:2025 [[lit-owasp]]; promptfoo's RAG red-team plugins
   [[lit-promptfoo]]): the ADV rows and prompt rule 6.
 - Citations that do not support the claim (ALCE [[lit-alce]]): citation validation.
-- Stale links: olake.io returns HTTP 200 for its 285 redirect stubs, so a status-only link check passes stale URLs.
+- Stale links: olake.io's 285 redirect entries cover 305 legacy paths ([docs-site report][r-docs-site]; the arch report counts
+  the same 285 entries), all answering HTTP 200, so a status-only link check passes stale URLs.
   Sources come only from chunk metadata.
 - Latency and concurrency, empty or huge input, mobile layout, the one-line embed: practitioner judgement, backed by NN/g
   [[lit-nng]] and the kapa and DocsGPT widget defaults.
@@ -996,7 +1003,7 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Credits throttle or stop during post-freeze scoring | Every row fails | The ordered provider chain: the credits, then the operator's paid key with ≥ 100 RPM (D7), then Gemma on the free tier, failing over before the first byte; a degraded mode that returns the most relevant pages; ask at kickoff (K1) |
 | Endpoint down, cold or rate-limited while scoring | Production readiness and accuracy both lose | Min instances ≥ 1, a queue rather than rejection, a very high rate limit, a synthetic probe every minute (plan section 9) |
 | The organizers match sources differently from us | Citation points lost | Canonical sitemap URLs and branch-form GitHub URLs; ask K3; matching in our own eval is lenient |
-| Over-abstaining or under-abstaining | Accuracy or honesty points lost. Both abstain targets were missed in the local end-to-end run (recall 0.833, false-abstain 0.072; `poc/results/eval_run-canonical.json`) | The reranker score alone cannot separate the cases (§4.3), so the model's `NO_ANSWER` plus citation validation decides. The off-topic gate is a dense-score short-circuit with a 0.02 margin and no rewrite, with a unified short-circuit text; it catches at most about 50-58% of the must-abstain rows, so the model does most of the abstaining. Event-day levers: a stronger hosted model, the unknowns fact card, the v2 prompt. In the round-2 proxy run false-abstain met the target (0.043) while recall stayed at 0.833 (§6); the final policy is measured at checkpoints 2.2 and 2.5 on the day |
+| Over-abstaining or under-abstaining | Accuracy or honesty points lost. Both abstain targets were missed in the local end-to-end run (recall 0.833, false-abstain 0.072; `poc/results/eval_run-canonical.json`) | The reranker score alone cannot separate the cases (§4.3), so the model's `NO_ANSWER` plus citation validation decides. The off-topic gate is a dense-score short-circuit with a 0.02 margin and no rewrite, with a unified short-circuit text; it catches 5 of 12 must-abstain rows (0.417) at the 0.69 starting threshold, and up to 7 of 12 at the zero-margin 0.7126, so the model does most of the abstaining. Event-day levers: a stronger hosted model, the unknowns fact card, the v2 prompt. In the round-2 proxy run false-abstain met the target (0.043) while recall stayed at 0.833 (§6); the final policy is measured at checkpoints 2.2 and 2.5 on the day |
 | Venue Wi-Fi | Slow builds and deploys | Pre-cached wheels, models, repos and base image; remote builds; phone hotspot (plan section 11) |
 | A teammate edits another track's files | Lost work | One owner per path (plan section 0.3) |
 | Stale stub pages contradict live pages (e.g. "Kafka is WIP") | Confidently wrong answers | Denylist the stubs; fact cards with explicit negatives (§3.1, §3.3) |
@@ -1055,7 +1062,7 @@ Derived from the rubric text ([challenges page][ch]). These are the checks we sh
 | Full docs fetch with gzip, 4 at a time | 2.07 MB in 2.2 s | [docs-site report][r-docs-site] |
 | Pages whose content raw MDX misses | 22 of 124 | [docs-site report][r-docs-site], `hidden_content.py` |
 | Anchors inside hidden tabs | 191 of 1,274 (15%) | [docs-site report][r-docs-site], `hidden_tab_headings.py` |
-| Legacy paths answering 200 with a meta-refresh | 305 | [docs-site report][r-docs-site] (redirect config in `main.js`) |
+| Legacy paths answering 200 with a meta-refresh | 305 paths from 285 redirect entries | [docs-site report][r-docs-site] (redirect config in `main.js`); the [arch-prior-art report][r-arch] counts the same 285 entries |
 | Docs deploys | 6 in about 26 h | [docs-site report][r-docs-site] (Actions runs API) |
 | Docs release notes behind GitHub releases | 3-9 days (v0.8.0 to v0.12.0) | [olake-domain report][r-olake-domain] |
 | BM25 hit@1/3/5 on 35 answerable seed questions | page level 18/26/29; chunk level 22/26/30; chunk level plus 3 rules 27/28/32 | [olake-domain report][r-olake-domain], `bm25_poc.py`, `bm25_rules.py` |

@@ -25,7 +25,7 @@ endpoint between 14:30 and about 15:30. That is an inference; confirm it with ki
 warm and tolerant of a burst of requests until the demos end at 17:00.
 
 **What we build** (reasons in [research.md §4](research.md#4-architecture)):
-hybrid retrieval (BM25 plus local dense embeddings, fused with RRF k=60 [[rrf]]) with no reranker (measured: the rerankers did not help), then gated
+hybrid retrieval (BM25 plus local dense embeddings, fused with RRF k=60 [[rrf]]) with no reranker in v1 (measured: the heavier cross-encoders did not help; the tiny TinyBERT@20 raised MRR@10 0.744 → 0.778 and is a conditional upgrade, checkpoint 2.7), then gated
 generation. One LLM call, three logged abstain triggers, and `[n]` citations mapped to canonical URLs. The fallback is
 BM25-only on the same chunks with the same prompt, selected with `RETRIEVAL_MODE=bm25`. The index holds:
 - the docs (rendered HTML, minus a denylist of stub pages)
@@ -582,7 +582,8 @@ STEPS (in order; each step leaves a working server)
    among near-duplicate twin pages. (In the olake-domain research report's BM25 test, the demote, boost and synonym rules
    lifted top-1 hits from 22 to 27 of 35 seed questions.)
 6. Abstain policy. A retrieval score alone cannot decide abstains: near-domain unknowns score as high as real questions,
-   so the gate catches only clearly off-topic ones (at most about 50-58% of the must-abstain rows in the POC).
+   so the gate catches only clearly off-topic ones: 5 of 12 must-abstain rows (0.417) at the 0.69 starting threshold, up
+   to 7 of 12 at the zero-margin 0.7126.
    - Off-topic gate: if the dense gate score < ABSTAIN_THRESHOLD, short-circuit with the UNIFIED SHORT-CIRCUIT TEXT below
      and sources = []. No rewrite step: with the dense gate a rewrite rescued only a row that should be declined, cost
      about 1.2 s and was injectable (research.md §4.3). The threshold is the lowest must-answer gate score minus 0.02
@@ -793,15 +794,21 @@ D1 (10:40-11:00) Deploy B's stub to Cloud Run. Write the Dockerfile: FROM python
    deploy/deploy.sh primary: first the one-time secret setup (PROJECT set; each key in the chain gets its own secret):
      gcloud iam service-accounts create ask-olake-run
      printf %s "$LLM_API_KEY" | gcloud secrets create llm-api-key --replication-policy=automatic --data-file=-
-     gcloud secrets add-iam-policy-binding llm-api-key \
-       --member="serviceAccount:ask-olake-run@$PROJECT.iam.gserviceaccount.com" --role=roles/secretmanager.secretAccessor
+     printf %s "$LLM_FALLBACK_API_KEY" | gcloud secrets create llm-fallback-api-key --replication-policy=automatic --data-file=-
+     printf %s "$LLM_FALLBACK2_API_KEY" | gcloud secrets create llm-fallback2-api-key --replication-policy=automatic --data-file=-
+     for s in llm-api-key llm-fallback-api-key llm-fallback2-api-key; do
+       gcloud secrets add-iam-policy-binding "$s" \
+         --member="serviceAccount:ask-olake-run@$PROJECT.iam.gserviceaccount.com" --role=roles/secretmanager.secretAccessor
+     done
+   (Skip any key you do not hold, and drop it from --update-secrets below.)
    then, on every deploy, a fresh canary (gcloud accepts only one of --env-vars-file and --set-env-vars, so it goes into a
    per-deploy copy of the env file; both files are gitignored):
      CANARY=$(openssl rand -hex 8); printf '%s\n' "$CANARY" > .canary
      { cat deploy/env.yaml; printf 'CANARY: "%s"\n' "$CANARY"; } > deploy/env.deploy.yaml
      gcloud run deploy ask-olake --source . --region asia-south1 --allow-unauthenticated \
        --service-account "ask-olake-run@$PROJECT.iam.gserviceaccount.com" --min-instances 1 --cpu 1 --memory 2Gi \
-       --timeout 60 --update-secrets LLM_API_KEY=llm-api-key:1 --env-vars-file deploy/env.deploy.yaml \
+       --timeout 60 --env-vars-file deploy/env.deploy.yaml \
+       --update-secrets LLM_API_KEY=llm-api-key:1,LLM_FALLBACK_API_KEY=llm-fallback-api-key:1,LLM_FALLBACK2_API_KEY=llm-fallback2-api-key:1 \
        --startup-probe httpGet.path=/readyz,periodSeconds=5,failureThreshold=24,timeoutSeconds=2 \
        --liveness-probe httpGet.path=/healthz,periodSeconds=30,timeoutSeconds=2
    Memory: 2Gi by default, for headroom while the onnxruntime arena grows under bursts. 1Gi is the minimum (bge-small,
@@ -830,7 +837,7 @@ D2 (11:00-11:30) eval/run.py, following the "Scoring method" section of eval/que
    the POC's equivalent took under 4 minutes for 94 questions and 13 configs. End-to-end runs need the hosted provider.
    For the judge (JUDGE_* env), use the strongest model available: the POC's local judge flipped 2 of 14 verdicts between
    thinking on and off. Prefer a different model family than the generator (judges favour their own outputs), at
-   temperature 0, and hand-check 10-15 verdicts once (research.md §7.1).
+   temperature 0, and hand-check 10-15 verdicts once (research.md §6, "Judge reliability").
 D3 (11:35-12:00) First real deploy (index from data/index/ baked into the image). Smoke test from the phone. Build the
    index on the laptop and COPY data/index/ into the image. Never embed during the Docker build or at container start:
    the full-corpus embedding took 69 s (bge-small) or 230 s (bge-base) on an 18-core laptop (poc/results/retrieval.json).
@@ -992,7 +999,9 @@ The TinyBERT rerank upgrade is decided at checkpoint 2.7, not here. MiniLM-L6 an
       the embedding model, and the reranker if RERANK=tinybert), and the submission names the AI tools too. MLH's standard rules require
       transparency about AI code tools [[mlh]], and the MLH organizer guide asks for frameworks to be listed in the README [[mlh-guide]].
 - [ ] The repo is public and stays public after the event (an MLH standard rule [[mlh]]), `LICENSE` is present, and the default branch holds the deployed commit. Run `git tag freeze && git push origin freeze`.
-- [ ] Secrets: `git grep -nE 'sk-|AIza|api_key\s*=\s*"'` finds nothing. `.env` is not tracked. The image holds no keys.
+- [ ] Secrets: `git grep -nE '(^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{35}|api_key[[:space:]]*=[[:space:]]*"'`
+      finds nothing. It uses POSIX classes because git's ERE has no `\s`, and the `sk-` test skips words such as
+      "ask-olake"; on this repo it returns nothing. `.env` is not tracked. The image holds no keys.
 - [ ] Host: on Cloud Run, `gcloud run services describe ask-olake --region asia-south1 --format yaml | grep -i minscale` shows
       1, the probes pass and logs are flowing. On the fallback, the App Platform health checks are green.
 - [ ] Day-of checks 4-5 pass on the final URL: the olake.io-origin preflight, SSE timing, and the 50-request burst with no 429 or 5xx (section 2).
@@ -1013,9 +1022,9 @@ Lunch runs 14:30-15:30 and the top 10 are announced at 15:30 ([event page][ev]).
 
 - Synthetic probe in a terminal for the whole window:
   `while true; do date +%T; curl -s -o /dev/null -w 'healthz %{http_code} %{time_total}s\n' "$URL/healthz"; curl -s -o /dev/null -w 'ask %{http_code} %{time_total}s\n' "$URL/ask" -H 'content-type: application/json' -H 'Cache-Control: no-cache' -d '{"question":"What is OLake?"}'; sleep 60; done`
-- Tail the host logs. On Cloud Run run `gcloud beta run services logs tail ask-olake --project "$PROJECT"`, which needs the
+- Tail the host logs. On Cloud Run run `gcloud beta run services logs tail ask-olake --region asia-south1 --project "$PROJECT"`, which needs the
   log-streaming component and is in Preview [[cr-logging]], or poll with `gcloud run services logs read ask-olake --limit 50
-  --project "$PROJECT"`. On App Platform run `doctl apps logs <app-id> web --follow` [[do-logs]]. Watch the 5xx rate, p95,
+  --region asia-south1 --project "$PROJECT"`. On App Platform run `doctl apps logs <app-id> web --follow` [[do-logs]]. Watch the 5xx rate, p95,
   provider 429s and timeouts, and which provider in the chain is answering.
 - Optionally let the lead session watch too. `/loop 5m <prompt>` re-runs a prompt every 5 minutes for the session
   [[loop]], for example: `/loop 5m curl $URL/healthz and one /ask with Cache-Control: no-cache; report the status codes,
@@ -1227,8 +1236,9 @@ checkpoint 2.7 decides the TinyBERT rerank.
 - "Not supported" or "not documented" with a citation (fact cards) is an answer, not an abstain. Negative and false-premise
   answers cite the page that lists what IS supported. Never "the docs don't mention X".
 - Abstain policy: an off-topic gate on the dense score (ABSTAIN_THRESHOLD = the lowest must-answer score minus 0.02), with
-  no rewrite, that short-circuits with the unified short-circuit text. The gate stage tops out at about 50-58% recall, so
-  the model's NO_ANSWER plus citation validation does most of the abstaining. Log every abstain_reason.
+  no rewrite, that short-circuits with the unified short-circuit text. The gate catches 5 of 12 must-abstain rows (0.417)
+  at the 0.69 starting threshold, up to 7 of 12 at the zero-margin 0.7126, so the model's NO_ANSWER plus citation
+  validation does most of the abstaining. Log every abstain_reason.
 - Issues only as "known issue #N (open/closed; fixed in vX)".
 
 ## Contracts
@@ -1414,7 +1424,7 @@ One-paragraph pitch. Live demo: <URL>/ · API: POST <URL>/ask · Repo license: <
 ## Design choices and trade-offs
 | Decision | Alternatives considered | Why |
 |---|---|---|
-| Hybrid BM25 + dense (RRF k=60), no reranker, top 10 chunks to the LLM | BM25 only; dense only; a cross-encoder rerank; an agentic tool loop; long-context stuffing | Exact config keys need lexical match and paraphrases need dense. The measured rerankers did not improve retrieval (research). One LLM call keeps latency and cost low |
+| Hybrid BM25 + dense (RRF k=60), no reranker, top 10 chunks to the LLM | BM25 only; dense only; a cross-encoder rerank; an agentic tool loop; long-context stuffing | Exact config keys need lexical match and paraphrases need dense. The heavier cross-encoders did not help; the tiny TinyBERT@20 raised MRR@10 0.744 → 0.778 and is a conditional upgrade (checkpoint 2.7). One LLM call keeps latency and cost low |
 | Local embeddings (fastembed bge-small, ONNX on CPU) | A provider's embedding API | Works with any provider, costs nothing per query, has no rate limit, and is deterministic |
 | Vectors in process (numpy) | A vector database | A few thousand chunks; one less service to run |
 | Rendered HTML of the docs pages | Raw MDX from the docs repo | The canonical URL comes as is, and MDX components can hide content |

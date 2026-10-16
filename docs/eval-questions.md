@@ -72,7 +72,9 @@ per `/ask` (`poc/results/eval_run-canonical.json`). That was against the POC API
 which decoded at about 10 tok/s under contention (the POC owner's observation). It says nothing about a hosted model.
 
 **Runtime, hosted estimate (unmeasured).** 94 rows × 2-4 s per answer / concurrency 8 ≈ 25-50 s, plus the judge at about
-20-40 s, so about 1-2 minutes. Verified at the 11:30 checkpoint (plan section 5). The harness reports `ask_wall_s`,
+20-40 s, so about 1-2 minutes. The estimate assumes concurrency 8; the documented runs above used concurrency 4. It is
+verified at checkpoint 3.1, the full judged run at concurrency 8 (plan section 5); checkpoint 1.4 at 11:30 runs only 10
+rows. The harness reports `ask_wall_s`,
 `judge_wall_s` and `total_wall_s`.
 
 ## Categories and types
@@ -162,7 +164,7 @@ answerable rows; p50 ≤ 3 s and p95 ≤ 6 s.
 - **The judge.** Use the strongest model available: the POC's local judge flipped 2 of 14 verdicts between thinking on
   and off (`poc/README.md`, "Eval"). Prefer a different model family than the generator, at temperature 0, and
   hand-check 10-15 verdicts: LLM judges show position, verbosity and self-enhancement biases
-  ([research.md §7.1](research.md#71-prior-art)).
+  ([research.md §6, "Judge reliability"](research.md#6-evaluation)).
 - **Retrieval-only changes.** Check them with a retrieval-only run first; the POC's took under 4 minutes for 94
   questions and 13 configs. End-to-end runs need the hosted provider (`poc/README.md`, "Eval").
 
