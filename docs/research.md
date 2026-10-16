@@ -191,6 +191,14 @@ None. Vectors stay in process as numpy brute force: 951-1,861 chunks without the
 PENDING(stack report: Cloud Run asia-south1 with min instances 1, DigitalOcean App Platform, Fly.io or Render, and a
 Hugging Face Docker Space as the free fallback. Compare cold start, SSE support, CPU for background work, build path and cost).
 A Cloudflare quick tunnel is for emergencies only: no uptime guarantee, no SSE, and a limit of 200 in-flight requests [[tunnel]].
+Verified so far:
+- **Hugging Face Docker Space**: creating one now needs a paid plan (PRO for personal accounts). The free CPU Basic
+  hardware (2 vCPU, 16 GB RAM) sleeps when unused [[hf-overview]]. The container runs as uid 1000, listens on port 7860
+  unless `app_port` says otherwise, and gets secrets as env vars at runtime [[hf-docker]]. It is no longer a *free* fallback.
+- **Cloud Run**: `gcloud run deploy --source .` builds remotely, using the Dockerfile when there is one. `--min-instances` is
+  set per revision, while `--min` is service-wide. `--no-cpu-throttling` keeps CPU allocated outside requests, which a
+  background refresher needs. `--cpu-boost` is on by default for new services. `--set-secrets` maps env vars to Secret
+  Manager versions [[gcloud-deploy]].
 
 ### 5.6 Widget pattern, CORS and CSP
 A loader script injects a launcher and an iframe from our origin, so styles are isolated and the host page's CORS and
@@ -262,6 +270,9 @@ PENDING(arch-prior-art report).
 [tunnel]: https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/
 [csp-fa]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-ancestors
 [docusaurus]: https://docusaurus.io/docs/api/docusaurus-config
+[hf-overview]: https://huggingface.co/docs/hub/spaces-overview
+[hf-docker]: https://huggingface.co/docs/hub/spaces-sdks-docker
+[gcloud-deploy]: https://docs.cloud.google.com/sdk/gcloud/reference/run/deploy
 
 - Event page: <https://events.mlh.com/events/15468-hacktoberfest-hack-day-bengaluru-x-olake>
 - Challenges page: <https://www.mlh.com/events/lakehouse-bot-day-hacktoberfest-bengaluru-x-olake/challenges>
@@ -272,4 +283,7 @@ PENDING(arch-prior-art report).
 - Cloudflare quick tunnels: <https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/>
 - MDN CSP `frame-ancestors`: <https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-ancestors>
 - Docusaurus `scripts` config: <https://docusaurus.io/docs/api/docusaurus-config>
+- Hugging Face Spaces overview: <https://huggingface.co/docs/hub/spaces-overview>
+- Hugging Face Docker Spaces: <https://huggingface.co/docs/hub/spaces-sdks-docker>
+- `gcloud run deploy` reference: <https://docs.cloud.google.com/sdk/gcloud/reference/run/deploy>
 - POC measurements: `poc/results/corpus.json`, `poc/results/chunks.json`, `poc/results/freshness.json`; POC code `poc/chunking/chunker.py`, `poc/eval/questions.py`, `poc/eval/score.py`

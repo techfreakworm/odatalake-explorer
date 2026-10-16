@@ -152,7 +152,8 @@ Out-of-scope, unanswerable and adversarial rows use `—` for Expected sources a
 - [ ] GitHub: `gh auth status` shows the account you will submit with, and a test `git push` to a scratch repo works.
 - [ ] MLH: registered for the event ([event page][ev]). Government photo ID in the bag; it is needed for venue entry ([event page][ev]).
 - [ ] Primary host: account, billing and CLI login done. PENDING(stack report: host choice). The decision is D1 in [open-questions.md](open-questions.md#b-operator-decisions).
-- [ ] Fallback host: account and token ready (free tier). PENDING(stack report).
+- [ ] Fallback host: account and token ready. Hugging Face Docker Spaces now need a paid PRO plan to create [[hf]], so
+      buy it or choose another fallback. PENDING(stack report).
 - [ ] Personal fallback LLM key on an OpenAI-compatible endpoint, with a spend cap. The Gemini API exposes one at
       `https://generativelanguage.googleapis.com/v1beta/openai/` [[gemini-openai]]. The model choice is PENDING(stack report).
 - [ ] Claude Code: logged in, and `claude --version` noted. Agent teams are experimental and need
@@ -931,6 +932,7 @@ One-paragraph pitch. Live demo: <URL>/ · API: POST <URL>/ask · Repo license: <
 [currentscript]: https://developer.mozilla.org/en-US/docs/Web/API/Document/currentScript
 [docusaurus]: https://docusaurus.io/docs/api/docusaurus-config
 [cli]: https://code.claude.com/docs/en/cli-reference
+[hf]: https://huggingface.co/docs/hub/spaces-overview
 
 - Event page: <https://events.mlh.com/events/15468-hacktoberfest-hack-day-bengaluru-x-olake>
 - Challenges page: <https://www.mlh.com/events/lakehouse-bot-day-hacktoberfest-bengaluru-x-olake/challenges>
@@ -949,6 +951,7 @@ One-paragraph pitch. Live demo: <URL>/ · API: POST <URL>/ask · Repo license: <
 - uv CLI reference (`--offline`): <https://docs.astral.sh/uv/reference/cli/>
 - Cloudflare quick tunnels: <https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/>
 - GitHub Codespaces docs: <https://docs.github.com/en/codespaces>
+- Hugging Face Spaces overview (plans and hardware): <https://huggingface.co/docs/hub/spaces-overview>
 - FastAPI, `async def` vs `def`: <https://fastapi.tiangolo.com/async/>
 - Docusaurus `scripts` config: <https://docusaurus.io/docs/api/docusaurus-config>
 - MDN `document.currentScript`: <https://developer.mozilla.org/en-US/docs/Web/API/Document/currentScript>
