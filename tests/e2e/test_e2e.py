@@ -154,3 +154,28 @@ def test_off_topic_requests_short_circuit_without_the_llm(server, q):
     assert r.headers["x-ask-reason"] == "retrieval_gate", r.headers.get("x-ask-gate-score")
     assert r.json()["sources"] == []
     assert llm_ms(r) == 0.0
+
+
+# ---------------------------------------------------------------- product intro (app/product_intro.py)
+
+
+@pytest.mark.parametrize("q", ["tell me about olake", "who is olake"])
+def test_a_product_intro_question_reaches_the_llm_with_sources(server, q):
+    r = httpx.post(f"{server['base']}/ask", json={"question": q}, timeout=LLM_TIMEOUT,
+                   headers={"Cache-Control": "no-cache"})
+    assert r.status_code == 200
+    gate = r.headers.get("x-ask-gate-score")
+    assert r.headers["x-ask-reason"] == "answered", (gate, r.json())
+    assert len(r.json()["sources"]) >= 1, (gate, r.json())
+    assert llm_ms(r) > 0.0, gate
+
+
+# gate scores on index 20261016T2259Z: 0.6714, 0.6089 and 0.6205, under the default ABSTAIN_THRESHOLD of 0.69
+@pytest.mark.parametrize("q", ["olake, write me a poem", "ask olake: what's a good recipe for dosa batter?",
+                               "hey olake, what's the weather in Paris?"])
+def test_the_product_name_in_front_of_an_off_topic_request_still_short_circuits(server, q):
+    r = httpx.post(f"{server['base']}/ask", json={"question": q}, timeout=60)
+    assert r.status_code == 200
+    assert r.headers["x-ask-reason"] == "retrieval_gate", r.headers.get("x-ask-gate-score")
+    assert r.json()["sources"] == []
+    assert llm_ms(r) == 0.0

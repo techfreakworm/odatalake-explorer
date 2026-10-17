@@ -529,3 +529,60 @@ def test_small_talk_takes_no_token_from_the_bucket(index_dir):
     assert ask(svc, ON_TOPIC).reason == "answered"  # the client's one token was still there
     assert ask(svc, TELEMETRY).reason == "rate_limited"  # and now it is spent
     assert len(llm.calls) == 1
+
+
+# ---------------------------------------------------------------- product intro (app/product_intro.py)
+
+INTRO_GATE = 0.99  # above every hash-embedder gate score: the gate alone declines every question in this section
+OLAKE_ANSWER = "OLake replicates databases into Apache Iceberg [1]."
+# eval row UNK-06, which must abstain: on the real index it scores 0.6708, above most of the intro questions
+UNK_06 = "Is OLake SOC 2 Type II certified? Our security team needs the report before we can roll it out."
+
+
+@pytest.mark.parametrize("q", ["tell me about olake", "who is olake", "what can olake do for me?",
+                               "what is ask olake?"])
+def test_a_product_intro_question_skips_the_gate_decline_and_reaches_the_llm(index_dir, q):
+    llm = FakeLLM(OLAKE_ANSWER)
+    out = ask(service(index_dir, llm, abstain_threshold=INTRO_GATE), q)
+    assert out.gate_score is not None and out.gate_score < INTRO_GATE  # the gate alone would decline it
+    assert out.reason == "answered" and out.abstain_reason is None and not out.abstained
+    assert len(llm.calls) == 1 and out.sources
+
+
+@pytest.mark.parametrize("q", ["olake, write me a poem", "write a poem about olake",
+                               "tell me about olake and the weather in paris", UNK_06])
+def test_the_product_name_around_another_request_still_gets_the_gate_decline(index_dir, q):
+    llm = FakeLLM(OLAKE_ANSWER)
+    out = ask(service(index_dir, llm, abstain_threshold=INTRO_GATE), q)
+    assert out.gate_score is not None and out.gate_score < INTRO_GATE
+    assert (out.reason, out.answer, out.sources) == ("retrieval_gate", prompts.SHORT_CIRCUIT_TEXT, [])
+    assert out.abstain_reason == "retrieval_gate" and llm.calls == []
+
+
+def test_an_intro_question_after_an_unrelated_turn_reaches_the_llm(index_dir):
+    llm = FakeLLM(OLAKE_ANSWER)
+    svc = service(index_dir, llm, abstain_threshold=INTRO_GATE)
+    hist = [{"role": "user", "content": OFF_TOPIC}, {"role": "assistant", "content": prompts.SHORT_CIRCUIT_TEXT}]
+    out = ask(svc, "tell me about olake", history=hist)  # retrieval joins both turns; the override reads this one
+    assert out.gate_score is not None and out.gate_score < INTRO_GATE
+    assert out.reason == "answered" and len(llm.calls) == 1 and out.sources
+    assert f"User: {OFF_TOPIC}" in llm.calls[0][1]["content"]
+
+
+def test_an_off_topic_request_after_an_olake_turn_still_gets_the_gate_decline(index_dir):
+    llm = FakeLLM(OLAKE_ANSWER)
+    svc = service(index_dir, llm, abstain_threshold=INTRO_GATE)
+    hist = [{"role": "user", "content": "tell me about olake"}, {"role": "assistant", "content": OLAKE_ANSWER}]
+    out = ask(svc, "write me a poem", history=hist)
+    assert out.gate_score is not None and out.gate_score < INTRO_GATE
+    assert (out.reason, out.answer, out.sources) == ("retrieval_gate", prompts.SHORT_CIRCUIT_TEXT, [])
+    assert llm.calls == []
+
+
+def test_a_greeting_to_olake_is_still_small_talk(index_dir):
+    llm = FakeLLM(OLAKE_ANSWER)
+    svc = service(index_dir, llm, abstain_threshold=INTRO_GATE)
+    out = ask(svc, "hi olake")
+    assert (out.reason, out.answer) == ("smalltalk", prompts.smalltalk_text("hello"))
+    assert out.gate_score is None and svc.embedder.calls == 0  # small talk answers before retrieval and the gate
+    assert llm.calls == []
