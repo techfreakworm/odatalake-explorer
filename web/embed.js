@@ -1,9 +1,9 @@
 // Ask OLake embed app (the iframe behind /embed). Streams POST /ask/stream with fetch() and a stream reader
 // (EventSource cannot POST); falls back to POST /ask once. Model text reaches the DOM only as text nodes.
-import { createSSEParser, domainOf, footerText, parseMarkdown, safeUrl, toDOM } from "./embed-core.mjs";
+import { createSSEParser, domainOf, footerText, parseMarkdown, safeUrl, timeoutSeconds, toDOM } from "./embed-core.mjs";
 
 const params = new URLSearchParams(location.search);
-const TIMEOUT_S = Math.min(600, Math.max(5, parseInt(params.get("timeout"), 10) || 30));
+const TIMEOUT_S = timeoutSeconds(params.get("timeout")); // default 35 s = ASK_TIMEOUT_S (30) + 5
 const EMBEDDED = window.parent !== window;
 const HISTORY_ENTRIES = 4; // the last 4 turns (user and assistant messages) go to /ask/stream as history
 const SVG = "http://www.w3.org/2000/svg";

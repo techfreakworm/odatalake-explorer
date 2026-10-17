@@ -123,3 +123,9 @@ test("options: api from data-api, title and timeout into the frame URL, accent o
   assert.equal(src.searchParams.get("accent"), null);
   assert.equal(p.button.getAttribute("aria-label"), "Ask OLake");
 });
+
+test("the frame gets a 35 s timeout by default, so the server's degraded answer (sent at 30 s) arrives first", () => {
+  const p = fakePage();
+  p.click();
+  assert.equal(new URL(p.frame().src).searchParams.get("timeout"), "35");
+});

@@ -1,7 +1,7 @@
 /* Ask OLake loader. One line on any docs page:
      <script src="https://HOST/widget.js" data-api="https://HOST" async></script>
    data-api (default: this script's origin), data-title, data-position="left|right", data-accent="#hex",
-   data-open="true", data-timeout="<seconds>" (default 30). Adds a launcher and an iframe panel (HOST/embed);
+   data-open="true", data-timeout="<seconds>" (default 35). Adds a launcher and an iframe panel (HOST/embed);
    sets no cookies and no storage, and its CSS only touches .askolake-* elements. */
 (function () {
   "use strict";
@@ -17,7 +17,9 @@
   }
   var accent = /^#[0-9a-f]{3,8}$/i.test(d.accent || "") ? d.accent : "#1b6f80";
   var side = d.position === "left" ? "left" : "right";
-  var q = new URLSearchParams({ theme: "auto", timeout: String(Math.min(600, Math.max(5, parseInt(d.timeout, 10) || 30))) });
+  // 35 s = the server's ASK_TIMEOUT_S (30) + 5, so its degraded "most relevant pages" answer beats the browser's
+  // own timeout; web/embed-core.mjs DEFAULT_TIMEOUT_S holds the same value
+  var q = new URLSearchParams({ theme: "auto", timeout: String(Math.min(600, Math.max(5, parseInt(d.timeout, 10) || 35))) });
   if (d.title) q.set("title", d.title.slice(0, 60));
   if (d.accent && accent === d.accent) q.set("accent", accent);
   var btn, frame, isOpen = false, loaded = false, queue = [];

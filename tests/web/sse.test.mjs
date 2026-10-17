@@ -58,3 +58,14 @@ test("footer text from /healthz", () => {
   assert.equal(domainOf("https://github.com/datazip-inc/olake/blob/master/README.md"), "github.com");
   assert.equal(domainOf("not a url"), "");
 });
+
+test("request timeout: default 35 s (the server's 30 s ASK_TIMEOUT_S + 5), clamped to 5-600", async () => {
+  const { DEFAULT_TIMEOUT_S, timeoutSeconds } = await import("../../web/embed-core.mjs");
+  assert.equal(DEFAULT_TIMEOUT_S, 35);
+  assert.equal(timeoutSeconds(null), 35);
+  assert.equal(timeoutSeconds(""), 35);
+  assert.equal(timeoutSeconds("abc"), 35);
+  assert.equal(timeoutSeconds("240"), 240);
+  assert.equal(timeoutSeconds("1"), 5);
+  assert.equal(timeoutSeconds("9999"), 600);
+});

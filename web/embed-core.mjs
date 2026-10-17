@@ -36,6 +36,16 @@ export function domainOf(url) {
   }
 }
 
+// The browser waits a little longer than the server's whole-request bound (ASK_TIMEOUT_S, 30 s by default), so when
+// the LLM is slow the server's degraded "most relevant pages" answer arrives before the browser gives up.
+export const DEFAULT_TIMEOUT_S = 35;
+
+/** Seconds to wait for an answer: the ?timeout= / data-timeout value, clamped to 5-600, else DEFAULT_TIMEOUT_S. */
+export function timeoutSeconds(raw) {
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) ? Math.min(600, Math.max(5, n)) : DEFAULT_TIMEOUT_S;
+}
+
 const el = (tag, attrs = {}, children = []) => ({ tag, attrs, children });
 const tx = (text) => ({ text });
 
