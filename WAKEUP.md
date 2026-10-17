@@ -1,5 +1,18 @@
 # WAKEUP: from a fresh checkout to a live, measured endpoint
 
+> **What to deploy**
+> - **The tip of branch `soma/odatalake-build`**: a checkout of that branch once the orchestrator has pushed it, or
+>   this worktree. `git log -1 --format='%h %s'` shows which commit you have.
+> - The tip's `app/` adds two prompt levers to `2dbc70f`, the last verifier-approved commit: L2, a premise check
+>   (`fb2ff63`), and L3, a citation for every supporting passage (`d474c14`). Both are in `app/prompts.py`. The evals
+>   running now measure them (`eval/results/lever1-cite.json`, `lever2-premise.json`, `lever3-citeall.json`).
+> - If the final eval drops a lever, the revert lands on the branch: `git pull`, then re-run step 6. A redeploy takes
+>   about 5 to 10 minutes (an estimate, not measured from here: Cloud Build rebuilds the image, then the new revision
+>   has to pass `/readyz`). The running revision keeps serving until the new one is ready.
+> - **The conservative path** ships `2dbc70f`'s prompts with the current scripts: run `git checkout 2dbc70f -- app/`
+>   before step 6 (only `app/prompts.py` changes), and `git checkout HEAD -- app/` to undo it. `/healthz` still
+>   reports the tip's SHA.
+
 Run these steps in order, from the repo root, in bash or zsh. Each step says what it costs and whether it reaches
 outside this laptop:
 
@@ -10,13 +23,14 @@ outside this laptop:
 ## 0. Prerequisites [local]
 
 ```bash
+for t in uv docker gcloud doctl ngrok jq openssl curl git; do command -v "$t" >/dev/null || echo "missing: $t"; done
 uv --version && uv python find 3.12          # Python toolchain (uv python install 3.12 if missing)
 docker info >/dev/null && echo docker-ok     # the image and the local container test
 gcloud --version | head -1                   # primary host (Cloud Run)
 doctl version                                # fallback host (DigitalOcean); only for step 10
 ngrok version                                # emergency path; only for step 10
 jq --version && openssl version && curl --version | head -1
-git status --short && git log --oneline -1   # a clean tree at the commit you mean to ship
+git status --short && git log -1 --format='%h %s'   # a clean tree at the commit you mean to ship (the box above)
 uv sync --frozen --extra rerank              # dependencies exactly as locked
 uv run pytest -q -m "not e2e"                # unit tests, no network, no LLM
 uv run python -m index.validate              # the committed index (data/index/CURRENT) is valid
@@ -24,12 +38,21 @@ uv run python -m index.validate              # the committed index (data/index/C
 
 `index.validate` ends with `valid`. The index is committed, so there is nothing to build.
 
+Install whatever is missing:
+- uv: https://docs.astral.sh/uv/getting-started/installation/
+- Docker Desktop: https://docs.docker.com/get-docker/
+- gcloud CLI (Google Cloud SDK): https://cloud.google.com/sdk/docs/install
+- doctl, for step 10 only: https://docs.digitalocean.com/reference/doctl/how-to/install/
+- ngrok, for step 10 only: https://ngrok.com/download
+- jq: https://jqlang.github.io/jq/download/ (macOS: `brew install jq`)
+- openssl, curl and git ship with macOS.
+
 ## 1. Get the keys and fill `.env` [outward]
 
 The LLM chain is tried in order (decision D7), so get the keys in this order:
 
-1. **Primary: the event credits.** The organizers give the base URL, key and model (kickoff question K1). Use the
-   lowest reasoning setting the model supports.
+1. **Primary: your main provider.** The event credits if you have them, otherwise your own paid key: any
+   OpenAI-compatible base URL, key and model. Use the lowest reasoning setting the model supports.
 2. **Paid fallback, at least 100 RPM, with a spend cap.** One of:
    - OpenAI: https://platform.openai.com/api-keys, base `https://api.openai.com/v1`
    - Groq developer plan: https://console.groq.com/keys, base `https://api.groq.com/openai/v1`
@@ -42,13 +65,14 @@ The LLM chain is tried in order (decision D7), so get the keys in this order:
 
 ```bash
 cp .env.example .env
-${EDITOR:-vi} .env     # fill LLM_*, LLM_FALLBACK_*, LLM_FALLBACK2_* (BASE_URL, API_KEY, MODEL, REASONING_EFFORT)
+${EDITOR:-vi} .env     # fill LLM_*, LLM_FALLBACK_*, LLM_FALLBACK2_* (BASE_URL, API_KEY, MODEL, REASONING_EFFORT);
+                       # the minimum is LLM_BASE_URL, LLM_API_KEY and LLM_MODEL (the header of .env.example)
 chmod 600 .env         # .env is gitignored; never commit it
 ```
 
 ## 2. Smoke-test every key [outward] [$: a few hundred tokens per key]
 
-This is plan §2's credits smoke test, run once per provider in the chain:
+This is plan §2's credits smoke test, run once per provider in the chain that has a key:
 
 ```bash
 set -a; source .env; set +a
@@ -68,13 +92,15 @@ smoke_key() {  # smoke_key BASE_URL API_KEY MODEL [REASONING_EFFORT]
     -d "{\"model\":\"$3\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with OK.\"}]}"
 }
 smoke_key "$LLM_BASE_URL" "$LLM_API_KEY" "$LLM_MODEL" "$LLM_REASONING_EFFORT"
-smoke_key "$LLM_FALLBACK_BASE_URL" "$LLM_FALLBACK_API_KEY" "$LLM_FALLBACK_MODEL" "$LLM_FALLBACK_REASONING_EFFORT"
-smoke_key "$LLM_FALLBACK2_BASE_URL" "$LLM_FALLBACK2_API_KEY" "$LLM_FALLBACK2_MODEL" "$LLM_FALLBACK2_REASONING_EFFORT"
+[ -n "$LLM_FALLBACK_API_KEY" ] && smoke_key "$LLM_FALLBACK_BASE_URL" "$LLM_FALLBACK_API_KEY" "$LLM_FALLBACK_MODEL" \
+  "$LLM_FALLBACK_REASONING_EFFORT"
+[ -n "$LLM_FALLBACK2_API_KEY" ] && smoke_key "$LLM_FALLBACK2_BASE_URL" "$LLM_FALLBACK2_API_KEY" "$LLM_FALLBACK2_MODEL" \
+  "$LLM_FALLBACK2_REASONING_EFFORT"
 ```
 
 **Go/no-go:**
 - If the timed call fails, or takes more than 5 s for the one-word reply, move the next key in the chain up to
-  primary now (swap the variables in `.env`), and tell the organizers.
+  primary now (swap the variables in `.env`). If it was the event credits, tell the organizers.
 - Any 429 among the eight parallel calls means the limit is tight. Set `MAX_CONCURRENCY` below it in
   `deploy/env.yaml` and `.env`.
 - If streaming or `response_format` fails, note it and carry on: the app never depends on `response_format`, and the
@@ -124,6 +150,22 @@ again adds a new version to each secret.
 
 ## 6. Deploy to Cloud Run [outward] [$: about $0.65 a day idle at 2 GiB with min-instances 1, plus Cloud Build]
 
+First copy the non-secret half of the LLM chain from `.env` into `deploy/env.yaml`. Both hosts read their settings
+from `deploy/env.yaml` only, never from `.env`, and the keys stay out of it (they are in Secret Manager since
+step 5). Also carry over `MAX_CONCURRENCY` if step 2 found a tight limit.
+
+```yaml
+LLM_BASE_URL: "<the primary's base URL>"
+LLM_MODEL: "<the primary's model>"
+LLM_REASONING_EFFORT: "<its lowest setting, or empty>"
+LLM_FALLBACK_BASE_URL: "<the paid fallback's base URL>"   # and the same three keys for each fallback you use
+LLM_FALLBACK_MODEL: "<its model>"
+LLM_FALLBACK_REASONING_EFFORT: ""
+```
+
+`deploy/deploy.sh primary` stops if `LLM_BASE_URL` or `LLM_MODEL` is empty there, or if the `llm-api-key` secret is
+missing: without them every answer would be the degraded one.
+
 ```bash
 deploy/deploy.sh primary
 export URL=$(gcloud run services describe ask-olake --region asia-south1 --format 'value(status.url)')
@@ -155,6 +197,7 @@ PASS  GET /healthz -> 200
       index: {"version":"<data/index/CURRENT>", ...}
 PASS  GET /readyz -> 200 {"ready":true}
 PASS  POST /ask -> 200, body exactly {answer, sources}
+PASS  POST /ask answered by the LLM (X-Ask-Reason: answered)
 PASS  CORS preflight from https://olake.io
 PASS  SSE /ask/stream sends meta and done
 PASS  burst of 50 concurrent /ask: no 429 or 5xx
@@ -165,6 +208,34 @@ Also check:
 - The `index.version` in /healthz matches `cat data/index/CURRENT`.
 - The `N token events over M distinct second(s)` line shows tokens spread over several seconds. All of them in one
   second means the stream is buffered; the widget then falls back to `/ask`.
+- A FAIL on `answered by the LLM` with a degraded reason means no provider answered. Check `deploy/env.yaml`
+  (step 6), the secrets (step 5) and the logs below.
+
+**Watch it** while the scorer runs, in two more terminals:
+
+```bash
+gcloud run services logs read ask-olake --region asia-south1 --limit 50    # the latest lines; re-run it as needed
+# DigitalOcean: doctl apps logs <APP_ID> web --follow
+# Plan §9 synthetic probe: /healthz and one uncached /ask a minute [$: one answer a minute, about 0.2M tokens an hour]
+while true; do
+  date +%T
+  curl -s -o /dev/null -w 'healthz %{http_code} %{time_total}s\n' "$URL/healthz"
+  curl -s -o /dev/null -w 'ask %{http_code} %{time_total}s %header{x-ask-reason}\n' "$URL/ask" \
+    -H 'content-type: application/json' -H 'Cache-Control: no-cache' -d '{"question":"What is OLake?"}'
+  sleep 60
+done
+```
+
+Each `/ask` writes one JSON log line with `"event": "ask"`. The fields to watch:
+- `reason`: `answered`, or why not. `abstain_reason` repeats it for the abstains: `retrieval_gate` (the off-topic
+  gate), `model_dont_know`, `out_of_scope` and `no_valid_citation`.
+- `degraded: true`, with `reason` `llm_failed`, `ask_timeout`, `queue_timeout`, `rate_limited` or
+  `budget_exhausted`: the user got the "most relevant pages" answer. More than a few means trouble upstream.
+- `provider` (`primary`, `fallback` or `fallback2`) answered; `failovers` lists each provider that failed first and
+  why, such as `primary: <error>`.
+- `timings_ms.total` and `timings_ms.llm_ttft` for latency; `tokens_in` and `tokens_out` for spend.
+
+Stop the probe after the scoring window: it spends tokens every minute.
 
 ## 8. Eval against the public URL [outward] [$: 94 answers plus the judge, about 0.4M tokens]
 
@@ -207,7 +278,8 @@ the 30 s `/ask` bound, so a hung primary leaves the fallback only about 5 s.
 
 **DigitalOcean App Platform, BLR** [outward] [$: apps-s-1vcpu-2gb is $25 a month, billed per second]
 
-App Platform builds from GitHub, so the repo must be pushed first, and App Platform needs access to it.
+App Platform builds from GitHub, so the repo must be pushed first, and App Platform needs access to it. It takes
+the same non-secret settings from `deploy/env.yaml` (step 6), and the keys from your shell as SECRET envs.
 
 ```bash
 doctl auth init                                               # token: https://cloud.digitalocean.com/account/api/tokens

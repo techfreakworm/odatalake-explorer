@@ -131,8 +131,16 @@ check_instances() {  # whole numbers, 1 <= MAX_INSTANCES, MIN_INSTANCES <= MAX_I
   fi
 }
 
+check_llm_env() {  # the hosts take the non-secret LLM settings from deploy/env.yaml only, never from .env
+  local k missing=""
+  for k in LLM_BASE_URL LLM_MODEL; do [ -n "$(env_value "$k")" ] || missing="$missing $k"; done
+  [ -z "$missing" ] || die "deploy/env.yaml has no value for$missing: copy the primary's base URL and model there from" \
+    ".env (WAKEUP.md step 6; keys never go there). Without them /ask only returns the degraded answer"
+}
+
 cmd_primary() {
   check_instances
+  check_llm_env
   need gcloud "https://cloud.google.com/sdk/docs/install"
   require_env PROJECT
   local sa="$SA_NAME@$PROJECT.iam.gserviceaccount.com" pair var name ver mapping="" refresh
@@ -147,7 +155,10 @@ cmd_primary() {
     [ -n "$ver" ] || { echo "secret $name has no enabled version: skipped"; continue; }
     mapping="${mapping:+$mapping,}$var=$name:${ver##*/}"
   done
-  [ -n "$mapping" ] || echo "warning: no LLM key secrets: /ask will return the degraded answer (run: deploy/deploy.sh secrets)"
+  case ",$mapping" in
+    *,LLM_API_KEY=*) ;;
+    *) die "no llm-api-key secret: run deploy/deploy.sh secrets with LLM_API_KEY set first (WAKEUP.md step 5)" ;;
+  esac
   case ",$mapping" in
     *,LLM_FALLBACK2_API_KEY=*) write_env_deploy deploy/env.deploy.yaml ;;
     *) write_env_deploy deploy/env.deploy.yaml "$FALLBACK2_VARS"
@@ -198,12 +209,13 @@ render_do_spec() {  # render_do_spec OUT
 cmd_fallback() {
   need doctl "https://docs.digitalocean.com/reference/doctl/how-to/install/"
   require_env DO_REPO
+  check_llm_env
+  [ -n "${LLM_API_KEY:-}" ] || die "LLM_API_KEY is not set in this shell: set -a; source .env; set +a (WAKEUP.md step 10)"
   local spec=deploy/do-app.deploy.yaml id
   new_canary
   umask 077
   trap 'rm -f deploy/do-app.deploy.yaml' EXIT  # the rendered spec holds the keys in clear text
   render_do_spec "$spec"
-  [ -n "${LLM_API_KEY:-}" ] || echo "warning: LLM_API_KEY is not set: /ask will return the degraded answer"
   id=$(doctl apps list --format ID,Spec.Name --no-header | awk -v n="$DO_APP_NAME" '$2 == n { print $1; exit }')
   if [ -n "$id" ]; then
     run doctl apps update "$id" --spec "$spec" --wait
@@ -234,7 +246,7 @@ cmd_smoke() {
   code=$(curl -sS -m 10 -o "$tmp/readyz" -w '%{http_code}' "$base/readyz" || true)
   check "GET /readyz -> $code $(cat "$tmp/readyz" 2>/dev/null)" "$([ "$code" = 200 ] && echo 0 || echo 1)"
 
-  code=$(curl -sS -m 60 -o "$tmp/ask" -w '%{http_code}' "$base/ask" -H 'content-type: application/json' \
+  code=$(curl -sS -m 60 -D "$tmp/ask.h" -o "$tmp/ask" -w '%{http_code}' "$base/ask" -H 'content-type: application/json' \
          -H 'Cache-Control: no-cache' -d '{"question":"How do I install OLake?"}' || true)
   local shape=1
   if python3 - "$tmp/ask" <<'PY' 2>/dev/null; then shape=0; fi
@@ -246,6 +258,14 @@ print("      sources:", b.get("sources") if isinstance(b, dict) else None)
 sys.exit(0 if ok else 1)
 PY
   check "POST /ask -> $code, body exactly {answer, sources}" "$([ "$code" = 200 ] && [ "$shape" = 0 ] && echo 0 || echo 1)"
+  # a degraded answer has the same shape, so check that the LLM answered
+  local reason
+  reason=$(tr -d '\r' < "$tmp/ask.h" 2>/dev/null | awk -F': *' 'tolower($1) == "x-ask-reason" { r = $2 } END { print r }')
+  check "POST /ask answered by the LLM (X-Ask-Reason: ${reason:-none})" "$([ "$reason" = answered ] && echo 0 || echo 1)"
+  case "$reason" in
+    llm_failed|ask_timeout|queue_timeout|rate_limited|budget_exhausted)
+      echo "      degraded answer: check LLM_BASE_URL and LLM_MODEL in deploy/env.yaml, the key secret, and the logs" ;;
+  esac
 
   curl -sS -m 10 -o /dev/null -D "$tmp/preflight" -X OPTIONS "$base/ask" -H 'Origin: https://olake.io' \
     -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type' || true
