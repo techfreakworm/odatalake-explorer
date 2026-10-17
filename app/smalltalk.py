@@ -18,19 +18,21 @@ MAX_WORDS = 10
 # Phrases over the normalized words of the message: casefolded, apostrophes dropped, punctuation and emoji removed.
 _PHRASES = {
     "hello": [
-        "h+i+", "h+e+y+", "he+l+o+", "howdy", "hiya", "yo", "good (?:morning|afternoon|evening|day)", "morning",
-        "how are you(?: doing)?", "hows it going", "whats up", "(?:is )?anyone there", "are you there",
+        "h+i+", "h+e+y+", "he+l+o+", "howdy", "hiya", "yo", "hola", "namaste", "bonjour", "morning",
+        "good (?:morning|afternoon|evening|day)", "how are you(?: doing)?", "hows it going", "whats up",
+        "(?:is )?anyone there", "are you there",
         "who are you", "what are you", "whats your name", "what is your name", "are you (?:an? )?(?:bot|human|ai)",
         "what can you do(?: for me)?", "what do you do", "what can you help(?: me)? with", "how can you help(?: me)?",
         "can you help(?: me)?", "help(?: me)?", "what (?:can|should) i ask(?: you)?",
     ],
-    "thanks": ["(?:thanks+|thank (?:you|u))(?: for (?:the help|your help|the info|that))?", "thx", "ty", "cheers",
-               "many thanks", "much appreciated", "appreciate it"],
-    "bye": ["bye+", "bye bye", "good ?bye", "see (?:you|ya)(?: (?:later|soon))?", "good night", "take care"],
+    "thanks": ["(?:many thanks|thanks+|thank (?:you|u)|thx|ty)(?: (?:so much|a lot|very much))?"
+               "(?: for (?:the|your|all your) (?:quick )?(?:help|answer|info)| for that)?",
+               "cheers", "much appreciated", "appreciate it"],
+    "bye": ["bye+", "bye bye", "good ?bye", "(?:see (?:you|ya)|cya)(?: (?:later|soon))?", "good night", "take care"],
     # filler, addressee, acknowledgement and praise words, the bot's own name included: never small talk on their own
-    "extra": ["there", "all", "everyone", "folks", "team", "friends?", "buddy", "mate", "ok", "okay", "so much",
-              "a lot", "very much", "again", "please", "pls", "plz", "today", "and", "great", "awesome", "perfect",
-              "nice", "it works now", "that helped", "olake", "ask olake"],
+    "extra": ["there", "all", "everyone", "folks", "team", "friends?", "buddy", "mate", "ok", "okay", "again",
+              "please", "pls", "plz", "today", "and", "great", "awesome", "perfect", "nice", "got it", "it works now",
+              "that helped", "olake", "ask olake"],
 }
 _ANY = "|".join(p for phrases in _PHRASES.values() for p in phrases)
 # A kind fires when the message splits into phrases and one of them is of that kind (the full match tries every
