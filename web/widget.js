@@ -72,6 +72,9 @@
   }
 
   function mount() {
+    // on a dark host page the light shadows vanish: the panel gets a light edge instead, and both a black shadow
+    var darkBtn = "box-shadow:0 2px 10px rgba(0,0,0,.5)",
+      darkFrame = "border-color:rgba(255,255,255,.2);box-shadow:0 12px 40px rgba(0,0,0,.55)";
     var css = document.createElement("style");
     css.textContent =
       // all:initial first, so host-page rules for button, svg or iframe do not leak into the widget
@@ -83,12 +86,21 @@
       ".askolake-btn:focus-visible{outline:3px solid " + accent + ";outline-offset:3px}" +
       ".askolake-btn svg{all:initial;display:block;width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;" +
       "stroke-linejoin:round}" +
-      ".askolake-frame{all:initial;position:fixed;bottom:76px;" + side + ":20px;z-index:2147483001;width:400px;" +
+      // border-box keeps the hairline inside the 400 x 600 box
+      ".askolake-frame{all:initial;box-sizing:border-box;border:1px solid rgba(10,30,40,.12);position:fixed;" +
+      "bottom:76px;" + side + ":20px;z-index:2147483001;width:400px;" +
       "height:600px;max-width:calc(100vw - 40px);max-height:calc(100vh - 96px);border-radius:14px;" +
       "background:transparent;box-shadow:0 12px 40px rgba(10,30,40,.3);color-scheme:normal}" +
       ".askolake-hidden{display:none!important}" +
+      // dark is decided as web/embed.css decides it: html[data-theme=dark], or a dark prefers-color-scheme unless
+      // data-theme=light. :where() keeps these rules at (0,1,0): they beat the base rules by coming after them, and
+      // the phone rule beats them the same way
+      ":where(html[data-theme=dark]) .askolake-btn{" + darkBtn + "}" +
+      ":where(html[data-theme=dark]) .askolake-frame{" + darkFrame + "}" +
+      "@media (prefers-color-scheme:dark){:where(html:not([data-theme=light])) .askolake-btn{" + darkBtn + "}" +
+      ":where(html:not([data-theme=light])) .askolake-frame{" + darkFrame + "}}" +
       "@media (max-width:640px){.askolake-frame{top:0;left:0;right:0;bottom:0;width:100%;height:100%;" +
-      "max-width:none;max-height:none;border-radius:0}}";
+      "max-width:none;max-height:none;border-radius:0;border:0;box-shadow:none}}";
     document.head.appendChild(css);
 
     btn = document.createElement("button");

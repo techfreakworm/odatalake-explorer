@@ -33,13 +33,16 @@
     border: 1px solid var(--line); border-radius: 8px; padding: 4px 12px;
   }
   .layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); }
-  nav { border-right: 1px solid var(--line); background: var(--side); padding: 20px 12px; min-height: calc(100vh - 56px); }
+  nav {
+    position: sticky; top: 56px; align-self: start; height: calc(100vh - 56px); overflow-y: auto;
+    border-right: 1px solid var(--line); background: var(--side); padding: 20px 12px;
+  }
   nav ol { list-style: none; margin: 0; padding: 0; }
   nav a { display: block; padding: 6px 10px; border-radius: 6px; color: var(--ink); text-decoration: none; font-size: 15px; }
   nav a:hover { background: var(--bg); }
   main { padding: 32px clamp(16px, 5vw, 56px) 96px; }
   article { max-width: 46rem; }
-  h1 { font-size: 2rem; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 12px; }
+  h1 { font-size: 2rem; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 12px; scroll-margin-top: 72px; }
   h2 { font-size: 1.3rem; margin: 2.2em 0 0.5em; scroll-margin-top: 72px; }
   p, li { color: var(--ink); }
   .lede { color: var(--muted); font-size: 1.08rem; margin-top: 0; }
