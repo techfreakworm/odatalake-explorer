@@ -17,7 +17,7 @@ def test_defaults_follow_appendix_c():
     assert s.source_url_style == "branch"
     assert s.blog is False
     assert s.onnx_threads == 1
-    assert s.max_tokens == 600
+    assert s.max_tokens == 1500
     assert s.llm_timeout_s == 25
     assert s.ask_timeout_s == 30
     assert s.queue_wait_s == 20

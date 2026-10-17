@@ -574,7 +574,7 @@ Gemini 3.8 Flash $0.00450, Gemma on the Gemini free tier $0 ([stack report][r-st
 
 **Client rules** (decided):
 - Use the `openai` SDK (a 2.2 MB wheel, against 38.8 MB for LiteLLM) with `timeout` about 25 s and `max_retries` 1. The
-  SDK's defaults are a 10-minute timeout and 2 retries ([SDK README][openai-readme]). Always pass `max_tokens` (600; §5.7).
+  SDK's defaults are a 10-minute timeout and 2 retries ([SDK README][openai-readme]). Always pass `max_tokens` (1500; §5.7).
 - Fail over to the next provider before the first streamed byte.
 - Never depend on `response_format`; parse defensively. Anthropic's compatibility layer ignores it
   ([Anthropic OpenAI SDK compatibility][claude-compat]), DigitalOcean does not document it
@@ -732,7 +732,8 @@ ordinary page the same widget worked across origins, and a second request reused
 - **Generation caps** (a POC production lesson). In JSON mode with no `max_tokens`, one local qwen3 request generated past
   6,000 tokens at 8 tok/s, held the only LLM slot, and cascaded timeouts through the concurrency-4 queue, with abandoned
   requests still holding the slot (`poc/README.md`, "Runaway generation"). So every call passes `max_tokens` (`MAX_TOKENS`,
-  600), and a truncation is logged. Answers averaged 72 completion tokens with prompt v1 and 6 passages
+  1500; it was 600 until the Opus 5.5 eval truncated 67 of 90 answers at that cap), and a truncation is logged. Answers
+  averaged 72 completion tokens with prompt v1 and 6 passages
   (`poc/results/answer.json`), and 166.7 (p50 146) with prompt v3 and k=10. In that run one answer hit the cap, came back
   as truncated JSON and became a false abstain (SRC-03, `poc/results/eval_run-canonical-combined.json`). The event's answer is plain text with `[n]`
   citations and no JSON mode, so an unparseable or truncated answer gets one retry and is then salvaged: the validated,

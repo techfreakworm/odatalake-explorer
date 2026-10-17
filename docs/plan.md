@@ -147,7 +147,7 @@ Adversarial rows with `—` decline. Details: [eval-questions.md](eval-questions
 `bm25`), `RERANK` (`off` in v1, or `tinybert`: FlashRank TinyBERT over the fused top 20, switched on at 12:30 only if it measures better), `GATE_SIGNAL` (`dense`; `off` disables the gate), `ABSTAIN_THRESHOLD` (the off-topic
 short-circuit threshold, starting at 0.69), `CANARY` (16 hex characters, new on every deploy), `SOURCE_URL_STYLE` (`branch` or `sha`, for repo sources; kickoff question K3
 decides), `BLOG` (`off`; decision D4, decided by data), `GITHUB_TOKEN` (optional; makes conditional GitHub requests free),
-`ONNX_THREADS` (the vCPU count), `MAX_TOKENS` (600, on every LLM call), `LLM_TIMEOUT_S` (25, per call), `QUEUE_WAIT_S` (20, the bounded wait for a slot), `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `RATE_LIMIT_BURST`, `DAILY_TOKEN_BUDGET`, `PUBLIC_BASE_URL`, `REFRESH_INTERVAL_MIN`
+`ONNX_THREADS` (the vCPU count), `MAX_TOKENS` (1500, on every LLM call), `LLM_TIMEOUT_S` (25, per call), `QUEUE_WAIT_S` (20, the bounded wait for a slot), `MAX_CONCURRENCY`, `RATE_LIMIT_PER_MIN`, `RATE_LIMIT_BURST`, `DAILY_TOKEN_BUDGET`, `PUBLIC_BASE_URL`, `REFRESH_INTERVAL_MIN`
 (`0` = off), `LOG_LEVEL`.
 
 ### 0.3 Event repo layout and ownership
@@ -385,7 +385,7 @@ The lead spawns the teammates at 10:35, so A, B and C start at 10:40. "msg" mean
 | 10:35 | | | | `export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1; claude --permission-mode auto`, then paste the lead prompt (4.1) |
 | 10:40 | Sitemap to URL list (`/docs/` including `/docs/release/`; `/blog/` skipped while BLOG=off) | Stub server: every I2 endpoint with canned data in the exact shapes | `embed.html`/`embed.js` chat shell against a mocked stream | Lead: Dockerfile plus `deploy/deploy.sh`, then deploy the stub app (D1) |
 | 10:50 | Fetch the rendered HTML at concurrency 4 and cache it | Stub done: msg `widget` and the lead with the run command | Switch to B's stub at `http://localhost:8000` | Stub live at `$URL`: curl `/healthz` and `/ask` from the phone |
-| 11:00 | HTML to Markdown: article body only, keeping heading anchors, code fences, tables and admonitions | LLM client: the openai SDK over the ordered provider chain, with a 25 s timeout, max_retries 1, max_tokens 600, and failover before the first byte | `widget.js` loader: launcher button, iframe panel, Esc to close | Eval runner `eval/run.py`: parse the table and run the deterministic checks (D2) |
+| 11:00 | HTML to Markdown: article body only, keeping heading anchors, code fences, tables and admonitions | LLM client: the openai SDK over the ordered provider chain, with a 25 s timeout, max_retries 1, max_tokens 1500, and failover before the first byte | `widget.js` loader: launcher button, iframe panel, Esc to close | Eval runner `eval/run.py`: parse the table and run the deterministic checks (D2) |
 | 11:10 | Repo allowlist: shallow clones, record SHA and branch | Fallback-A pipeline: BM25 top 10, numbered context, grounded prompt, parse `[n]`, renumber, `sources` | Safe Markdown rendering (escape first), clickable `[n]`, source cards | Run the eval runner against the stub (it should run, and every row should fail) |
 | 11:20 | Chunker (POC rules), embeddings, manifest, write `CURRENT`. msg `api`: "index v1 ready" | Load the real index from `CURRENT`. First real `/ask` | Loading, error and empty states; feedback thumbs | Get the checkpoint commands ready |
 | **11:30** | **Checkpoint 1** (section 5) | | | |
@@ -549,8 +549,9 @@ STEPS (in order; each step leaves a working server)
    about 30 s (asyncio.timeout around the pipeline, the queue wait included), after which it returns the degraded answer
    from step 10; if kickoff question K2 reports a scorer timeout under 30 s, set the bound below it. On 429, 5xx
    or a timeout, fail over to the next provider BEFORE the first streamed byte, within that bound. ALWAYS pass
-   max_tokens=MAX_TOKENS (600; the POC's answers averaged 72 completion tokens with 6 passages and 167, p50 146, at k=10
-   with prompt v3: poc/results/answer.json, poc/results/eval_run-canonical-combined.json). In the POC, one
+   max_tokens=MAX_TOKENS (1500; it was 600 until the Opus 5.5 eval truncated 67 of 90 answers at that cap; the POC's
+   answers averaged 72 completion tokens with 6 passages and 167, p50 146, at k=10 with prompt v3:
+   poc/results/answer.json, poc/results/eval_run-canonical-combined.json). In the POC, one
    uncapped request in JSON mode ran past 6,000 tokens, held the only LLM slot and cascaded timeouts through the queue
    (poc/README.md, "Runaway generation"). If the output is unparseable or truncated (finish_reason "length"; log
    max_tokens_truncated), retry once within the 30 s bound; if that fails too, salvage the cited sentences that validate.
@@ -1278,7 +1279,7 @@ LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_REASONING_EFFORT, LLM_FALLBACK_BASE_UR
 LLM_FALLBACK_MODEL, LLM_FALLBACK2_BASE_URL, LLM_FALLBACK2_API_KEY, LLM_FALLBACK2_MODEL (ordered chain), INDEX_DIR,
 EMBED_MODEL, RETRIEVAL_MODE (hybrid|bm25), RERANK (off|tinybert), GATE_SIGNAL (dense|off), ABSTAIN_THRESHOLD
 (off-topic short-circuit), CANARY (per-deploy prompt-leak marker), SOURCE_URL_STYLE (branch|sha), BLOG (off|on), GITHUB_TOKEN (optional),
-ONNX_THREADS, MAX_TOKENS (600), LLM_TIMEOUT_S (25), QUEUE_WAIT_S (20), MAX_CONCURRENCY, RATE_LIMIT_PER_MIN, RATE_LIMIT_BURST,
+ONNX_THREADS, MAX_TOKENS (1500), LLM_TIMEOUT_S (25), QUEUE_WAIT_S (20), MAX_CONCURRENCY, RATE_LIMIT_PER_MIN, RATE_LIMIT_BURST,
 DAILY_TOKEN_BUDGET, PUBLIC_BASE_URL, REFRESH_INTERVAL_MIN (0 = off),
 LOG_LEVEL, DEBUG (local only)
 ~~~~
@@ -1370,7 +1371,7 @@ GITHUB_TOKEN=
 ONNX_THREADS=1
 # Generation cap on every LLM call, the per-call timeout (seconds, shorter than any client's; /ask is bounded at about
 # 30 s) and the bounded wait for a concurrency slot (seconds; on expiry /ask returns the degraded 200 answer)
-MAX_TOKENS=600
+MAX_TOKENS=1500
 LLM_TIMEOUT_S=25
 QUEUE_WAIT_S=20
 MAX_CONCURRENCY=8

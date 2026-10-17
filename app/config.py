@@ -48,7 +48,7 @@ class Settings:
     blog: bool = False
     github_token: str | None = field(default=None, repr=False)
     onnx_threads: int = 1
-    max_tokens: int = 600
+    max_tokens: int = 1500
     prompt_reminders: bool = False  # PROMPT_REMINDERS: off (default) = the baseline answer path; on = levers 1-4
     llm_timeout_s: float = 25.0
     ask_timeout_s: float = 30.0
@@ -107,7 +107,7 @@ class Settings:
             blog=r.choice("BLOG", ("off", "on"), "off") == "on",
             github_token=r.text("GITHUB_TOKEN") or None,
             onnx_threads=r.integer("ONNX_THREADS", 1, minimum=1),
-            max_tokens=r.integer("MAX_TOKENS", 600, minimum=16),
+            max_tokens=r.integer("MAX_TOKENS", 1500, minimum=16),
             prompt_reminders=reminders.lower() == "on",
             llm_timeout_s=r.number("LLM_TIMEOUT_S", 25.0, minimum=0.1),
             ask_timeout_s=r.number("ASK_TIMEOUT_S", 30.0, minimum=0.1),
