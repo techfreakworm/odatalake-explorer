@@ -24,10 +24,19 @@ HELLO = [
     "help", "Help!", "help me", "help please", "can you help me?",
     "hi, what can you do?", "hello there, who are you?", "Hey! What can you do for me?",
     "hi olake", "Hey Ask OLake!", f"hello OLake {WAVE}",
+    # what people type to open a chat or to find out what the bot is
+    "Hi! How are you doing today?", "pls help", "help pls", "plz help", "hello friend", "hey buddy",
+    "what can I ask?", "what can I ask you?", "what should I ask?", "are you a bot?", "are you human?",
+    "are you an AI?", "anyone there?", "are you there?", "is anyone there?",
 ]
 THANKS = ["thanks", "Thanks!", "thank you", "Thank you so much!", "thx", "ty", "cheers", "ok thanks", "thanks a lot",
-          "many thanks", "thanks olake"]
-BYE = ["bye", "Bye!", "goodbye", "good bye", "see you", "see you later", "good night"]
+          "many thanks", "thanks olake",
+          # what people type after an answer
+          "thanks for the help", "Thanks for your help!", "thank you for the help", "thanks for the info",
+          "thanks for that", "thanks, it works now", "thanks, that helped", "great, thanks!", "awesome, thank you",
+          "perfect, thanks", "cheers mate", "thanks buddy"]
+BYE = ["bye", "Bye!", "goodbye", "good bye", "see you", "see you later", "good night",
+       "see ya later", "see you soon", "ok bye"]
 
 NOT_SMALL_TALK = [
     # a greeting or a thank-you in front of a real question or problem
@@ -45,6 +54,11 @@ NOT_SMALL_TALK = [
     "hello world", "ok", "yes", "cool", "?", "!!!", "\N{SLIGHTLY SMILING FACE}",
     pytest.param("", id="empty"), pytest.param("   ", id="blank"),
     "hi hi hi hi hi hi hi hi hi hi hi hi",  # 12 words
+    # the wider net stays narrow: a fragment of a thank-you or a greeting alone, or one with a real question behind it
+    "thanks for the help with iceberg partitioning", "thanks, it works now but the sync is slow", "it works now",
+    "that helped", "great", "awesome", "perfect", "nice", "for the help", "pls", "today",
+    "what can I ask about CDC?", "are you able to sync MySQL to Iceberg?", "are you using Kafka?",
+    "is anyone there using olake with kafka?", "how are you syncing data?",
 ]
 
 
