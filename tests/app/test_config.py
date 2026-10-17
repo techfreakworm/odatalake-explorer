@@ -109,3 +109,15 @@ def test_non_standard_canary_is_kept_but_warned_about_without_its_value():
     assert any("CANARY" in w for w in s.warnings)
     assert all("my-own-canary-value-xyz" not in w for w in s.warnings)
     assert Settings.from_env({"CANARY": "00112233aabbccdd"}).warnings == ()
+
+
+
+def test_prompt_reminders_default_off_case_insensitive_on_and_bogus_is_off_with_a_warning():
+    assert Settings.from_env({}).prompt_reminders is False
+    assert Settings.from_env({"PROMPT_REMINDERS": "off"}).prompt_reminders is False
+    assert Settings.from_env({"PROMPT_REMINDERS": "on"}).prompt_reminders is True
+    assert Settings.from_env({"PROMPT_REMINDERS": "ON"}).prompt_reminders is True
+    bogus = Settings.from_env({"PROMPT_REMINDERS": "maybe"})
+    assert bogus.prompt_reminders is False
+    assert any("PROMPT_REMINDERS" in w for w in bogus.warnings)
+    assert Settings.from_env({"PROMPT_REMINDERS": "on"}).warnings == ()

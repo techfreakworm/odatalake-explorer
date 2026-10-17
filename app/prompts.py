@@ -92,9 +92,12 @@ OUT_OF_SCOPE_TEXT = (
 )
 LEAK_REFUSAL = "I can't share my instructions."
 
+# The reminder lines and targeted retries below run only with PROMPT_REMINDERS=on (levers 1-4). The default, off, is
+# the baseline answer path (a184a65): the question ends the user message and a retry resends the same messages,
+# because in the lever runs only the baseline met both abstain targets (recall 11/12, false abstains 0/69).
 # The system prompt stays the plan's verbatim text. Questions that ask for "no citations" (an ADV-03-style injection)
-# were obeyed, and the citation rule then abstained, so every user message ends with this reminder, and an uncited
-# answer is retried once with RETRY_ADD_CITATIONS (a cut-off one with RETRY_SHORTER).
+# were obeyed, and the citation rule then abstained, so with the reminders on every user message ends with this
+# reminder, and an uncited answer is retried once with RETRY_ADD_CITATIONS (a cut-off one with RETRY_SHORTER).
 # Lever 3: in 5 of 8 baseline source misses the expected page was in context but the answer cited only an
 # equivalent passage, so the reminder asks for the citation of every passage that supports a sentence.
 # Lever 4: the citation reminder alone pushed unanswerable questions into cited prose declines (lever-1 run: abstain
@@ -146,7 +149,7 @@ def passage_header(p: Passage) -> str:
 
 
 def user_message(question: str, passages: Sequence[Passage], facts_line: str,
-                 history: Sequence[Mapping[str, str]] | None = None) -> str:
+                 history: Sequence[Mapping[str, str]] | None = None, *, reminders: bool = False) -> str:
     parts = [facts_line, "", "Context passages:", ""]
     for p in passages:
         parts += [passage_header(p), str(p.chunk.get("text") or "").strip(), ""]
@@ -157,11 +160,13 @@ def user_message(question: str, passages: Sequence[Passage], facts_line: str,
             text = " ".join(str(turn.get("content") or "").split())[:MAX_HISTORY_CHARS]
             parts.append(f"{who}: {text}")
         parts.append("")
-    parts += [f"Question: {question}", "", CITE_REMINDER, PREMISE_CHECK]
+    parts.append(f"Question: {question}")
+    if reminders:  # PROMPT_REMINDERS=on; off keeps the baseline message, which ends with the question
+        parts += ["", CITE_REMINDER, PREMISE_CHECK]
     return "\n".join(parts)
 
 
 def build_messages(question: str, passages: Sequence[Passage], facts_line: str, canary: str,
-                   history: Sequence[Mapping[str, str]] | None = None) -> list[dict]:
+                   history: Sequence[Mapping[str, str]] | None = None, *, reminders: bool = False) -> list[dict]:
     return [{"role": "system", "content": system_prompt(canary)},
-            {"role": "user", "content": user_message(question, passages, facts_line, history)}]
+            {"role": "user", "content": user_message(question, passages, facts_line, history, reminders=reminders)}]

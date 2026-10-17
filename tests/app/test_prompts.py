@@ -76,8 +76,10 @@ def _scorer_idk():
 
 
 def test_premise_check_closes_every_user_message_after_the_cite_reminder():
-    msg = prompts.user_message("Is `initial_wait_time: 10` honored?", [], "Docs indexed 2026-10-17")
+    msg = prompts.user_message("Is `initial_wait_time: 10` honored?", [], "Docs indexed 2026-10-17", reminders=True)
     assert msg.endswith(prompts.CITE_REMINDER + "\n" + prompts.PREMISE_CHECK)
+    off = prompts.user_message("Is `initial_wait_time: 10` honored?", [], "Docs indexed 2026-10-17")
+    assert off.endswith("\nQuestion: Is `initial_wait_time: 10` honored?")  # the default is the baseline tail
     assert msg.index("Question: Is `initial_wait_time: 10` honored?") < msg.index(prompts.CITE_REMINDER)
     assert prompts.PREMISE_CHECK not in prompts.system_prompt("c" * 16)  # the system prompt stays the plan's text
 

@@ -1,4 +1,4 @@
-"""Every setting comes from env (contract I4, plus ASK_TIMEOUT_S, DEBUG, GIT_SHA and LOG_LEVEL).
+"""Every setting comes from env (contract I4, plus ASK_TIMEOUT_S, DEBUG, GIT_SHA, LOG_LEVEL and PROMPT_REMINDERS).
 
 Defaults follow docs/plan.md Appendix C. The LLM provider variables have no defaults: a provider is used only
 when its base URL, key and model are all set. Empty strings count as unset, so a copied .env.example works.
@@ -49,6 +49,7 @@ class Settings:
     github_token: str | None = field(default=None, repr=False)
     onnx_threads: int = 1
     max_tokens: int = 600
+    prompt_reminders: bool = False  # PROMPT_REMINDERS: off (default) = the baseline answer path; on = levers 1-4
     llm_timeout_s: float = 25.0
     ask_timeout_s: float = 30.0
     queue_wait_s: float = 20.0
@@ -88,6 +89,11 @@ class Settings:
             # never echo the value; the stream holds back max(16, len(CANARY)) characters either way
             warnings.append("CANARY is not 16 hex characters (openssl rand -hex 8); it is used as given")
 
+        reminders = r.text("PROMPT_REMINDERS")
+        if reminders.lower() not in ("", "off", "on"):
+            # an unknown value never stops the service: it runs the default, the baseline answer path
+            warnings.append(f"PROMPT_REMINDERS={reminders[:32]!r} is not off or on; the reminders stay off")
+
         return cls(
             providers=tuple(providers),
             index_dir=Path(r.text("INDEX_DIR") or "data/index"),
@@ -102,6 +108,7 @@ class Settings:
             github_token=r.text("GITHUB_TOKEN") or None,
             onnx_threads=r.integer("ONNX_THREADS", 1, minimum=1),
             max_tokens=r.integer("MAX_TOKENS", 600, minimum=16),
+            prompt_reminders=reminders.lower() == "on",
             llm_timeout_s=r.number("LLM_TIMEOUT_S", 25.0, minimum=0.1),
             ask_timeout_s=r.number("ASK_TIMEOUT_S", 30.0, minimum=0.1),
             queue_wait_s=r.number("QUEUE_WAIT_S", 20.0, minimum=0.0),

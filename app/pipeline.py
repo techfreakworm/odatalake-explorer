@@ -216,7 +216,8 @@ class AskService:
         loop = asyncio.get_running_loop()
         passages = [Passage(n=i + 1, chunk=h.chunk, source_url=h.source_url, score=h.score, source_urls=h.source_urls)
                     for i, h in enumerate(r.hits)]
-        messages = prompts.build_messages(req.question, passages, snap.facts_line, self.s.canary, req.history)
+        messages = prompts.build_messages(req.question, passages, snap.facts_line, self.s.canary, req.history,
+                                          reminders=self.s.prompt_reminders)
         sanitizer = StreamSanitizer(self.guard) if emit is not None else None
 
         def on_delta(text: str) -> None:
@@ -242,7 +243,9 @@ class AskService:
         retried = False
         if not leak and (truncated or _unparseable(text)) and deadline - loop.time() > MIN_RETRY_S:
             retried = True
-            if truncated:
+            if not self.s.prompt_reminders:  # off: the baseline retry, the very same messages once more
+                retry_messages = messages
+            elif truncated:
                 retry_messages = [*messages[:-1], {"role": "user",
                                                    "content": messages[-1]["content"] + "\n\n" + prompts.RETRY_SHORTER}]
             elif text.strip():  # an answer without any [n]: show it back and ask for the citations

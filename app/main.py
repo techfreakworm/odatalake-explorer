@@ -142,7 +142,8 @@ class Runtime:
         snap = self.holder.current
         log_event("ready", index_version=snap.version if snap else None, chunks=len(snap.chunks) if snap else 0,
                   startup_s=round(time.perf_counter() - t0, 2), retrieval_mode=self.s.retrieval_mode,
-                  rerank=self.s.rerank, gate_signal=self.s.gate_signal, providers=list(self._providers()))
+                  rerank=self.s.rerank, gate_signal=self.s.gate_signal, providers=list(self._providers()),
+                  prompt_reminders="on" if self.s.prompt_reminders else "off")
         if self.s.refresh_interval_min > 0:
             self.poller = RefreshPoller(
                 interval_min=self.s.refresh_interval_min, index_dir=self.s.index_dir,
@@ -426,7 +427,8 @@ def create_app(settings: Settings | None = None, *, llm=None, embedder_factory: 
     async def healthz():
         snap = rt.holder.current
         return {"status": "ok", "git_sha": settings.git_sha, "index": index_info(snap) if snap else None,
-                "uptime_s": int(time.time() - rt.started_at)}
+                "uptime_s": int(time.time() - rt.started_at),
+                "prompt_reminders": "on" if settings.prompt_reminders else "off"}
 
     @app.api_route("/readyz", methods=["GET", "HEAD"])
     async def readyz():

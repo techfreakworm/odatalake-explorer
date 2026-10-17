@@ -342,7 +342,8 @@ def test_logs_are_one_json_object_per_line(make_client, capsys):
 
 def test_healthz_shape(make_client):
     h = make_client(git_sha="abc1234").get("/healthz").json()
-    assert set(h) == {"status", "git_sha", "index", "uptime_s"}
+    assert set(h) == {"status", "git_sha", "index", "uptime_s", "prompt_reminders"}
+    assert h["prompt_reminders"] == "off"
     assert h["status"] == "ok" and h["git_sha"] == "abc1234" and isinstance(h["uptime_s"], int)
     assert h["index"] == {"version": "20261017T0000Z", "built_at": "2026-10-17T00:00:00Z", "pages": 19, "chunks": 25,
                           "docs_lastmod_max": "2026-10-09", "repos": {"olake": "0123456", "olake-helm": "89abcde"}}
@@ -475,3 +476,25 @@ def test_favicon_is_served(make_client):
     assert r.status_code == 200 and r.headers["content-type"] == "image/png"
     assert r.content.startswith(b"\x89PNG\r\n\x1a\n") and len(r.content) < 2048
     assert c.head("/favicon.ico").status_code == 200
+
+
+
+def test_healthz_reports_prompt_reminders_on(make_client):
+    assert make_client(prompt_reminders=True).get("/healthz").json()["prompt_reminders"] == "on"
+
+
+def test_ask_and_stream_build_the_same_messages_in_both_modes(make_client):
+    for reminders in (False, True):
+        llm = FakeLLM("Run the compose one-liner [1].")
+        c = make_client(llm=llm, prompt_reminders=reminders)
+        c.post("/ask", json={"question": ON_TOPIC}, headers={"Cache-Control": "no-cache"})
+        c.post("/ask/stream", json={"question": ON_TOPIC}, headers={"Cache-Control": "no-cache"})
+        assert len(llm.calls) == 2 and llm.calls[0] == llm.calls[1]
+        assert (prompts.CITE_REMINDER in llm.calls[0][1]["content"]) is reminders
+
+
+def test_ready_log_line_records_prompt_reminders(make_client, capsys):
+    for reminders, value in ((False, "off"), (True, "on")):
+        make_client(prompt_reminders=reminders)
+        ready = [json.loads(ln) for ln in capsys.readouterr().out.splitlines() if '"event": "ready"' in ln]
+        assert len(ready) == 1 and ready[0]["prompt_reminders"] == value
