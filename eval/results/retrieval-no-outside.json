@@ -1,13 +1,14 @@
 {
  "mode": "retrieval",
  "label": "no outside tier, RERANK=off",
- "base_url": "http://127.0.0.1:8711",
- "run_at": "2026-10-16T23:08:59+00:00",
+ "base_url": "http://127.0.0.1:8766",
+ "run_at": "2026-10-17T00:37:07+00:00",
  "questions": {
   "file": "eval/questions.md",
   "n": 94
  },
  "flags": {
+  "rescore": "",
   "questions": "eval/questions.md",
   "ids": "",
   "types": "",
@@ -25,7 +26,7 @@
  },
  "healthz": {
   "status": "ok",
-  "git_sha": "unknown",
+  "git_sha": "ab-9e235ec-nooutside",
   "index": {
    "version": "20261016T2308Z",
    "built_at": "2026-10-16T23:08:19Z",
@@ -39,17 +40,23 @@
     "olake-fusion": "15ca160"
    }
   },
-  "uptime_s": 12
+  "uptime_s": 0
  },
  "summary": {
   "n": 82,
-  "hit@1": 0.756,
+  "hit@1": 0.768,
   "hit@3": 0.878,
   "hit@5": 0.915,
   "hit@10": 0.988,
-  "mrr@10": 0.834,
+  "mrr@10": 0.84,
   "errors": [],
   "wall_s": 0.8,
+  "latency_ms": {
+   "p50": 32.9,
+   "p95": 45.5,
+   "max": 53.7,
+   "n": 94
+  },
   "gate_calibration": {
    "available": true,
    "lowest_must_answer": 0.7094,
@@ -85,11 +92,11 @@
  "by_category": {
   "catalogs": {
    "n": 9,
-   "hit@1": 0.889,
+   "hit@1": 1.0,
    "hit@3": 1.0,
    "hit@5": 1.0,
    "hit@10": 1.0,
-   "mrr@10": 0.944
+   "mrr@10": 1.0
   },
   "deployment": {
    "n": 10,
@@ -167,7 +174,7 @@
    ],
    "first_hit_rank": 2,
    "gate_score": 0.8078739047050476,
-   "ms": 8.2,
+   "ms": 8.7,
    "top10": [
     "https://olake.io/docs/getting-started/olake-ui/",
     "https://olake.io/docs/getting-started/quickstart/",
@@ -179,6 +186,39 @@
     "https://github.com/datazip-inc/olake-ui/blob/master/README.md",
     "https://github.com/datazip-inc/olake-ui/blob/master/README.md",
     "https://olake.io/docs/api/olake-ui-api/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/getting-started/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/quickstart/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/olake-ui/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/",
+     "https://olake.io/olake-go/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/api/olake-ui-api/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -205,7 +245,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8934507966041565,
-   "ms": 15.7,
+   "ms": 16.2,
    "top10": [
     "https://olake.io/docs/install/olake-ui/",
     "https://olake.io/docs/getting-started/olake-ui/",
@@ -217,6 +257,38 @@
     "https://olake.io/docs/fusion/install/olake-ui/",
     "https://olake.io/docs/connectors/mysql/setup/local/",
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/olake-ui/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/offline-environments-aws/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/quickstart/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/local/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -241,7 +313,7 @@
    ],
    "first_hit_rank": 6,
    "gate_score": 0.8040854930877686,
-   "ms": 23.0,
+   "ms": 23.4,
    "top10": [
     "https://olake.io/docs/connectors/postgres/setup/local/",
     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md",
@@ -253,6 +325,38 @@
     "https://olake.io/docs/community/setting-up-a-dev-env/",
     "https://olake.io/docs/install/docker-cli/",
     "https://olake.io/docs/community/setting-up-a-dev-env/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/postgres/setup/local/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/install/docker-cli/"
+    ],
+    [
+     "https://olake.io/docs/install/docker-cli/"
+    ],
+    [
+     "https://olake.io/docs/community/setting-up-a-dev-env/"
+    ],
+    [
+     "https://olake.io/docs/install/docker-cli/"
+    ],
+    [
+     "https://olake.io/docs/community/setting-up-a-dev-env/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -278,7 +382,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7655806541442871,
-   "ms": 30.9,
+   "ms": 31.4,
    "top10": [
     "https://olake.io/docs/install/docker-cli/",
     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md",
@@ -290,6 +394,38 @@
     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md",
     "https://olake.io/docs/connectors/postgres/",
     "https://olake.io/docs/connectors/postgres/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/install/docker-cli/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://olake.io/docs/community/commands-and-flags/"
+    ],
+    [
+     "https://olake.io/docs/dmsvsolake/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/gcp/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -327,6 +463,38 @@
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/UNINSTALL_GUIDE.md",
     "https://github.com/datazip-inc/olake-helm/issues/100"
    ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/kubernetes-compaction/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/UNINSTALL_GUIDE.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/issues/100"
+    ]
+   ],
    "top10_types": [
     "docs",
     "docs",
@@ -352,7 +520,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.836145281791687,
-   "ms": 31.4,
+   "ms": 31.2,
    "top10": [
     "https://olake.io/docs/install/olake-ui/",
     "https://olake.io/docs/install/olake-ui/",
@@ -364,6 +532,38 @@
     "https://github.com/datazip-inc/olake-ui/blob/master/README.md",
     "https://github.com/datazip-inc/olake-ui/blob/master/docker-compose-v1.yml",
     "https://olake.io/docs/getting-started/olake-ui/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/olake-ui/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/docker-compose-v1.yml"
+    ],
+    [
+     "https://olake.io/docs/getting-started/olake-ui/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/docker-compose-v1.yml"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/docker-compose-v1.yml"
+    ],
+    [
+     "https://olake.io/docs/getting-started/olake-ui/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -388,7 +588,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7300591468811035,
-   "ms": 31.8,
+   "ms": 32.3,
    "top10": [
     "https://olake.io/docs/getting-started/job-level-properties/",
     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/",
@@ -400,6 +600,38 @@
     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md",
     "https://olake.io/docs/getting-started/creating-first-pipeline/",
     "https://olake.io/docs/monitoring-and-observability/metrics/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/partitioning/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/creating-first-pipeline/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+    ],
+    [
+     "https://olake.io/docs/getting-started/creating-first-pipeline/"
+    ],
+    [
+     "https://olake.io/docs/monitoring-and-observability/metrics/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -424,7 +656,7 @@
    ],
    "first_hit_rank": 3,
    "gate_score": 0.7776914238929749,
-   "ms": 31.7,
+   "ms": 32.8,
    "top10": [
     "https://olake.io/docs/connectors/postgres/",
     "https://olake.io/docs/connectors/postgres/",
@@ -436,6 +668,38 @@
     "https://github.com/datazip-inc/olake/blob/master/protocol/root.go",
     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md",
     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/install/docker-cli/"
+    ],
+    [
+     "https://olake.io/docs/install/docker-cli/"
+    ],
+    [
+     "https://olake.io/docs/community/commands-and-flags/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://olake.io/docs/community/commands-and-flags/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/protocol/root.go"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -460,7 +724,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8427051305770874,
-   "ms": 34.6,
+   "ms": 36.2,
    "top10": [
     "https://olake.io/docs/connectors/postgres/setup/rds/",
     "https://olake.io/docs/connectors/postgres/setup/rds/",
@@ -472,6 +736,38 @@
     "https://olake.io/docs/connectors/postgres/setup/azure/",
     "https://olake.io/docs/connectors/postgres/wal2json_plugin/",
     "https://olake.io/docs/connectors/postgres/setup/generic/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/postgres/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/aurora/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/wal2json_plugin/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/wal2json_plugin/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/azure/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/wal2json_plugin/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/generic/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -496,7 +792,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8231958150863647,
-   "ms": 34.4,
+   "ms": 36.0,
    "top10": [
     "https://olake.io/docs/connectors/postgres/",
     "https://olake.io/docs/connectors/postgres/",
@@ -508,6 +804,38 @@
     "https://olake.io/docs/connectors/mssql/",
     "https://olake.io/docs/connectors/postgres/wal2json_plugin/",
     "https://olake.io/docs/connectors/postgres/setup/aurora/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/generic/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/issues/1292"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/wal2json_plugin/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/aurora/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -532,7 +860,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.9012849926948547,
-   "ms": 35.5,
+   "ms": 36.6,
    "top10": [
     "https://olake.io/docs/connectors/postgres/",
     "https://olake.io/docs/connectors/postgres/",
@@ -544,6 +872,38 @@
     "https://olake.io/docs/connectors/postgres/setup/azure/",
     "https://olake.io/docs/connectors/mssql/",
     "https://olake.io/docs/connectors/postgres/setup/rds/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/azure/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/rds/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -568,7 +928,7 @@
    ],
    "first_hit_rank": 2,
    "gate_score": 0.8032764196395874,
-   "ms": 31.9,
+   "ms": 32.4,
    "top10": [
     "https://olake.io/docs/connectors/mysql/setup/azure/",
     "https://olake.io/docs/connectors/mysql/",
@@ -580,6 +940,39 @@
     "https://olake.io/docs/connectors/mysql/setup/generic/",
     "https://olake.io/docs/connectors/mysql/setup/generic/",
     "https://olake.io/docs/connectors/mysql/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/mysql/setup/azure/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/gcp/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/azure/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/",
+     "https://olake.io/docs/release/ingestion/v0.10.0/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -605,7 +998,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8914798498153687,
-   "ms": 33.2,
+   "ms": 32.7,
    "top10": [
     "https://olake.io/docs/connectors/mysql/",
     "https://olake.io/docs/connectors/mysql/",
@@ -617,6 +1010,40 @@
     "https://olake.io/docs/connectors/mysql/setup/gcp/",
     "https://olake.io/docs/connectors/mysql/setup/azure/",
     "https://olake.io/docs/connectors/mysql/setup/rds/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/mysql/",
+     "https://olake.io/docs/release/ingestion/v0.10.0/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/",
+     "https://olake.io/docs/release/ingestion/v0.10.0/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/aurora/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/aurora/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/gcp/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/azure/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/rds/"
+    ]
    ],
    "top10_types": [
     "factcard",
@@ -642,7 +1069,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7857328057289124,
-   "ms": 31.8,
+   "ms": 30.9,
    "top10": [
     "https://olake.io/docs/connectors/mongodb/cdc_setup/",
     "https://olake.io/docs/connectors/mongodb/",
@@ -654,6 +1081,39 @@
     "https://olake.io/docs/connectors/mongodb/setup/local/",
     "https://olake.io/docs/connectors/mongodb/",
     "https://olake.io/docs/connectors/mongodb/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/mongodb/cdc_setup/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mongodb/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mongodb/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mongodb/cdc_setup/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mongodb/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mongodb/cdc_setup/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mongodb/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mongodb/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mongodb/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mongodb/",
+     "https://olake.io/docs/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -679,7 +1139,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7349652051925659,
-   "ms": 30.5,
+   "ms": 29.3,
    "top10": [
     "https://olake.io/docs/connectors/oracle/setup/generic/",
     "https://olake.io/docs/connectors/oracle/setup/generic/",
@@ -691,6 +1151,38 @@
     "https://olake.io/docs/connectors/mysql/",
     "https://olake.io/docs/connectors/mysql/setup/azure/",
     "https://olake.io/docs/connectors/mysql/setup/gcp/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/oracle/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/oracle/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/oracle/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/oracle/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/oracle/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/oracle/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/azure/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/gcp/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -717,7 +1209,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8037816882133484,
-   "ms": 32.4,
+   "ms": 31.1,
    "top10": [
     "https://olake.io/docs/connectors/oracle/",
     "https://github.com/datazip-inc/olake/blob/master/drivers/oracle/README.md",
@@ -729,6 +1221,40 @@
     "https://olake.io/docs/connectors/oracle/",
     "https://github.com/datazip-inc/olake/blob/master/drivers/mysql/README.md",
     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/oracle/",
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/oracle/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/oracle/",
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://olake.io/docs/community/learning-modules/"
+    ],
+    [
+     "https://olake.io/docs/community/setting-up-a-dev-env/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mssql/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/oracle/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mysql/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ]
    ],
    "top10_types": [
     "factcard",
@@ -753,7 +1279,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8351391553878784,
-   "ms": 28.4,
+   "ms": 27.6,
    "top10": [
     "https://olake.io/docs/connectors/mssql/",
     "https://github.com/datazip-inc/olake/blob/master/drivers/mssql/README.md",
@@ -765,6 +1291,38 @@
     "https://olake.io/docs/connectors/postgres/setup/rds/",
     "https://olake.io/docs/connectors/postgres/setup/aurora/",
     "https://olake.io/docs/connectors/postgres/setup/aurora/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mssql/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/aurora/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/aurora/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -789,7 +1347,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7378469705581665,
-   "ms": 28.9,
+   "ms": 28.3,
    "top10": [
     "https://olake.io/docs/connectors/mssql/",
     "https://olake.io/docs/connectors/mssql/",
@@ -801,6 +1359,38 @@
     "https://olake.io/docs/connectors/postgres/setup/azure/",
     "https://olake.io/docs/connectors/postgres/setup/gcp/",
     "https://olake.io/docs/connectors/postgres/setup/aurora/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/general/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/issues/867"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/azure/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/gcp/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/aurora/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -825,7 +1415,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.709404706954956,
-   "ms": 29.2,
+   "ms": 28.0,
    "top10": [
     "https://olake.io/docs/connectors/db2/",
     "https://olake.io/docs/connectors/db2/",
@@ -837,6 +1427,41 @@
     "https://olake.io/docs/connectors/postgres/",
     "https://olake.io/docs/connectors/db2/",
     "https://github.com/datazip-inc/olake/issues/1080"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/db2/",
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://olake.io/docs/connectors/db2/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/db2/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/db2/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/db2/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/db2/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/db2/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/db2/",
+     "https://olake.io/docs/connectors/s3/",
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/issues/1080"
+    ]
    ],
    "top10_types": [
     "factcard",
@@ -861,7 +1486,7 @@
    ],
    "first_hit_rank": 2,
    "gate_score": 0.7931393384933472,
-   "ms": 33.1,
+   "ms": 32.0,
    "top10": [
     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/resources/spec.json",
     "https://olake.io/docs/connectors/kafka/",
@@ -873,6 +1498,39 @@
     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/resources/spec.json",
     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md",
     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/connectors/kafka/"
+    ],
+    [
+     "https://olake.io/docs/connectors/kafka/"
+    ],
+    [
+     "https://olake.io/docs/connectors/kafka/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/kafka/",
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md"
+    ]
    ],
    "top10_types": [
     "repo",
@@ -899,7 +1557,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.83881676197052,
-   "ms": 37.5,
+   "ms": 39.6,
    "top10": [
     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md",
     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/resources/spec.json",
@@ -911,6 +1569,39 @@
     "https://olake.io/docs/connectors/kafka/",
     "https://olake.io/docs/connectors/kafka/",
     "https://github.com/datazip-inc/olake/blob/master/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/kafka/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/kafka/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/connectors/kafka/"
+    ],
+    [
+     "https://olake.io/docs/connectors/kafka/",
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/README.md"
+    ]
    ],
    "top10_types": [
     "repo",
@@ -937,7 +1628,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8423621654510498,
-   "ms": 48.2,
+   "ms": 53.0,
    "top10": [
     "https://olake.io/docs/connectors/s3/",
     "https://olake.io/docs/connectors/s3/",
@@ -949,6 +1640,39 @@
     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/resources/spec.json",
     "https://olake.io/docs/writers/iceberg/catalog/jdbc/",
     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/s3/"
+    ],
+    [
+     "https://olake.io/docs/connectors/s3/"
+    ],
+    [
+     "https://olake.io/docs/connectors/s3/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/",
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -974,7 +1698,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.795724093914032,
-   "ms": 48.1,
+   "ms": 53.7,
    "top10": [
     "https://olake.io/docs/connectors/kafka/",
     "https://olake.io/docs/connectors/kafka/",
@@ -986,6 +1710,40 @@
     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md",
     "https://olake.io/docs/",
     "https://github.com/datazip-inc/olake/blob/master/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/kafka/"
+    ],
+    [
+     "https://olake.io/docs/connectors/kafka/"
+    ],
+    [
+     "https://olake.io/docs/connectors/kafka/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/kafka/",
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md"
+    ],
+    [
+     "https://olake.io/docs/",
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/README.md"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1010,7 +1768,7 @@
    ],
    "first_hit_rank": 5,
    "gate_score": 0.7664475440979004,
-   "ms": 43.4,
+   "ms": 48.7,
    "top10": [
     "https://olake.io/docs/understanding/compatibility-engines/",
     "https://olake.io/docs/core/use-cases/",
@@ -1022,6 +1780,39 @@
     "https://olake.io/docs/",
     "https://olake.io/docs/understanding/compatibility-engines/",
     "https://github.com/datazip-inc/olake/blob/master/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/understanding/compatibility-engines/"
+    ],
+    [
+     "https://olake.io/docs/core/use-cases/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/understanding/compatibility-engines/"
+    ],
+    [
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/olake-go/"
+    ],
+    [
+     "https://olake.io/docs/",
+     "https://olake.io/docs/understanding/compatibility-engines/"
+    ],
+    [
+     "https://olake.io/docs/understanding/compatibility-engines/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/README.md"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1046,7 +1837,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7663515210151672,
-   "ms": 40.4,
+   "ms": 42.5,
    "top10": [
     "https://olake.io/docs/understanding/terminologies/olake/",
     "https://olake.io/docs/",
@@ -1058,6 +1849,42 @@
     "https://olake.io/docs/connectors/mssql/",
     "https://olake.io/docs/getting-started/job-level-properties/",
     "https://olake.io/docs/connectors/postgres/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/",
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://olake.io/docs/",
+     "https://olake.io/docs/connectors/s3/"
+    ],
+    [
+     "https://olake.io/docs/",
+     "https://olake.io/docs/connectors/oracle/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/",
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/general/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/general/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ]
    ],
    "top10_types": [
     "factcard",
@@ -1098,6 +1925,41 @@
     "https://olake.io/docs/connectors/mssql/",
     "https://olake.io/docs/connectors/mysql/setup/rds/"
    ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/",
+     "https://olake.io/docs/install/docker-cli/"
+    ],
+    [
+     "https://olake.io/docs/",
+     "https://olake.io/docs/connectors/oracle/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/",
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mssql/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mysql/README.md"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://olake.io/docs/community/setting-up-a-dev-env/"
+    ],
+    [
+     "https://olake.io/docs/community/setting-up-a-dev-env/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/rds/"
+    ]
+   ],
    "top10_types": [
     "factcard",
     "factcard",
@@ -1121,7 +1983,7 @@
    ],
    "first_hit_rank": 6,
    "gate_score": 0.7859534025192261,
-   "ms": 32.0,
+   "ms": 33.0,
    "top10": [
     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md",
     "https://github.com/datazip-inc/olake/blob/master/drivers/mongodb/README.md",
@@ -1133,6 +1995,38 @@
     "https://olake.io/docs/install/docker-cli/",
     "https://olake.io/docs/community/commands-and-flags/",
     "https://github.com/datazip-inc/olake/blob/master/drivers/mysql/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mongodb/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/community/commands-and-flags/"
+    ],
+    [
+     "https://olake.io/docs/install/docker-cli/"
+    ],
+    [
+     "https://olake.io/docs/community/commands-and-flags/"
+    ],
+    [
+     "https://olake.io/docs/install/docker-cli/"
+    ],
+    [
+     "https://olake.io/docs/community/commands-and-flags/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mysql/README.md"
+    ]
    ],
    "top10_types": [
     "repo",
@@ -1157,7 +2051,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7400555610656738,
-   "ms": 31.9,
+   "ms": 34.5,
    "top10": [
     "https://olake.io/docs/getting-started/job-level-properties/",
     "https://olake.io/docs/getting-started/job-level-properties/",
@@ -1169,6 +2063,38 @@
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md",
     "https://olake.io/docs/fusion/getting-started/compaction/",
     "https://github.com/datazip-inc/olake/issues/877"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/issues/955"
+    ],
+    [
+     "https://olake.io/docs/getting-started/creating-first-pipeline/"
+    ],
+    [
+     "https://olake.io/docs/fusion/maintenance/runs-and-logs/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/issues/877"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1193,7 +2119,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8121585249900818,
-   "ms": 32.1,
+   "ms": 35.8,
    "top10": [
     "https://olake.io/docs/features/schema/",
     "https://olake.io/docs/features/schema/",
@@ -1205,6 +2131,38 @@
     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/resources/spec.json",
     "https://olake.io/docs/understanding/terminologies/general/",
     "https://olake.io/docs/connectors/postgres/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/issues/867"
+    ],
+    [
+     "https://olake.io/docs/benchmarks/ingestion/"
+    ],
+    [
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/general/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1230,7 +2188,7 @@
    ],
    "first_hit_rank": 5,
    "gate_score": 0.7927126884460449,
-   "ms": 31.7,
+   "ms": 35.7,
    "top10": [
     "https://olake.io/docs/connectors/postgres/",
     "https://olake.io/docs/connectors/postgres/setup/local/",
@@ -1242,6 +2200,38 @@
     "https://olake.io/docs/understanding/terminologies/olake/",
     "https://olake.io/docs/features/schema/",
     "https://olake.io/docs/understanding/terminologies/olake/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/local/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/issues/867"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1268,7 +2258,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7191967964172363,
-   "ms": 29.8,
+   "ms": 32.9,
    "top10": [
     "https://olake.io/docs/connectors/kafka/",
     "https://olake.io/docs/connectors/kafka/",
@@ -1280,6 +2270,38 @@
     "https://olake.io/docs/understanding/terminologies/olake/",
     "https://olake.io/docs/writers/iceberg/partitioning/",
     "https://olake.io/docs/benchmarks/ingestion/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/kafka/"
+    ],
+    [
+     "https://olake.io/docs/connectors/kafka/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/kafka/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/kafka/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/partitioning/"
+    ],
+    [
+     "https://olake.io/docs/benchmarks/ingestion/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1306,7 +2328,7 @@
    ],
    "first_hit_rank": null,
    "gate_score": 0.7673187255859375,
-   "ms": 33.3,
+   "ms": 35.2,
    "top10": [
     "https://olake.io/docs/",
     "https://olake.io/docs/features/schema/",
@@ -1318,6 +2340,38 @@
     "https://olake.io/docs/connectors/postgres/wal2json_plugin/",
     "https://olake.io/docs/connectors/mongodb/",
     "https://olake.io/docs/connectors/mongodb/setup/local/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mongodb/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mongodb/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/mongodb/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/wal2json_plugin/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mongodb/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mongodb/setup/local/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1343,7 +2397,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7386078834533691,
-   "ms": 34.0,
+   "ms": 34.8,
    "top10": [
     "https://olake.io/docs/connectors/postgres/",
     "https://olake.io/docs/connectors/postgres/",
@@ -1355,6 +2409,38 @@
     "https://olake.io/docs/connectors/mssql/",
     "https://olake.io/docs/connectors/mysql/",
     "https://olake.io/docs/writers/iceberg/partitioning/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/connectors/db2/"
+    ],
+    [
+     "https://olake.io/docs/connectors/s3/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/partitioning/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1379,7 +2465,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7510637044906616,
-   "ms": 32.1,
+   "ms": 32.6,
    "top10": [
     "https://olake.io/docs/connectors/mysql/",
     "https://olake.io/docs/connectors/mysql/",
@@ -1391,6 +2477,39 @@
     "https://github.com/datazip-inc/olake/issues/1292",
     "https://github.com/datazip-inc/olake/blob/master/drivers/mysql/README.md",
     "https://olake.io/docs/fusion/release/maintenance/v0.1.0/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/",
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/oracle/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/issues/1292"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mysql/README.md"
+    ],
+    [
+     "https://olake.io/docs/fusion/release/maintenance/v0.1.0/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1416,7 +2535,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7811417579650879,
-   "ms": 32.2,
+   "ms": 32.5,
    "top10": [
     "https://olake.io/docs/connectors/mysql/",
     "https://olake.io/docs/connectors/mysql/",
@@ -1428,6 +2547,39 @@
     "https://olake.io/docs/connectors/mysql/",
     "https://olake.io/docs/connectors/mysql/",
     "https://olake.io/docs/connectors/mysql/setup/local/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/mysql/",
+     "https://olake.io/docs/connectors/mysql/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mysql/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/local/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mysql/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mysql/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/local/"
+    ]
    ],
    "top10_types": [
     "factcard",
@@ -1452,7 +2604,7 @@
    ],
    "first_hit_rank": 5,
    "gate_score": 0.7781714200973511,
-   "ms": 28.4,
+   "ms": 28.7,
    "top10": [
     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md",
     "https://olake.io/docs/features/schema/",
@@ -1464,6 +2616,38 @@
     "https://olake.io/docs/",
     "https://olake.io/docs/writers/iceberg/catalog/jdbc/",
     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ]
    ],
    "top10_types": [
     "repo",
@@ -1489,7 +2673,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7721495628356934,
-   "ms": 27.1,
+   "ms": 27.3,
    "top10": [
     "https://olake.io/docs/connectors/mysql/",
     "https://olake.io/docs/connectors/mysql/",
@@ -1501,6 +2685,39 @@
     "https://olake.io/docs/connectors/oracle/",
     "https://olake.io/docs/connectors/postgres/",
     "https://olake.io/docs/connectors/s3/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mysql/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/",
+     "https://olake.io/docs/connectors/mysql/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/db2/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/oracle/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/s3/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1525,7 +2742,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8393760919570923,
-   "ms": 24.9,
+   "ms": 25.3,
    "top10": [
     "https://olake.io/docs/writers/iceberg/catalog/glue/",
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json",
@@ -1537,6 +2754,39 @@
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json",
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md",
     "https://olake.io/docs/benchmarks/ingestion/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/",
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/benchmarks/ingestion/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1561,7 +2811,7 @@
    ],
    "first_hit_rank": 2,
    "gate_score": 0.8650583624839783,
-   "ms": 26.4,
+   "ms": 27.4,
    "top10": [
     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md",
     "https://olake.io/docs/writers/iceberg/catalog/jdbc/",
@@ -1573,6 +2823,38 @@
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json",
     "https://olake.io/docs/writers/iceberg/catalog/hive/",
     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+   ],
+   "top10_urls": [
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/hive/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/hive/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/hive/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ]
    ],
    "top10_types": [
     "repo",
@@ -1599,7 +2881,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8311057090759277,
-   "ms": 27.1,
+   "ms": 28.0,
    "top10": [
     "https://olake.io/docs/writers/parquet/gcs/",
     "https://olake.io/docs/writers/parquet/config/",
@@ -1611,6 +2893,39 @@
     "https://olake.io/docs/community/learning-modules/",
     "https://github.com/datazip-inc/olake/blob/master/README.md",
     "https://olake.io/docs/writers/iceberg/gcp/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/parquet/gcs/"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/config/"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/permission/"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/config/"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/troubleshoot/"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/config/"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/gcs/",
+     "https://olake.io/docs/writers/parquet/config/"
+    ],
+    [
+     "https://olake.io/docs/community/learning-modules/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/gcp/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1635,7 +2950,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.820206880569458,
-   "ms": 24.4,
+   "ms": 25.4,
    "top10": [
     "https://olake.io/docs/writers/iceberg/azure/",
     "https://olake.io/docs/writers/iceberg/azure/",
@@ -1647,6 +2962,40 @@
     "https://github.com/datazip-inc/olake/blob/master/README.md",
     "https://olake.io/docs/getting-started/playground/",
     "https://olake.io/docs/benchmarks/ingestion/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/iceberg/azure/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/azure/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/azure/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/azure/",
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/",
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/getting-started/playground/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/playground/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/getting-started/playground/"
+    ],
+    [
+     "https://olake.io/docs/benchmarks/ingestion/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1684,6 +3033,38 @@
     "https://olake.io/docs/writers/parquet/partitioning/",
     "https://olake.io/docs/writers/parquet/partitioning/"
    ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/iceberg/partitioning/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/partitioning/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/partitioning/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/partitioning/"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/partitioning/"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/partitioning/"
+    ]
+   ],
    "top10_types": [
     "docs",
     "docs",
@@ -1708,7 +3089,7 @@
    ],
    "first_hit_rank": 6,
    "gate_score": 0.8371236324310303,
-   "ms": 25.5,
+   "ms": 23.6,
    "top10": [
     "https://olake.io/docs/connectors/s3/",
     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/resources/spec.json",
@@ -1720,6 +3101,38 @@
     "https://github.com/datazip-inc/olake/blob/master/destination/parquet/resources/spec.json",
     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md",
     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/s3/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/connectors/s3/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/s3/"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/config/"
+    ],
+    [
+     "https://olake.io/docs/community/setting-up-a-dev-env/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/parquet/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1746,7 +3159,7 @@
    ],
    "first_hit_rank": 2,
    "gate_score": 0.7741411924362183,
-   "ms": 28.0,
+   "ms": 26.2,
    "top10": [
     "https://olake.io/docs/",
     "https://olake.io/docs/understanding/terminologies/olake/",
@@ -1758,6 +3171,38 @@
     "https://olake.io/docs/getting-started/job-level-properties/",
     "https://olake.io/docs/getting-started/job-level-properties/",
     "https://olake.io/docs/install/olake-ui/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://olake.io/docs/understanding/compatibility-engines/"
+    ],
+    [
+     "https://olake.io/docs/understanding/compatibility-engines/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/general/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://olake.io/docs/understanding/compatibility-engines/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1783,7 +3228,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.755407989025116,
-   "ms": 31.4,
+   "ms": 30.2,
    "top10": [
     "https://olake.io/docs/understanding/terminologies/olake/",
     "https://olake.io/docs/install/kubernetes/",
@@ -1795,6 +3240,38 @@
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md",
     "https://olake.io/docs/getting-started/creating-first-pipeline/",
     "https://olake.io/docs/install/kubernetes/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://olake.io/docs/getting-started/creating-first-pipeline/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1820,7 +3297,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8988916277885437,
-   "ms": 32.9,
+   "ms": 33.2,
    "top10": [
     "https://olake.io/docs/writers/iceberg/catalog/glue/",
     "https://olake.io/docs/writers/iceberg/catalog/glue/",
@@ -1832,6 +3309,38 @@
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md",
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md",
     "https://olake.io/docs/install/kubernetes/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/polaris-iam-setup/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1856,7 +3365,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.882891058921814,
-   "ms": 35.3,
+   "ms": 36.9,
    "top10": [
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
@@ -1868,6 +3377,38 @@
     "https://olake.io/docs/writers/iceberg/catalog/hive/",
     "https://olake.io/docs/writers/iceberg/catalog/hive/",
     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/hive/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/hive/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1892,7 +3433,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8938761949539185,
-   "ms": 38.2,
+   "ms": 39.9,
    "top10": [
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
@@ -1904,6 +3445,38 @@
     "https://olake.io/docs/writers/iceberg/azure/",
     "https://olake.io/docs/writers/iceberg/catalog/jdbc/",
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/azure/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/hive/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/azure/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1928,7 +3501,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8812028169631958,
-   "ms": 40.8,
+   "ms": 41.9,
    "top10": [
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
@@ -1940,6 +3513,38 @@
     "https://olake.io/docs/writers/iceberg/azure/",
     "https://olake.io/docs/connectors/mysql/setup/local/",
     "https://olake.io/docs/community/commands-and-flags/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/polaris-iam-setup/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/azure/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/community/commands-and-flags/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -1964,7 +3569,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8947645425796509,
-   "ms": 39.9,
+   "ms": 40.8,
    "top10": [
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
@@ -1976,6 +3581,40 @@
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json",
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json",
     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/",
+     "https://olake.io/docs/release/ingestion/v0.3.5/",
+     "https://olake.io/docs/release/ingestion/28-04-2025/"
+    ],
+    [
+     "https://olake.io/docs/understanding/compatibility-engines/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2000,7 +3639,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.9090873003005981,
-   "ms": 39.1,
+   "ms": 40.0,
    "top10": [
     "https://olake.io/docs/writers/iceberg/catalog/hive/",
     "https://olake.io/docs/writers/iceberg/catalog/hive/",
@@ -2012,6 +3651,40 @@
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json",
     "https://olake.io/docs/writers/iceberg/catalog/hive/",
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/hive/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/hive/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/hive/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/gcp/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/hive/",
+     "https://olake.io/docs/writers/iceberg/gcp/",
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2036,7 +3709,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8031102418899536,
-   "ms": 36.4,
+   "ms": 37.4,
    "top10": [
     "https://olake.io/docs/writers/iceberg/catalog/jdbc/",
     "https://olake.io/docs/writers/iceberg/catalog/jdbc/",
@@ -2048,6 +3721,40 @@
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md",
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
     "https://olake.io/docs/connectors/postgres/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/",
+     "https://olake.io/docs/understanding/compatibility-catalogs/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/",
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2071,9 +3778,9 @@
     "https://olake.io/docs/understanding/compatibility-catalogs/",
     "https://olake.io/docs/writers/iceberg/catalog/rest/"
    ],
-   "first_hit_rank": 2,
+   "first_hit_rank": 1,
    "gate_score": 0.7915728092193604,
-   "ms": 30.9,
+   "ms": 31.6,
    "top10": [
     "https://olake.io/docs/release/ingestion/v0.3.5/",
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
@@ -2085,6 +3792,42 @@
     "https://olake.io/docs/writers/iceberg/catalog/glue/",
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/release/ingestion/v0.3.5/",
+     "https://olake.io/docs/writers/iceberg/catalog/rest/",
+     "https://olake.io/docs/release/ingestion/28-04-2025/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/",
+     "https://olake.io/docs/understanding/compatibility-catalogs/"
+    ],
+    [
+     "https://olake.io/docs/understanding/compatibility-engines/"
+    ],
+    [
+     "https://olake.io/docs/fusion/maintenance/catalogs/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/",
+     "https://olake.io/docs/release/ingestion/v0.9.0/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ]
    ],
    "top10_types": [
     "factcard",
@@ -2111,7 +3854,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.835906982421875,
-   "ms": 30.2,
+   "ms": 31.3,
    "top10": [
     "https://olake.io/docs/fusion/getting-started/overview/",
     "https://olake.io/docs/fusion/getting-started/overview/",
@@ -2123,6 +3866,41 @@
     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md",
     "https://olake.io/docs/fusion/maintenance/catalogs/",
     "https://olake.io/docs/fusion/core/use-cases/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/fusion/getting-started/overview/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/overview/",
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/olake-fusion/"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/kubernetes-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/overview/"
+    ],
+    [
+     "https://olake.io/docs/fusion/maintenance/catalogs/"
+    ],
+    [
+     "https://olake.io/docs/fusion/core/use-cases/",
+     "https://olake.io/docs/fusion/release/maintenance/v0.1.0/",
+     "https://olake.io/docs/fusion/compaction/types-of-compaction/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+    ],
+    [
+     "https://olake.io/docs/fusion/maintenance/catalogs/"
+    ],
+    [
+     "https://olake.io/docs/fusion/core/use-cases/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2147,7 +3925,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8582325577735901,
-   "ms": 30.3,
+   "ms": 34.2,
    "top10": [
     "https://olake.io/docs/fusion/compaction/types-of-compaction/",
     "https://olake.io/docs/fusion/compaction/types-of-compaction/",
@@ -2159,6 +3937,40 @@
     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/",
     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/",
     "https://olake.io/docs/fusion/maintenance/runs-and-logs/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/fusion/compaction/types-of-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/compaction/types-of-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/compaction/types-of-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/compaction/configuration/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://olake.io/olake-fusion/",
+     "https://olake.io/docs/fusion/compaction/configuration/",
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/olake-fusion/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/maintenance/runs-and-logs/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2186,7 +3998,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8479958772659302,
-   "ms": 32.2,
+   "ms": 37.8,
    "top10": [
     "https://olake.io/docs/fusion/compaction/configuration/",
     "https://olake.io/docs/fusion/compaction/configuration/",
@@ -2198,6 +4010,39 @@
     "https://olake.io/docs/fusion/compaction/types-of-compaction/",
     "https://olake.io/docs/fusion/compaction/types-of-compaction/",
     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/fusion/compaction/configuration/"
+    ],
+    [
+     "https://olake.io/docs/fusion/compaction/configuration/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/compaction/configuration/",
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/compaction/types-of-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/compaction/types-of-compaction/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2223,7 +4068,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8485860824584961,
-   "ms": 35.4,
+   "ms": 44.6,
    "top10": [
     "https://olake.io/docs/fusion/maintenance/catalogs/",
     "https://github.com/datazip-inc/olake-fusion/blob/master/README.md",
@@ -2235,6 +4080,38 @@
     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/",
     "https://olake.io/docs/fusion/release/maintenance/v0.1.0/",
     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/fusion/maintenance/catalogs/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/overview/"
+    ],
+    [
+     "https://olake.io/docs/fusion/core/use-cases/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/fusion/maintenance/catalogs/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/release/maintenance/v0.1.0/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2261,7 +4138,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8500105142593384,
-   "ms": 35.8,
+   "ms": 45.5,
    "top10": [
     "https://olake.io/docs/fusion/install/kubernetes-compaction/",
     "https://olake.io/docs/fusion/install/kubernetes-compaction/",
@@ -2273,6 +4150,39 @@
     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md",
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md",
     "https://olake.io/docs/fusion/install/olake-ui/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/fusion/install/kubernetes-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/kubernetes-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/kubernetes-compaction/"
+    ],
+    [
+     "https://olake.io/olake-fusion/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/",
+     "https://olake.io/docs/fusion/getting-started/overview/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/olake-ui/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2297,7 +4207,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7327980995178223,
-   "ms": 35.7,
+   "ms": 42.7,
    "top10": [
     "https://olake.io/docs/fusion/install/olake-ui/",
     "https://olake.io/docs/fusion/getting-started/quickstart/",
@@ -2309,6 +4219,38 @@
     "https://olake.io/docs/fusion/install/kubernetes-compaction/",
     "https://olake.io/olake-fusion/",
     "https://github.com/datazip-inc/olake-ui/blob/master/docker-compose-v1.yml"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/fusion/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/quickstart/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/quickstart/"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/olake-ui/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/quickstart/"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/kubernetes-compaction/"
+    ],
+    [
+     "https://olake.io/olake-fusion/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/docker-compose-v1.yml"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2335,7 +4277,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7694739103317261,
-   "ms": 33.8,
+   "ms": 38.8,
    "top10": [
     "https://olake.io/docs/fusion/compaction/types-of-compaction/",
     "https://olake.io/docs/fusion/core/use-cases/",
@@ -2347,6 +4289,39 @@
     "https://olake.io/docs/fusion/getting-started/overview/",
     "https://olake.io/olake-fusion/",
     "https://olake.io/docs/fusion/getting-started/compaction/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/fusion/compaction/types-of-compaction/",
+     "https://olake.io/docs/fusion/core/use-cases/"
+    ],
+    [
+     "https://olake.io/docs/fusion/core/use-cases/"
+    ],
+    [
+     "https://olake.io/docs/fusion/compaction/types-of-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/compaction/types-of-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/compaction/types-of-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/overview/"
+    ],
+    [
+     "https://olake.io/olake-fusion/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ]
    ],
    "top10_types": [
     "factcard",
@@ -2372,7 +4347,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7367684245109558,
-   "ms": 31.2,
+   "ms": 32.9,
    "top10": [
     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/",
     "https://olake.io/docs/fusion/maintenance/metrics/",
@@ -2384,6 +4359,40 @@
     "https://olake.io/docs/fusion/core/use-cases/",
     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md",
     "https://olake.io/olake-fusion/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/maintenance/metrics/"
+    ],
+    [
+     "https://olake.io/docs/fusion/core/use-cases/"
+    ],
+    [
+     "https://olake.io/docs/fusion/release/maintenance/v0.1.0/"
+    ],
+    [
+     "https://olake.io/docs/fusion/maintenance/runs-and-logs/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/quickstart/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/overview/"
+    ],
+    [
+     "https://olake.io/docs/fusion/core/use-cases/",
+     "https://olake.io/docs/fusion/release/maintenance/v0.1.0/",
+     "https://olake.io/docs/fusion/compaction/types-of-compaction/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+    ],
+    [
+     "https://olake.io/olake-fusion/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2409,7 +4418,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8377571702003479,
-   "ms": 33.7,
+   "ms": 34.2,
    "top10": [
     "https://olake.io/docs/install/kubernetes/",
     "https://olake.io/docs/connectors/postgres/",
@@ -2421,6 +4430,38 @@
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md",
     "https://olake.io/docs/connectors/postgres/",
     "https://olake.io/docs/connectors/postgres/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/kubernetes-compaction/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2446,7 +4487,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8698806166648865,
-   "ms": 32.6,
+   "ms": 32.7,
    "top10": [
     "https://olake.io/docs/install/olake-ui/",
     "https://olake.io/docs/monitoring-and-observability/metrics/",
@@ -2458,6 +4499,38 @@
     "https://github.com/datazip-inc/olake/blob/master/README.md",
     "https://olake.io/docs/getting-started/quickstart/",
     "https://olake.io/docs/getting-started/olake-ui/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/monitoring-and-observability/metrics/"
+    ],
+    [
+     "https://olake.io/docs/monitoring-and-observability/metrics/"
+    ],
+    [
+     "https://olake.io/docs/monitoring-and-observability/metrics/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/issues/23"
+    ],
+    [
+     "https://olake.io/docs/getting-started/olake-ui/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/getting-started/quickstart/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/olake-ui/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2495,6 +4568,38 @@
     "https://github.com/datazip-inc/olake-helm/blob/master/README.md",
     "https://olake.io/docs/fusion/install/kubernetes-compaction/"
    ],
+   "top10_urls": [
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/issues/100"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/kubernetes-compaction/"
+    ]
+   ],
    "top10_types": [
     "repo",
     "docs",
@@ -2521,7 +4626,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8186055421829224,
-   "ms": 39.5,
+   "ms": 39.4,
    "top10": [
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml",
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md",
@@ -2533,6 +4638,38 @@
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml",
     "https://olake.io/docs/install/kubernetes/",
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/templates/NOTES.txt"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ]
    ],
    "top10_types": [
     "repo",
@@ -2558,7 +4695,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7797490954399109,
-   "ms": 37.0,
+   "ms": 36.4,
    "top10": [
     "https://olake.io/docs/install/kubernetes/",
     "https://olake.io/docs/install/kubernetes/",
@@ -2570,6 +4707,38 @@
     "https://github.com/datazip-inc/olake/issues/955",
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md",
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/kubernetes-compaction/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/kubernetes-compaction/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/issues/955"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2594,7 +4763,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7990760803222656,
-   "ms": 39.7,
+   "ms": 39.3,
    "top10": [
     "https://olake.io/docs/install/olake-ui/",
     "https://olake.io/docs/install/olake-ui/",
@@ -2606,6 +4775,38 @@
     "https://github.com/datazip-inc/olake-ui/blob/master/docker-compose-v1.yml",
     "https://github.com/datazip-inc/olake-ui/blob/master/README.md",
     "https://github.com/datazip-inc/olake-ui/blob/master/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/offline-environments-aws/"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/docker-compose-v1.yml"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/README.md"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2630,7 +4831,7 @@
    ],
    "first_hit_rank": 2,
    "gate_score": 0.7693617939949036,
-   "ms": 41.7,
+   "ms": 41.9,
    "top10": [
     "https://olake.io/docs/connectors/postgres/setup/azure/",
     "https://olake.io/docs/connectors/postgres/setup/rds/",
@@ -2642,6 +4843,38 @@
     "https://olake.io/docs/connectors/postgres/",
     "https://olake.io/docs/connectors/mysql/setup/aurora/",
     "https://olake.io/docs/connectors/postgres/wal2json_plugin/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/postgres/setup/azure/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/aurora/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/aurora/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/wal2json_plugin/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2666,7 +4899,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8572094440460205,
-   "ms": 37.3,
+   "ms": 37.2,
    "top10": [
     "https://olake.io/docs/connectors/mysql/",
     "https://olake.io/docs/connectors/mysql/",
@@ -2678,6 +4911,38 @@
     "https://olake.io/docs/connectors/mysql/setup/generic/",
     "https://olake.io/docs/connectors/mysql/setup/aurora/",
     "https://olake.io/docs/connectors/mysql/setup/generic/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/azure/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/aurora/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/aurora/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/generic/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2702,7 +4967,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8350306749343872,
-   "ms": 39.0,
+   "ms": 37.6,
    "top10": [
     "https://olake.io/docs/connectors/s3/",
     "https://olake.io/docs/connectors/s3/",
@@ -2714,6 +4979,39 @@
     "https://olake.io/docs/connectors/s3/",
     "https://olake.io/docs/connectors/mongodb/",
     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/s3/"
+    ],
+    [
+     "https://olake.io/docs/connectors/s3/"
+    ],
+    [
+     "https://olake.io/docs/connectors/s3/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/s3/",
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mongodb/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2738,7 +5036,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8640663623809814,
-   "ms": 39.5,
+   "ms": 36.3,
    "top10": [
     "https://olake.io/docs/connectors/db2/",
     "https://github.com/datazip-inc/olake/blob/master/drivers/db2/README.md",
@@ -2750,6 +5048,38 @@
     "https://olake.io/docs/features/schema/",
     "https://olake.io/docs/features/schema/",
     "https://olake.io/docs/connectors/postgres/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/db2/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/db2/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/db2/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/db2/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/db2/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/db2/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2778,7 +5108,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7830406427383423,
-   "ms": 48.9,
+   "ms": 44.6,
    "top10": [
     "https://github.com/datazip-inc/olake/issues/877",
     "https://olake.io/docs/writers/parquet/config/",
@@ -2790,6 +5120,38 @@
     "https://olake.io/docs/install/kubernetes/",
     "https://olake.io/docs/writers/iceberg/catalog/jdbc/",
     "https://olake.io/docs/getting-started/creating-first-pipeline/"
+   ],
+   "top10_urls": [
+    [
+     "https://github.com/datazip-inc/olake/issues/877"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/config/"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/troubleshoot/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/config/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/creating-first-pipeline/"
+    ]
    ],
    "top10_types": [
     "issue",
@@ -2817,7 +5179,7 @@
    ],
    "first_hit_rank": 6,
    "gate_score": 0.854245126247406,
-   "ms": 53.6,
+   "ms": 48.6,
    "top10": [
     "https://olake.io/docs/connectors/postgres/setup/aurora/",
     "https://olake.io/docs/connectors/postgres/setup/gcp/",
@@ -2829,6 +5191,38 @@
     "https://olake.io/docs/connectors/postgres/setup/azure/",
     "https://olake.io/docs/connectors/postgres/",
     "https://olake.io/docs/connectors/postgres/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/postgres/setup/aurora/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/gcp/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/wal2json_plugin/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/aurora/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/azure/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2854,7 +5248,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.7702409029006958,
-   "ms": 48.3,
+   "ms": 45.3,
    "top10": [
     "https://olake.io/docs/release/ingestion/v0.12.0/",
     "https://olake.io/docs/release/ingestion/v0.12.0/",
@@ -2866,6 +5260,40 @@
     "https://github.com/datazip-inc/olake-fusion/releases/tag/v0.1.2",
     "https://github.com/datazip-inc/olake-fusion/releases/tag/v0.1.4",
     "https://github.com/datazip-inc/olake-ui/releases/tag/v0.7.1"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/release/ingestion/v0.12.0/",
+     "https://github.com/datazip-inc/olake/releases/tag/v0.12.1"
+    ],
+    [
+     "https://olake.io/docs/release/ingestion/v0.12.0/",
+     "https://github.com/datazip-inc/olake/releases/tag/v0.12.1"
+    ],
+    [
+     "https://olake.io/docs/fusion/release/maintenance/overview/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/releases/tag/v0.12.0"
+    ],
+    [
+     "https://olake.io/docs/release/ingestion/overview/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/releases/tag/v0.11.2"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/releases/tag/v0.12.1"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/releases/tag/v0.1.2"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/releases/tag/v0.1.4"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/releases/tag/v0.7.1"
+    ]
    ],
    "top10_types": [
     "factcard",
@@ -2890,7 +5318,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.851775586605072,
-   "ms": 46.3,
+   "ms": 45.0,
    "top10": [
     "https://olake.io/docs/writers/iceberg/catalog/glue/",
     "https://olake.io/docs/writers/iceberg/catalog/glue/",
@@ -2902,6 +5330,38 @@
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://olake.io/docs/fusion/maintenance/catalogs/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2927,7 +5387,7 @@
    ],
    "first_hit_rank": 6,
    "gate_score": 0.7607306241989136,
-   "ms": 35.9,
+   "ms": 35.2,
    "top10": [
     "https://olake.io/docs/fusion/compaction/configuration/",
     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md",
@@ -2939,6 +5399,38 @@
     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/",
     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/",
     "https://olake.io/docs/fusion/getting-started/compaction/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/fusion/compaction/configuration/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+    ],
+    [
+     "https://olake.io/olake-fusion/"
+    ],
+    [
+     "https://olake.io/docs/fusion/compaction/configuration/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/maintenance/runs-and-logs/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -2976,6 +5468,40 @@
     "https://olake.io/docs/benchmarks/ingestion/",
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
    ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/monitoring-and-observability/metrics/"
+    ],
+    [
+     "https://olake.io/docs/benchmarks/ingestion/"
+    ],
+    [
+     "https://olake.io/docs/fusion/core/use-cases/"
+    ],
+    [
+     "https://olake.io/docs/benchmarks/ingestion/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/",
+     "https://olake.io/docs/understanding/terminologies/general/",
+     "https://olake.io/docs/understanding/terminologies/olake/"
+    ],
+    [
+     "https://olake.io/docs/benchmarks/ingestion/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ]
+   ],
    "top10_types": [
     "docs",
     "docs",
@@ -3000,7 +5526,7 @@
    ],
    "first_hit_rank": 7,
    "gate_score": 0.8151792883872986,
-   "ms": 32.2,
+   "ms": 32.1,
    "top10": [
     "https://olake.io/docs/connectors/mssql/",
     "https://olake.io/docs/connectors/mssql/",
@@ -3012,6 +5538,39 @@
     "https://github.com/datazip-inc/olake/blob/master/README.md",
     "https://olake.io/docs/connectors/mysql/setup/local/",
     "https://olake.io/docs/connectors/s3/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/",
+     "https://olake.io/docs/understanding/compatibility-engines/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/connectors/s3/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -3036,7 +5595,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8347949981689453,
-   "ms": 42.1,
+   "ms": 41.7,
    "top10": [
     "https://olake.io/docs/install/olake-ui/",
     "https://olake.io/docs/install/olake-ui/",
@@ -3048,6 +5607,39 @@
     "https://olake.io/docs/install/kubernetes/",
     "https://olake.io/docs/getting-started/creating-first-pipeline/",
     "https://olake.io/docs/install/olake-ui/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/creating-first-pipeline/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/",
+     "https://olake.io/docs/install/kubernetes/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -3072,7 +5664,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.803928017616272,
-   "ms": 43.6,
+   "ms": 43.0,
    "top10": [
     "https://olake.io/docs/install/olake-ui/",
     "https://olake.io/docs/install/kubernetes/",
@@ -3084,6 +5676,38 @@
     "https://olake.io/docs/getting-started/playground/",
     "https://olake.io/docs/connectors/mysql/setup/local/",
     "https://github.com/datazip-inc/olake/issues/955"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/offline-environments-generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/local/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/playground/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/playground/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/local/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/issues/955"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -3108,7 +5732,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.8146759271621704,
-   "ms": 45.0,
+   "ms": 44.8,
    "top10": [
     "https://olake.io/docs/connectors/postgres/",
     "https://olake.io/docs/connectors/postgres/setup/gcp/",
@@ -3120,6 +5744,38 @@
     "https://olake.io/docs/connectors/postgres/setup/generic/",
     "https://olake.io/docs/connectors/postgres/setup/aurora/",
     "https://olake.io/docs/connectors/postgres/setup/rds/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/gcp/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/azure/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/wal2json_plugin/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/wal2json_plugin/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/wal2json_plugin/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/generic/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/aurora/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/rds/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -3144,7 +5800,7 @@
    ],
    "first_hit_rank": 1,
    "gate_score": 0.761193037033081,
-   "ms": 46.6,
+   "ms": 46.5,
    "top10": [
     "https://olake.io/docs/install/kubernetes/",
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml",
@@ -3156,6 +5812,38 @@
     "https://olake.io/docs/install/olake-ui/",
     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md",
     "https://github.com/datazip-inc/olake-ui/blob/master/README.md"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/templates/NOTES.txt"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/README.md"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -3178,7 +5866,7 @@
    "expected": [],
    "first_hit_rank": null,
    "gate_score": 0.7917909622192383,
-   "ms": 35.0,
+   "ms": 35.2,
    "top10": [
     "https://olake.io/docs/fusion/release/maintenance/v0.1.0/",
     "https://olake.io/docs/fusion/release/maintenance/overview/",
@@ -3190,6 +5878,43 @@
     "https://olake.io/docs/fusion/getting-started/overview/",
     "https://olake.io/docs/fusion/release/maintenance/v0.1.0/",
     "https://github.com/datazip-inc/olake-fusion/releases/tag/v0.1.3"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/fusion/release/maintenance/v0.1.0/"
+    ],
+    [
+     "https://olake.io/docs/fusion/release/maintenance/overview/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/releases/tag/v0.1.2"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/releases/tag/v0.1.4"
+    ],
+    [
+     "https://olake.io/docs/fusion/install/kubernetes-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/release/maintenance/v0.1.0/",
+     "https://github.com/datazip-inc/olake-fusion/releases/tag/v0.1.4",
+     "https://github.com/datazip-inc/olake/releases/tag/v0.12.1"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/overview/",
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/overview/"
+    ],
+    [
+     "https://olake.io/docs/fusion/release/maintenance/v0.1.0/",
+     "https://github.com/datazip-inc/olake-fusion/releases/tag/v0.1.4",
+     "https://github.com/datazip-inc/olake/releases/tag/v0.12.1"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/releases/tag/v0.1.3"
+    ]
    ],
    "top10_types": [
     "release",
@@ -3212,7 +5937,7 @@
    "expected": [],
    "first_hit_rank": null,
    "gate_score": 0.8175110220909119,
-   "ms": 35.2,
+   "ms": 34.7,
    "top10": [
     "https://olake.io/docs/fusion/getting-started/compaction/",
     "https://github.com/datazip-inc/olake-fusion/blob/master/README.md",
@@ -3224,6 +5949,38 @@
     "https://olake.io/docs/fusion/compaction/configuration/",
     "https://olake.io/docs/benchmarks/ingestion/",
     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://olake.io/olake-fusion/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://olake.io/olake-fusion/"
+    ],
+    [
+     "https://olake.io/docs/fusion/maintenance/catalogs/"
+    ],
+    [
+     "https://olake.io/docs/fusion/compaction/configuration/"
+    ],
+    [
+     "https://olake.io/docs/benchmarks/ingestion/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/configure-first-compaction/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -3246,7 +6003,7 @@
    "expected": [],
    "first_hit_rank": null,
    "gate_score": 0.7274410724639893,
-   "ms": 30.3,
+   "ms": 29.9,
    "top10": [
     "https://olake.io/olake-fusion/",
     "https://olake.io/olake-fusion/",
@@ -3258,6 +6015,40 @@
     "https://olake.io/docs/dmsvsolake/",
     "https://olake.io/docs/benchmarks/ingestion/",
     "https://olake.io/docs/benchmarks/ingestion/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/olake-fusion/",
+     "https://olake.io/olake-go/",
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/olake-fusion/"
+    ],
+    [
+     "https://olake.io/olake-fusion/"
+    ],
+    [
+     "https://olake.io/olake-go/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://olake.io/docs/dmsvsolake/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/dmsvsolake/"
+    ],
+    [
+     "https://olake.io/docs/benchmarks/ingestion/"
+    ],
+    [
+     "https://olake.io/docs/benchmarks/ingestion/"
+    ]
    ],
    "top10_types": [
     "factcard",
@@ -3280,7 +6071,7 @@
    "expected": [],
    "first_hit_rank": null,
    "gate_score": 0.7377153038978577,
-   "ms": 27.5,
+   "ms": 26.8,
    "top10": [
     "https://olake.io/docs/",
     "https://olake.io/docs/",
@@ -3292,6 +6083,38 @@
     "https://olake.io/docs/connectors/postgres/",
     "https://github.com/datazip-inc/olake/issues/811#issuecomment-3895500238",
     "https://olake.io/docs/core/use-cases/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://olake.io/docs/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/release/ingestion/28-04-2025/"
+    ],
+    [
+     "https://olake.io/docs/features/schema/"
+    ],
+    [
+     "https://olake.io/docs/fusion/release/maintenance/overview/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/issues/811#issuecomment-3895500238"
+    ],
+    [
+     "https://olake.io/docs/core/use-cases/"
+    ]
    ],
    "top10_types": [
     "factcard",
@@ -3314,7 +6137,7 @@
    "expected": [],
    "first_hit_rank": null,
    "gate_score": 0.7788915634155273,
-   "ms": 27.8,
+   "ms": 27.1,
    "top10": [
     "https://olake.io/docs/fusion/core/use-cases/",
     "https://olake.io/docs/fusion/getting-started/overview/",
@@ -3326,6 +6149,38 @@
     "https://olake.io/docs/writers/iceberg/partitioning/",
     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md",
     "https://olake.io/docs/fusion/getting-started/quickstart/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/fusion/core/use-cases/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/overview/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/README.md"
+    ],
+    [
+     "https://olake.io/docs/fusion/core/use-cases/"
+    ],
+    [
+     "https://olake.io/docs/fusion/core/use-cases/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/issues/29"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/partitioning/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/quickstart/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -3348,7 +6203,7 @@
    "expected": [],
    "first_hit_rank": null,
    "gate_score": 0.6707631349563599,
-   "ms": 24.4,
+   "ms": 24.1,
    "top10": [
     "https://olake.io/docs/community/code-of-conduct/",
     "https://olake.io/docs/community/contributing/",
@@ -3360,6 +6215,40 @@
     "https://olake.io/docs/community/code-of-conduct/",
     "https://olake.io/docs/connectors/mssql/",
     "https://olake.io/docs/community/contributing/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/community/code-of-conduct/"
+    ],
+    [
+     "https://olake.io/docs/community/contributing/"
+    ],
+    [
+     "https://olake.io/docs/connectors/db2/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/olake-go/",
+     "https://olake.io/olake-fusion/",
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/olake-go/"
+    ],
+    [
+     "https://olake.io/docs/community/code-of-conduct/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mssql/"
+    ],
+    [
+     "https://olake.io/docs/community/contributing/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -3382,7 +6271,7 @@
    "expected": [],
    "first_hit_rank": null,
    "gate_score": 0.4761163592338562,
-   "ms": 24.9,
+   "ms": 24.5,
    "top10": [
     "https://olake.io/docs/community/contributing/",
     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md",
@@ -3394,6 +6283,38 @@
     "https://olake.io/docs/community/commands-and-flags/",
     "https://olake.io/docs/community/code-of-conduct/",
     "https://olake.io/docs/writers/parquet/partitioning/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/community/contributing/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/s3/README.md"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/local/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/olake-go/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-fusion/blob/master/CLAUDE.md"
+    ],
+    [
+     "https://olake.io/docs/benchmarks/ingestion/"
+    ],
+    [
+     "https://olake.io/docs/community/commands-and-flags/"
+    ],
+    [
+     "https://olake.io/docs/community/code-of-conduct/"
+    ],
+    [
+     "https://olake.io/docs/writers/parquet/partitioning/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -3416,7 +6337,7 @@
    "expected": [],
    "first_hit_rank": null,
    "gate_score": 0.38093000650405884,
-   "ms": 24.3,
+   "ms": 23.6,
    "top10": [
     "https://olake.io/docs/community/contributing/",
     "https://github.com/datazip-inc/olake/blob/master/protocol/root.go",
@@ -3428,6 +6349,38 @@
     "https://olake.io/docs/community/contributing/",
     "https://olake.io/docs/fusion/getting-started/compaction/",
     "https://olake.io/docs/community/code-of-conduct/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/community/contributing/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/protocol/root.go"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/mysql/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/protocol/root.go"
+    ],
+    [
+     "https://olake.io/docs/getting-started/creating-first-pipeline/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/community/contributing/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://olake.io/docs/community/code-of-conduct/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -3450,7 +6403,7 @@
    "expected": [],
    "first_hit_rank": null,
    "gate_score": 0.7694896459579468,
-   "ms": 25.2,
+   "ms": 24.7,
    "top10": [
     "https://olake.io/docs/connectors/postgres/",
     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md",
@@ -3462,6 +6415,38 @@
     "https://olake.io/docs/fusion/getting-started/compaction/",
     "https://olake.io/docs/connectors/postgres/setup/rds/",
     "https://olake.io/docs/connectors/postgres/wal2json_plugin/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/drivers/postgres/README.md"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/"
+    ],
+    [
+     "https://olake.io/docs/fusion/getting-started/compaction/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/rds/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/wal2json_plugin/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -3484,7 +6469,7 @@
    "expected": [],
    "first_hit_rank": null,
    "gate_score": 0.6335453987121582,
-   "ms": 25.8,
+   "ms": 25.3,
    "top10": [
     "https://olake.io/docs/getting-started/playground/",
     "https://olake.io/docs/writers/iceberg/catalog/glue/",
@@ -3496,6 +6481,38 @@
     "https://olake.io/docs/community/commands-and-flags/",
     "https://olake.io/docs/connectors/postgres/setup/aurora/",
     "https://olake.io/docs/install/kubernetes/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/getting-started/playground/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/glue/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/values.yaml"
+    ],
+    [
+     "https://olake.io/docs/getting-started/playground/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ],
+    [
+     "https://olake.io/docs/getting-started/playground/"
+    ],
+    [
+     "https://olake.io/docs/install/olake-ui/"
+    ],
+    [
+     "https://olake.io/docs/community/commands-and-flags/"
+    ],
+    [
+     "https://olake.io/docs/connectors/postgres/setup/aurora/"
+    ],
+    [
+     "https://olake.io/docs/install/kubernetes/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -3518,7 +6535,7 @@
    "expected": [],
    "first_hit_rank": null,
    "gate_score": 0.6939257383346558,
-   "ms": 27.7,
+   "ms": 27.3,
    "top10": [
     "https://olake.io/docs/writers/iceberg/catalog/hive/",
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
@@ -3530,6 +6547,38 @@
     "https://olake.io/docs/writers/iceberg/catalog/rest/",
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json",
     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/hive/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/hive/"
+    ],
+    [
+     "https://olake.io/docs/release/ingestion/v0.11.0/"
+    ],
+    [
+     "https://olake.io/docs/connectors/s3/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/rest/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/resources/spec.json"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/catalog/jdbc/"
+    ]
    ],
    "top10_types": [
     "docs",
@@ -3564,6 +6613,38 @@
     "https://olake.io/docs/connectors/mysql/setup/generic/",
     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md",
     "https://olake.io/docs/getting-started/job-level-properties/"
+   ],
+   "top10_urls": [
+    [
+     "https://olake.io/docs/writers/iceberg/partitioning/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/writers/iceberg/partitioning/"
+    ],
+    [
+     "https://olake.io/olake-go/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake-ui/blob/master/docker-compose-v1.yml"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/aurora/"
+    ],
+    [
+     "https://olake.io/docs/install/docker-cli/"
+    ],
+    [
+     "https://olake.io/docs/connectors/mysql/setup/generic/"
+    ],
+    [
+     "https://github.com/datazip-inc/olake/blob/master/destination/iceberg/README.md"
+    ],
+    [
+     "https://olake.io/docs/getting-started/job-level-properties/"
+    ]
    ],
    "top10_types": [
     "docs",

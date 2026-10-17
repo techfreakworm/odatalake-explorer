@@ -83,17 +83,17 @@ flowchart LR
 | Decision | Alternatives considered | Why |
 |---|---|---|
 | Hybrid BM25 + dense (RRF k=60), no reranker, top 10 chunks to the LLM | BM25 only; dense only; a cross-encoder rerank; an agentic tool loop; long-context stuffing | Exact config keys need lexical match and paraphrases need dense. On this index the hybrid gets MRR@10 0.854 and hit@10 0.988 over 82 rows (`eval/results/retrieval-baseline.json`). FlashRank TinyBERT over the fused top 20 lowered MRR@10 to 0.814 at the same hit@10 (`eval/results/retrieval-tinybert.json`). One LLM call keeps latency and cost low |
-| Local embeddings: fastembed `BAAI/bge-small-en-v1.5`, ONNX on CPU | A provider's embedding API; bge-base | Works with any LLM provider, costs nothing per query, has no rate limit and is deterministic. Embedding a query takes milliseconds: `/debug/retrieve` answers in 33 ms p50 for the whole retrieval (`eval/results/retrieval-baseline.json`). The container idles at 222 MiB RSS (local `docker stats`, see Latency). bge-base was not better enough to pay 3.3x the embedding time (POC: hybrid MRR@10 0.745 vs 0.736, `poc/results/retrieval-canonical.json`) |
+| Local embeddings: fastembed `BAAI/bge-small-en-v1.5`, ONNX on CPU | A provider's embedding API; bge-base | Works with any LLM provider, costs nothing per query, has no rate limit and is deterministic. Embedding a query takes milliseconds: `/debug/retrieve` answers in 32 ms p50 for the whole retrieval (`eval/results/retrieval-baseline.json`). The container idles at 211 MiB RSS (`eval/results/container-smoke.json`). bge-base was not better enough to pay 3.3x the embedding time (POC: hybrid MRR@10 0.745 vs 0.736, `poc/results/retrieval-canonical.json`) |
 | Vectors in process (numpy) | A vector database | 2,434 chunks x 384 dims is 3.7 MB; one less service to run |
 | Rendered HTML of the docs pages | Raw MDX from the docs repo | The canonical URL comes as is, and MDX components hide content on 22 of 124 pages (research.md §3.1) |
 | Structure-aware chunks: 300-token target, 450 hard max, a context header `title \| product > breadcrumbs > headings [tab path]` | Fixed-size windows; 600-token chunks | Never splits a code fence or a table (oversized tables repeat their header row), never mixes two tab panels, keeps headings with their content. 600-token chunks scored lower on every POC config (`poc/results/retrieval-canonical.json`) |
 | Fact cards with per-section citations | Relying on pages that never state a negative | "Does OLake support Oracle CDC?" needs a page that says no. 6 cards, each fact checked against its cited pages (`index/factcheck.py`); each section cites only the pages its facts come from |
 | Canonical URLs in `sources`, deep links in the UI | Anchored URLs in `sources` | Robust matching for graders, precise navigation for people |
 | Three logged abstain triggers: the off-topic gate, the model's NO_ANSWER / OUT_OF_SCOPE, no valid citation | A prompt-only "say I don't know" | Measurable and tunable. The gate alone, at the calibrated 0.6894, catches 5 of the 12 must-abstain rows with no false abstain (`eval/results/retrieval-baseline.json`); the model and citation validation do the rest |
-| Outside pages (Iceberg, Amoro, Postgres, MySQL, MongoDB, Kafka, catalogs), labelled, ranked below first-party pages | No outside pages | Without them MRR@10 drops 0.854 to 0.834, and no gate score changes (`eval/results/retrieval-no-outside.json`) |
+| Outside pages (Iceberg, Amoro, Postgres, MySQL, MongoDB, Kafka, catalogs), labelled, ranked below first-party pages | No outside pages | Without them MRR@10 drops 0.854 to 0.840 and hit@1 0.780 to 0.768 (`eval/results/retrieval-no-outside.json`). The 12 must-abstain gate scores are unchanged (UNK-04 moves by 6e-08, float rounding), so the calibrated threshold is the same. Two must-answer gate scores drop: SYNC-08 0.7728 to 0.7673, SYNC-12 0.7868 to 0.7782 |
 | Loader plus iframe widget | A Shadow DOM widget | Needs no host-page CORS or connect-src change, and styles are isolated |
 | Exact-match cache only | A semantic cache | Two similar questions can need different answers |
-| Incremental refresh on the sitemap ETag plus content hashes, and git SHAs | Full rebuilds; HTTP ETags as content signals | olake.io ETags change on every site deploy, so the ETag only decides whether to re-fetch; content hashes decide what to re-chunk and re-embed. `git ls-remote` uses no API quota. A quiet poll takes 1.6 s |
+| Incremental refresh on the sitemap ETag plus content hashes, and git SHAs | Full rebuilds; HTTP ETags as content signals | olake.io ETags change on every site deploy, so the ETag only decides whether to re-fetch; content hashes decide what to re-chunk and re-embed. `git ls-remote` uses no API quota. A quiet poll (sitemap 304, no repo moved) takes 1.6 s, the median of 3 runs (`eval/results/container-smoke.json`) |
 
 ## Evaluation
 
@@ -123,7 +123,7 @@ before any of this code existed ([docs/eval-questions.md](docs/eval-questions.md
 |---|---|---|---|---|---|---|
 | Hybrid, RERANK=off (shipped) | 0.780 | 0.890 | 0.939 | 0.988 | 0.854 | `eval/results/retrieval-baseline.json` |
 | Hybrid + TinyBERT@20 | 0.707 | 0.902 | 0.915 | 0.988 | 0.814 | `eval/results/retrieval-tinybert.json` |
-| Hybrid, no outside tier | 0.756 | 0.878 | 0.915 | 0.988 | 0.834 | `eval/results/retrieval-no-outside.json` |
+| Hybrid, no outside tier | 0.768 | 0.878 | 0.915 | 0.988 | 0.840 | `eval/results/retrieval-no-outside.json` |
 
 **End to end:** TBD(final-eval). This table is filled from `uv run python -m eval.report eval/results/<final>.json`.
 
@@ -157,12 +157,16 @@ Measured on the laptop (Apple M5 Max, 18 cores; local ollama `qwen3:32b`):
 
 | What | Value | Source |
 |---|---|---|
-| Retrieval (`/debug/retrieve`, BM25 + dense + ranking) | p50 33 ms, p95 45 ms; 86 ms p50 with TinyBERT | `eval/results/retrieval-baseline.json`, `retrieval-tinybert.json` |
-| `/ask` end to end, local 32B model | p50 12.5 s, p95 18.5 s over 5 rows | `eval/results/smoke-5.json` |
-| Container: time to `/readyz` | 1.3 s after `docker run` | local `docker run` of `ask-olake:local` |
-| Container memory | 222 MiB idle, 224 MiB after one answer | `docker stats` |
-| Image | 765 MB unpacked (arm64); the amd64 build works | `docker build`, `docker buildx --platform linux/amd64` |
-| Index build | 55.7 s with every chunk embedded (1,647 chunks), 23.8 s on a rebuild that reuses the vectors | `uv run python -m index.build` output |
+| Retrieval (`/debug/retrieve`, BM25 + dense + ranking) | p50 32 ms, p95 46 ms; 93 ms p50 with TinyBERT | `eval/results/retrieval-baseline.json`, `retrieval-tinybert.json` |
+| `/ask` end to end, local 32B model | p50 28.4 s, p95 57.8 s over 94 rows, one at a time (commit a184a65) | `eval/results/baseline.json` |
+| Container: time to `/readyz` | 1.1 s after `docker run` | `eval/results/container-smoke.json` |
+| Container memory | 211 MiB idle, 211 MiB after five `/ask` calls with no LLM configured | `eval/results/container-smoke.json` |
+| Image | 753 MB unpacked, 204 MB compressed (arm64); the `linux/amd64` build also succeeds, 208 MB compressed | `eval/results/container-smoke.json` |
+| Index refresh check, nothing changed | 1.6 s, median of 3 runs (sitemap 304, four `git ls-remote`, no REST call) | `eval/results/container-smoke.json` |
+| Index build from the cached pages | 66 s with every chunk embedded (the shipped 2,434 chunks); 4.1 s when every vector is reused | `eval/results/container-smoke.json` |
+
+The container and build timings were measured with no LLM job running; the refresh check is network-bound
+(`eval/results/container-smoke.json`).
 
 Hosted estimates, **not measured**:
 - **Tokens.** About 3.3k prompt and 170 completion tokens per answer (the POC's k=10 run:
@@ -267,9 +271,9 @@ deploy/deploy.sh smoke "$URL"                         # /healthz, /readyz, /ask 
     vs `eval/results/retrieval-baseline.json`).
   - The POC's corpus v2 had shown +0.034 (0.744 to 0.778, `poc/results/retrieval-v2.json`). That gain did not
     reproduce here.
-- **The outside tier is kept.** Removing it costs 0.020 MRR@10 and changes none of the 12 must-abstain gate scores
-  (`eval/results/retrieval-no-outside.json`). The remaining risk is in generation: outside chunks reach the context
-  of near-domain off-topic rows (OOS-05 has 4 in its top 10).
+- **The outside tier is kept.** Removing it costs 0.014 MRR@10 (0.854 to 0.840) and leaves the 12 must-abstain
+  gate scores unchanged (`eval/results/retrieval-no-outside.json`). The remaining risk is in generation: outside
+  chunks reach the context of near-domain off-topic rows (OOS-05 has 4 in its top 10).
 - **Additive I1 metadata.** Approved as an additive extension of contract I1:
   - `product` on release-gh chunks: olake-fusion is fusion; olake, olake-ui and olake-helm are go.
   - `repo` on release-gh and issue chunks; `lines` null on spec.json chunks (converted tables have no source lines).
@@ -298,7 +302,7 @@ deploy/deploy.sh smoke "$URL"                         # /healthz, /readyz, /ask 
   - Every question is followed by a cite reminder.
   - An answer with no `[n]` is retried once with its own text plus "add [n] citations". The same retry applies to an
     answer cut off at the token cap or an empty one.
-  - On local qwen3, ADV-03 went from `no_valid_citation` to answered with 2 sources (api's 6-row check).
+  - Its effect is measured by the final eval: TBD(final-eval).
   - The system prompt is the plan's text verbatim, pinned by tests (`e7363a1`). The few-shot examples are two premise
     corrections on topics no eval row uses.
 - **Ranking rules as built.**
