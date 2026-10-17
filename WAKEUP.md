@@ -62,13 +62,18 @@ The LLM chain is tried in order (decision D7), so get the keys in this order:
    https://aistudio.google.com/apikey (about 15 RPM, data used by Google).
 4. **Optional: `GITHUB_TOKEN`.** A fine-grained token at https://github.com/settings/personal-access-tokens with
    read-only "Public repositories" access. It only matters for the index refresher.
+5. **`PROJECT`: your Google Cloud project id**, for Cloud Run: `gcloud projects list`, or create one in the console.
+   Step 4 links billing to it.
 
 ```bash
 cp .env.example .env
-${EDITOR:-vi} .env     # fill LLM_*, LLM_FALLBACK_*, LLM_FALLBACK2_* (BASE_URL, API_KEY, MODEL, REASONING_EFFORT);
-                       # the minimum is LLM_BASE_URL, LLM_API_KEY and LLM_MODEL (the header of .env.example)
+${EDITOR:-vi} .env     # fill LLM_*, LLM_FALLBACK_*, LLM_FALLBACK2_* (BASE_URL, API_KEY, MODEL, REASONING_EFFORT)
+                       # and PROJECT; the minimum is LLM_BASE_URL, LLM_API_KEY, LLM_MODEL and PROJECT
 chmod 600 .env         # .env is gitignored; never commit it
 ```
+
+`.env` is the one place to fill. The later steps load it with `set -a; source .env; set +a`, so put values there,
+not in an `export`: its live lines would reset an exported value each time.
 
 ## 2. Smoke-test every key [outward] [$: a few hundred tokens per key]
 
@@ -130,7 +135,7 @@ Stop the server with Ctrl-C.
 
 ```bash
 gcloud auth login
-export PROJECT=<your-project-id>                              # gcloud projects list, or create one in the console
+set -a; source .env; set +a                                   # PROJECT, from step 1
 gcloud billing accounts list                                  # pick the ACCOUNT_ID
 gcloud billing projects link "$PROJECT" --billing-account <ACCOUNT_ID>
 gcloud config set project "$PROJECT"
@@ -140,7 +145,7 @@ gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregi
 ## 5. Secrets, once [outward] [$: Secret Manager, a few cents a month]
 
 ```bash
-set -a; source .env; set +a                                   # puts the keys into the shell environment
+set -a; source .env; set +a                                   # the keys and PROJECT, into the shell environment
 deploy/deploy.sh secrets
 ```
 
@@ -153,9 +158,12 @@ again adds a new version to each secret.
 ```bash
 set -a; source .env; set +a                                   # the provider settings from step 1
 deploy/deploy.sh primary
-export URL=$(gcloud run services describe ask-olake --region asia-south1 --format 'value(status.url)')
+export URL=$(gcloud run services describe "${SERVICE:-ask-olake}" --region "${REGION:-asia-south1}" --format 'value(status.url)')
 export CANARY=$(cat .canary)                                  # the fresh prompt-leak canary of this deploy
 ```
+
+The `gcloud` lines in this and later steps follow `REGION`, `SERVICE` and `SA_NAME` if you set them, as `deploy.sh`
+does.
 
 `.env` is the one place to fill. `deploy.sh` takes each provider's `BASE_URL`, `MODEL` and `REASONING_EFFORT` from
 the shell and prints them, with where each came from, before it deploys (never a key). The keys reach the service
@@ -209,7 +217,8 @@ Also check:
 **Watch it** while the scorer runs, in two more terminals:
 
 ```bash
-gcloud run services logs read ask-olake --region asia-south1 --limit 50    # the latest lines; re-run it as needed
+# the logs commands are in the beta track: gcloud components install beta, if gcloud asks for it
+gcloud beta run services logs read "${SERVICE:-ask-olake}" --region "${REGION:-asia-south1}" --limit 50   # re-run as needed
 # DigitalOcean: doctl apps logs <APP_ID> web --follow
 # Plan §9 synthetic probe: /healthz and one uncached /ask a minute [$: one answer a minute, about 0.2M tokens an hour]
 while true; do
@@ -256,8 +265,7 @@ The full run prints a calibration line:
 gate calibration: lowest must-answer gate score 0.7094 (SRC-11) - 0.02 = ABSTAIN_THRESHOLD 0.6894; must-abstain rows below it: 5/12
 ```
 
-Put that threshold into `deploy/env.yaml` (`ABSTAIN_THRESHOLD: "0.6894"`), commit, and run
-`deploy/deploy.sh primary` again. A free local equivalent, with no LLM: start a server with `DEBUG=1` and run
+Put that threshold into `deploy/env.yaml` (`ABSTAIN_THRESHOLD: "0.6894"`), commit, and re-run step 6. A free local equivalent, with no LLM: start a server with `DEBUG=1` and run
 `uv run python -m eval.run --base-url http://127.0.0.1:8000 --retrieval-only`. It prints the same line from
 `/debug/retrieve`.
 
@@ -275,12 +283,14 @@ the 30 s `/ask` bound, so a hung primary leaves the fallback only about 5 s.
 
 App Platform builds from GitHub, so the repo must be pushed first, and App Platform needs access to it. As in
 step 6, it takes the provider settings and the keys from your shell (the keys become SECRET envs) and the tuning
-defaults from `deploy/env.yaml`.
+defaults from `deploy/env.yaml`. `DO_BRANCH` defaults to the branch checked out here and is refused on a detached
+HEAD. App Platform builds the pushed branch, so the conservative path's local `app/` (the box above) does not
+reach it.
 
 ```bash
 doctl auth init                                               # token: https://cloud.digitalocean.com/account/api/tokens
-set -a; source .env; set +a                                   # the keys go into the spec as SECRET envs
-DO_REPO=<owner>/<repo> deploy/deploy.sh fallback              # creates the app, or updates it on later runs
+set -a; source .env; set +a                                   # the provider settings and keys (SECRET envs)
+DO_REPO=<owner>/<repo> DO_BRANCH=soma/odatalake-build deploy/deploy.sh fallback   # creates or updates the app
 deploy/deploy.sh smoke https://<the printed DefaultIngress>
 ```
 
@@ -316,14 +326,15 @@ The demo page at `https://HOST/` shows the widget with these snippets filled in.
 ## 12. Roll back and tear down [outward]
 
 ```bash
+set -a; source .env; set +a                                   # PROJECT
 # Cloud Run: send all traffic to the previous revision
-gcloud run revisions list --service ask-olake --region asia-south1
-gcloud run services update-traffic ask-olake --region asia-south1 --to-revisions <REVISION>=100
+gcloud run revisions list --service "${SERVICE:-ask-olake}" --region "${REGION:-asia-south1}"
+gcloud run services update-traffic "${SERVICE:-ask-olake}" --region "${REGION:-asia-south1}" --to-revisions <REVISION>=100
 # A bad index: point CURRENT at the previous version (kept next to it), commit, and redeploy
 ls data/index && uv run python -c "from index.manifest import swap_current; from index.config import INDEX_DIR; swap_current(INDEX_DIR, '<VERSION>')"
 # Tear down: the service, the secrets, the service account, the DigitalOcean app
-gcloud run services delete ask-olake --region asia-south1
+gcloud run services delete "${SERVICE:-ask-olake}" --region "${REGION:-asia-south1}"
 for s in llm-api-key llm-fallback-api-key llm-fallback2-api-key github-token; do gcloud secrets delete "$s" --quiet; done
-gcloud iam service-accounts delete "ask-olake-run@$PROJECT.iam.gserviceaccount.com" --quiet
+gcloud iam service-accounts delete "${SA_NAME:-ask-olake-run}@$PROJECT.iam.gserviceaccount.com" --quiet
 doctl apps list && doctl apps delete <APP_ID>
 ```

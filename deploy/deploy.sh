@@ -16,7 +16,8 @@
 #                      N instances mean N x DAILY_TOKEN_BUDGET and N x MAX_CONCURRENCY toward the provider
 #   LLM_API_KEY, LLM_FALLBACK_API_KEY, LLM_FALLBACK2_API_KEY, GITHUB_TOKEN    keys; any that is unset is skipped
 #   DO_REPO            GitHub owner/name for App Platform (fallback)
-#   DO_BRANCH          default main                 DO_APP_NAME    default ask-olake
+#   DO_BRANCH          default: the checked-out branch (refused when detached); App Platform builds it from GitHub
+#   DO_APP_NAME        default ask-olake
 #   DO_SIZE            default apps-s-1vcpu-2gb (apps-s-1vcpu-1gb minimum, apps-d-1vcpu-4gb for the upgrades)
 #   SMOKE_BURST        default 0 (smoke): number of concurrent /ask requests in the burst check
 #
@@ -34,7 +35,7 @@ MEMORY=${MEMORY:-2Gi}
 CPU=${CPU:-1}
 MIN_INSTANCES=${MIN_INSTANCES:-1}
 MAX_INSTANCES=${MAX_INSTANCES:-1}
-DO_BRANCH=${DO_BRANCH:-main}
+DO_BRANCH=${DO_BRANCH:-}  # resolved by cmd_fallback: the checked-out branch
 DO_APP_NAME=${DO_APP_NAME:-ask-olake}
 DO_SIZE=${DO_SIZE:-apps-s-1vcpu-2gb}
 ENV_FILE=deploy/env.yaml
@@ -154,8 +155,8 @@ check_llm_env() {  # the effective provider settings: a primary base URL and mod
     "deploy/env.yaml (WAKEUP.md step 6). Without it /ask only returns the degraded answer"
   for k in LLM_BASE_URL LLM_FALLBACK_BASE_URL LLM_FALLBACK2_BASE_URL; do
     v=$(env_value "$k")
-    case "$v" in
-      *://localhost*|*://127.*|*://0.0.0.0*|*://\[::1\]*)
+    case "$(printf '%s' "$v" | tr '[:upper:]' '[:lower:]')" in
+      *://localhost*|*://127.*|*://0.0.0.0*|*://\[::1\]*|*://host.docker.internal*)
         die "$k=$v points at this laptop, which a cloud host cannot reach (is .env's local-ollama block on?)" ;;
     esac
   done
@@ -227,6 +228,7 @@ cmd_primary() {
 render_do_spec() {  # render_do_spec OUT
   local out=$1 pair var
   [ -f .do/app.yaml ] || die ".do/app.yaml is missing"
+  [ -n "$DO_BRANCH" ] || die "DO_BRANCH is empty"
   {
     sed -e "s#\${DO_APP_NAME}#$DO_APP_NAME#g" -e "s#\${DO_REPO}#$DO_REPO#g" -e "s#\${DO_BRANCH}#$DO_BRANCH#g" \
         -e "s#\${DO_SIZE}#$DO_SIZE#g" .do/app.yaml | sed '/^#ENVS#$/,$d'
@@ -251,6 +253,13 @@ cmd_fallback() {
   require_env DO_REPO
   check_llm_env
   [ -n "${LLM_API_KEY:-}" ] || die "LLM_API_KEY is not set in this shell: set -a; source .env; set +a (WAKEUP.md step 10)"
+  if [ -z "$DO_BRANCH" ]; then
+    DO_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+    case "$DO_BRANCH" in
+      ''|HEAD) die "no branch checked out (detached HEAD): set DO_BRANCH to the pushed branch App Platform should build" ;;
+    esac
+  fi
+  echo "App Platform builds $DO_REPO, branch $DO_BRANCH, from GitHub: push it first; local changes do not reach it"
   show_llm_env "$([ -n "${LLM_FALLBACK2_API_KEY:-}" ] || echo 1)"
   local spec=deploy/do-app.deploy.yaml id
   new_canary
