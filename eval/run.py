@@ -344,14 +344,15 @@ def score_row(q: dict, res: dict, canary: str | None) -> dict:
 
 
 def rate_block(rows: list[dict], flag: str = "abstained", count_degraded: bool = True) -> dict:
-    """Rows whose flag is set, with the abstain_kind breakdown. count_degraded=False (abstain recall) does not credit
-    a degraded answer as a decline: the server failed, it did not decline."""
+    """Rows whose flag is set, out of n = every row given, with the abstain_kind breakdown. count_degraded=False
+    (abstain recall): a degraded answer is not a decline (the server failed), so it counts as a MISS: it stays in n
+    and is listed under degraded_counted_as_missed."""
     hits = [r for r in rows if r.get(flag) and (count_degraded or not r.get("degraded"))]
     kinds = Counter(r.get("abstain_kind") or "none" for r in hits)
     out = {"n": len(rows), "count": len(hits), "rate": round(len(hits) / len(rows), 3) if rows else None,
            "kinds": dict(kinds), "ids": [r["id"] for r in hits]}
     if not count_degraded:
-        out["degraded_not_counted"] = [r["id"] for r in rows if r.get("degraded")]
+        out["degraded_counted_as_missed"] = [r["id"] for r in rows if r.get("degraded")]
     return out
 
 
@@ -691,7 +692,9 @@ def print_full(report: dict) -> None:
     a, fa, fm = s["abstain_recall"], s["false_abstain_answerable"], s["false_abstain_must_answer"]
     d = s["degraded"]
     print(f"degraded answers {d['count']} {d['by_reason']} {d['ids']}")
-    print(f"abstain recall {a['count']}/{a['n']} ({a['rate']}) {a['kinds']}")
+    print(f"abstain recall {a['count']}/{a['n']} ({a['rate']}) {a['kinds']}"
+          + (f"; degraded (counted as missed): {a['degraded_counted_as_missed']}"
+             if a.get("degraded_counted_as_missed") else ""))
     print(f"false abstain answerable {fa['count']}/{fa['n']} ({fa['rate']}) {fa['kinds']} {fa['ids']}")
     print(f"false abstain must-answer {fm['count']}/{fm['n']} ({fm['rate']}) {fm['kinds']} {fm['ids']}")
     print(f"latency ms p50 {s['latency_ms']['p50']} p95 {s['latency_ms']['p95']} max {s['latency_ms']['max']}; "

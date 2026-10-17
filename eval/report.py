@@ -53,7 +53,9 @@ def full_table(r: dict, name: str) -> str:
         ("Fact coverage (judge)", _v(s["fact_coverage_mean"])),
         ("BEHAVIOR pass (judge)", _v(s["behavior_pass_rate"])),
         ("Contradictions (judge)", _v(s["contradictions"])),
-        ("Abstain recall (unanswerable + out-of-scope)", f"{a['count']}/{a['n']} ({_v(a['rate'])})"),
+        ("Abstain recall (unanswerable + out-of-scope)", f"{a['count']}/{a['n']} ({_v(a['rate'])})"
+         + (f"; degraded, counted as missed: {', '.join(a['degraded_counted_as_missed'])}"
+            if a.get("degraded_counted_as_missed") else "")),
         ("False abstain, answerable", f"{fa['count']}/{fa['n']} ({_v(fa['rate'])})"),
         ("False abstain, all must-answer", f"{fm['count']}/{fm['n']} ({_v(fm['rate'])})"),
         ("Latency p50 / p95 / max (ms)", f"{_v(lat['p50'])} / {_v(lat['p95'])} / {_v(lat['max'])}"),

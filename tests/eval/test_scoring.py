@@ -126,7 +126,7 @@ def test_summary_rates_and_kinds():
     s = ev.summary_of(rows, ask_wall=1.5, judge_wall=0.0)
     assert s["n"] == 7 and s["contract_failures"] == 0 and s["schema_valid"] == 1.0
     assert s["abstain_recall"] == {"n": 2, "count": 1, "rate": 0.5, "kinds": {"empty_sources": 1}, "ids": ["O-01"],
-                                   "degraded_not_counted": []}
+                                   "degraded_counted_as_missed": []}
     assert s["degraded"] == {"count": 0, "by_reason": {}, "ids": []}
     assert s["false_abstain_answerable"] == {"n": 2, "count": 1, "rate": 0.5,
                                              "kinds": {"pattern:i don't know": 1}, "ids": ["A-02"]}
@@ -351,7 +351,10 @@ def test_summary_counts_degraded_and_recall_does_not_credit_it():
             ev.score_row(q["U-01"], res("I don't know.", sources=(), reason="model_dont_know"), None)]
     s = ev.summary_of(rows, 1.0, 0.0)
     assert s["degraded"] == {"count": 2, "by_reason": {"llm_failed": 1, "queue_timeout": 1}, "ids": ["A-01", "O-01"]}
-    assert s["abstain_recall"]["count"] == 1 and s["abstain_recall"]["degraded_not_counted"] == ["O-01"]
+    # the degraded must-abstain row stays in the denominator and counts as a miss
+    rec = s["abstain_recall"]
+    assert rec["n"] == 2 and rec["count"] == 1 and rec["rate"] == 0.5 and rec["ids"] == ["U-01"]
+    assert rec["degraded_counted_as_missed"] == ["O-01"]
     assert s["false_abstain_answerable"]["kinds"] == {"degraded:llm_failed": 1}
     from eval import report as rp
     assert rp._degraded(s) == "2 (llm_failed 1, queue_timeout 1)"
