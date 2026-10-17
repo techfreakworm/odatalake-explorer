@@ -2,16 +2,15 @@
 
 > **What to deploy**
 > - **The tip of branch `soma/odatalake-build`**: a checkout of that branch once the orchestrator has pushed it, or
->   this worktree. `git log -1 --format='%h %s'` shows which commit you have.
-> - The tip's `app/` adds two prompt levers to `2dbc70f`, the last verifier-approved commit: L2, a premise check
->   (`fb2ff63`), and L3, a citation for every supporting passage (`d474c14`). Both are in `app/prompts.py`. The evals
->   running now measure them (`eval/results/lever1-cite.json`, `lever2-premise.json`, `lever3-citeall.json`).
-> - If the final eval drops a lever, the revert lands on the branch: `git pull`, then re-run step 6. A redeploy takes
->   about 5 to 10 minutes (an estimate, not measured from here: Cloud Build rebuilds the image, then the new revision
->   has to pass `/readyz`). The running revision keeps serving until the new one is ready.
-> - **The conservative path** ships `2dbc70f`'s prompts with the current scripts: run `git checkout 2dbc70f -- app/`
->   before step 6 (only `app/prompts.py` changes), and `git checkout HEAD -- app/` to undo it. `/healthz` still
->   reports the tip's SHA.
+>   this worktree. `git log -1 --format='%h %s'` shows which commit you have. Its `app/` is the one the final eval
+>   measured (`3675869`, `eval/results/final.json`).
+> - **The prompt setting.** The default, `PROMPT_REMINDERS` off, is the plan's answer path. It kept the most declines
+>   (abstain recall 10 or 11 of 12 in its two runs, against 8 or 9 with the levers). `PROMPT_REMINDERS: "on"` in
+>   `deploy/env.yaml` turns on prompt levers 1-4: better fact coverage and source hit, lower abstain recall (README,
+>   "Prompt levers"). `/healthz` reports the setting as `prompt_reminders`.
+> - **A redeploy** (a changed setting, or a later commit after `git pull`) is step 6 again. It takes about 5 to 10
+>   minutes (an estimate, not measured from here: Cloud Build rebuilds the image, then the new revision has to pass
+>   `/readyz`), and the running revision keeps serving until the new one is ready.
 
 Run these steps in order, from the repo root, in bash or zsh. Each step says what it costs and whether it reaches
 outside this laptop:

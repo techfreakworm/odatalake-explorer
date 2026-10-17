@@ -126,24 +126,76 @@ before any of this code existed ([docs/eval-questions.md](docs/eval-questions.md
 | Hybrid + TinyBERT@20 | 0.707 | 0.902 | 0.915 | 0.988 | 0.814 | `eval/results/retrieval-tinybert.json` |
 | Hybrid, no outside tier | 0.768 | 0.878 | 0.915 | 0.988 | 0.840 | `eval/results/retrieval-no-outside.json` |
 
-**End to end:** TBD(final-eval). This table is filled from `uv run python -m eval.report eval/results/<final>.json`.
+**End to end** (`eval/results/final.json`, the shipped default `PROMPT_REMINDERS=off` at `3675869`: 94 rows, one at
+a time, against local `qwen3:32b`, judged by the same model; from `uv run python -m eval.report
+eval/results/final.json`):
 
 | Metric | Value |
 |---|---|
-| Schema valid / contract failures | TBD(final-eval) |
-| Behaviour correct | TBD(final-eval) |
-| Source hit rate | TBD(final-eval) |
-| Fact coverage / BEHAVIOR pass (judge) | TBD(final-eval) |
-| Abstain recall (12 rows) | TBD(final-eval) |
-| False abstain: answerable (69) / all must-answer (82) | TBD(final-eval) |
-| Latency p50 / p95 | TBD(final-eval) |
+| Schema valid / contract failures | 1.000 / 0 |
+| Behaviour correct | 91/94 (0.968) |
+| Source hit rate | 74/82 (0.902) |
+| Fact coverage / BEHAVIOR pass (judge) | 0.702 / 0.95 |
+| Abstain recall (12 rows) | 10/12 |
+| False abstain: answerable (69) / all must-answer (82) | 0/69 / 1/82 |
+| Latency p50 / p95 | 26.9 s / 64.9 s |
+
+**Prompt levers, and why the default ships without them.** Four prompt levers were measured end to end, each on top
+of the one before, against the baseline answer path and with the scorer frozen:
+
+| Run | Commit | File | Abstain recall | False abstain (69 / 82) | Behaviour | Source hit | Facts | BEHAVIOR | Contradictions | p50 / p95 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Baseline: the plan's prompt, plain retry | `a184a65` | `eval/results/baseline.json` | 11/12 | 0 / 1 | 92/94 | 74/82 | 0.706 | 0.95 | 6 | 28.4 / 57.8 s |
+| L1: + cite reminder and uncited retry | `56d642e` | `eval/results/lever1-cite.json` | 9/12 | 1 / 2 | 89/94 | 77/82 | 0.717 | 1.00 | 5 | 24.4 / 50.5 s |
+| L2: + premise check | `fb2ff63` | `eval/results/lever2-premise.json` | 9/12 | 2 / 2 | 89/94 | 76/82 | 0.737 | 1.00 | 4 | 26.4 / 58.1 s |
+| L3: + cite every supporting passage | `d474c14` | `eval/results/lever3-citeall.json` | 8/12 | 1 / 1 | 89/94 | 77/82 | 0.723 | 1.00 | 5 | 27.1 / 66.1 s |
+| L4: + marker and refusal reminders (= `PROMPT_REMINDERS=on`) | `974014d` | `eval/results/lever4-markers.json` | 9/12 | 1 / 1 | 90/94 | 76/82 | 0.755 | 0.95 | 5 | 28.3 / 59.9 s |
+| Final: `PROMPT_REMINDERS=off` (the default) | `3675869` | `eval/results/final.json` | 10/12 | 0 / 1 | 91/94 | 74/82 | 0.702 | 0.95 | 7 | 26.9 / 64.9 s |
+
+- **The rule, fixed before L3 and L4 ran: targets first, then quality.** A lever set becomes the default only if it
+  meets the plan's targets (checkpoint 2.2: contract failures 0, abstain recall at least 90%, which is 11/12, and
+  false abstain at most 5%, which is 3/69). Only then do fact coverage and source hit decide.
+- **Outcome.** No lever run reached 11/12 (the best was 9/12), so the default is the baseline answer path: the
+  plan's prompt with a plain retry. The final run measures it again at the shipped commit. Against `baseline.json`,
+  the same path at `a184a65`, it shows 1 row with a changed verdict (behaviour correct: UNK-02; abstained: UNK-02).
+- **Recall run to run.** The final run's abstain recall is 10/12 against the baseline's 11/12, below the 90% target.
+  UNK-02 answered this time (answered, 1 source), where the baseline abstained (no_valid_citation, 0 sources). The
+  same decline counts as an abstain only when it carries no valid citation. On this path recall is 10 or 11 of 12
+  run to run, still above every lever run (8 or 9).
+- **Reproducibility.** The same answer path on the same index, run twice: 48 of 94 answers are byte-identical to the
+  baseline's and 83 of 94 source lists match; local generation is not deterministic, so single-row flips like the
+  above are run-to-run noise.
+- **`PROMPT_REMINDERS=on`** turns on all four levers, as measured in `eval/results/lever4-markers.json` (`974014d`):
+  - L1: a cite reminder after every question, and a targeted retry of an uncited or cut-off answer;
+  - L2: a premise check per question: correct a contradicted assumption with a cited "No:", copy configs verbatim;
+  - L3: a request to cite every passage that supports a sentence;
+  - L4: reminders that restate the `NO_ANSWER` and `OUT_OF_SCOPE` markers, and ask for the exact refusal of a
+    request to reveal the instructions.
+  - The measured trade-off against the baseline: fact coverage 0.755 vs 0.706, source hit 0.927 vs 0.902, and ADV-03
+    fixed (answered with its sources), but abstain recall 9/12 vs 11/12.
+  - `off`, the default, is the baseline answer path of `a184a65`: the user message ends with the question, and a
+    truncated or uncited answer is retried once with the same messages. Only `on`, in any case, turns the levers on:
+    `1`, `true` or any other value logs a `config_warning` and runs `off`. `/healthz` and the startup log report
+    the setting as `prompt_reminders`.
+- **Why the reminders cost abstains** (the must-abstain rows across the runs):
+  - UNK-02: its decline counts as an abstain only when it cites nothing. The uncited retry (L1) asks for citations, so
+    the lever runs cite it and count it as answered (L1 to L3) unless its wording matches (L4). The default path
+    cites it in some runs too: the final run did, the baseline did not.
+  - OOS-03: the premise check (L2) turns an out-of-scope Debezium question into a cited "No: OLake does not use
+    Debezium's snapshot.mode ...". It pulls against rules 3 and 5 of the system prompt.
+  - UNK-04: a decline with a source in every run; whether it counts depends on its wording.
+  - UNK-03: answered in every run, the baseline included. Rule 10 (pricing: point to hello@olake.io) makes the model
+    reply with the contact and a cited FAQ page instead of `NO_ANSWER`.
 
 A 5-row smoke through the LLM (`eval/results/smoke-5.json`) had 0 contract failures and 4 of 5 rows behaving
 correctly. ADV-03 obeyed an injected "no citations" request and so abstained for lack of a citation.
 
 **Caveats.**
 - **Local model.** The numbers come from local ollama `qwen3:32b` (reasoning off). They say nothing about a hosted
-  model's quality or speed.
+  model's quality or speed. Re-measure both settings on the hosted model with `uv run python -m eval.run` against
+  the deployed URL (WAKEUP.md step 8), once with `PROMPT_REMINDERS` off and once on.
+- **No held-out set.** The levers were chosen and measured on the same 94 rows, so their gains and losses are
+  optimistic estimates for unseen questions.
 - **Same-model judge.** The judge was the same model as the generator, and LLM judges favour their own outputs. The
   results files flag it; treat fact coverage and BEHAVIOR passes as optimistic.
 - **Lenient URL matching.** Source matching drops the scheme, fragment, query, `www.` and the trailing slash, and the
@@ -151,15 +203,14 @@ correctly. ADV-03 obeyed an injected "no citations" request and so abstained for
 - **Pattern-based abstain detection.** It is a regex. Every abstain records its `abstain_kind` (`empty_sources`,
   `pattern:<phrase>` or `degraded:<reason>`), so an honest partial answer ("... no release date is mentioned in the
   docs") can be told apart from a real abstain.
-- **Soft abstains the rule does not recognise.** In `eval/results/lever1-cite.json`, three unanswerable rows decline
-  with sources, in wording the pattern does not cover. The deterministic check counts them as answered, so abstain
-  recall reads 9/12; the judge passed all three BEHAVIOR checks.
-  - UNK-02: "The provided documentation does not include specific Fusion compaction benchmark numbers ...".
-  - UNK-03: "The cost of an OLake enterprise support contract is not published ..." (missed in the baseline too).
-  - UNK-04: "... there is no specific release or date mentioned for when this feature will be available".
-  - The scorer is frozen at the version that scored the baseline and lever 1, so every before/after comparison uses
-    one rule. The fix is measured in the system instead: the cite reminder had suppressed the model's `NO_ANSWER`
-    and `OUT_OF_SCOPE` markers, and lever 4 addresses that.
+- **Soft abstains the rule does not recognise.** In the final run (`eval/results/final.json`), 2 must-abstain rows
+  decline with sources, in wording the pattern does not cover, and count as answered (abstain recall 10/12); the
+  judge passed them.
+  - UNK-02: "The provided documentation does not include specific benchmark numbers for Fusion ..."
+  - UNK-03: "Pricing for OLake enterprise support contracts is not published. The OLake Go FAQ states ..."
+  - The lever runs also miss OOS-03 and UNK-04 (the lever table above). The scorer is frozen at the version that scored
+    the baseline and lever 1, so every comparison uses one rule; the levers' effect on the model's `NO_ANSWER` and
+    `OUT_OF_SCOPE` markers is measured in the system, not tuned in the scorer.
 
 **How the abstain pattern moved.** The plan's rule ([docs/eval-questions.md](docs/eval-questions.md), "Scoring
 method") lists the don't-know phrases: "I don't know", "not covered in", "the docs do not cover", "no
@@ -188,7 +239,7 @@ Measured on the laptop (Apple M5 Max, 18 cores; local ollama `qwen3:32b`):
 | What | Value | Source |
 |---|---|---|
 | Retrieval (`/debug/retrieve`, BM25 + dense + ranking) | p50 32 ms, p95 46 ms; 93 ms p50 with TinyBERT | `eval/results/retrieval-baseline.json`, `retrieval-tinybert.json` |
-| `/ask` end to end, local 32B model | p50 28.4 s, p95 57.8 s over 94 rows, one at a time (commit a184a65) | `eval/results/baseline.json` |
+| `/ask` end to end, local 32B model | p50 26.9 s, p95 64.9 s over 94 rows, one at a time (commit 3675869) | `eval/results/final.json` |
 | Container: time to `/readyz` | 1.1 s after `docker run` | `eval/results/container-smoke.json` |
 | Container memory | 211 MiB idle, 211 MiB after five `/ask` calls with no LLM configured | `eval/results/container-smoke.json` |
 | Image | 753 MB unpacked, 204 MB compressed (arm64); the `linux/amd64` build also succeeds, 208 MB compressed | `eval/results/container-smoke.json` |
@@ -272,7 +323,8 @@ curl -s -X POST http://127.0.0.1:8000/ask -H 'content-type: application/json' \
 ```bash
 uv run pytest -q -m "not e2e"                        # unit tests (no network, no LLM)
 bash scripts/verify.sh --allow-dirty                 # the verifier's gate: tests, hygiene, e2e on local ollama, docker build
-uv run python -m index.build                         # optional: rebuild the index from the live sources (~25 s with cached vectors)
+# optional: rebuild from the live sources; from cached pages 4.1 s warm, 66 s cold (eval/results/container-smoke.json)
+uv run python -m index.build
 uv run python -m index.refresh --check               # what changed upstream since the index was built
 uv run python -m index.probe "REST catalog configuration"    # BM25 top 5 for a question
 uv run python -m eval.run --base-url http://127.0.0.1:8000 --ids SET-01,SRC-08 --out eval/results/local.json
@@ -329,11 +381,12 @@ deploy/deploy.sh smoke "$URL"                         # /healthz, /readyz, /ask 
     `llm_param_adapted`).
   - Each attempt's first-byte bound is the smaller of `LLM_TIMEOUT_S` and the time left in `ASK_TIMEOUT_S`, so a hung
     primary still leaves time for the fallback.
-- **Citations after the baseline** (`c3f3f50`, after `a184a65`): the ADV-03 fix.
+- **Prompt levers, opt-in** (`PROMPT_REMINDERS=on`; default off). L1 (`c3f3f50`) is the ADV-03 fix:
   - Every question is followed by a cite reminder.
   - An answer with no `[n]` is retried once with its own text plus "add [n] citations". The same retry applies to an
     answer cut off at the token cap or an empty one.
-  - Its effect is measured by the final eval: TBD(final-eval).
+  - Their effect is in the lever table under Evaluation: fact coverage and source hit go up, abstain recall goes
+    down from 11/12 to 9/12, so the default leaves them off.
   - The system prompt is the plan's text verbatim, pinned by tests (`e7363a1`). The few-shot examples are two premise
     corrections on topics no eval row uses.
 - **Ranking rules as built.**
