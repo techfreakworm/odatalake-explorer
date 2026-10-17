@@ -355,3 +355,56 @@ def test_summary_counts_degraded_and_recall_does_not_credit_it():
     assert s["false_abstain_answerable"]["kinds"] == {"degraded:llm_failed": 1}
     from eval import report as rp
     assert rp._degraded(s) == "2 (llm_failed 1, queue_timeout 1)"
+
+
+def test_bare_dont_know_phrases_match_again_but_not_technical_prose():
+    assert ev.idk_phrase("Sorry, no information.") == "no information"
+    assert ev.idk_phrase("No information") == "no information"
+    assert ev.idk_phrase("There is no information about that in the docs.") == "no information"
+    assert ev.idk_phrase("No information is available on Oracle RAC.") == "no information"
+    assert ev.idk_phrase("I can't help.") == "i can't help"
+    assert ev.idk_phrase("Sorry, I cannot help with that.") == "i cannot help"
+    assert ev.idk_phrase("I cannot answer that.") == "cannot answer"
+    for prose in ("CDC guarantees no information is lost during a resync [1].",
+                  "More threads can't help if the source database is the bottleneck [2].",
+                  "Set `max_threads` to 8 [1]; no information loss occurs on retry [2]."):
+        assert ev.idk_phrase(prose) is None, prose
+
+
+def test_latency_block_skips_failed_rows():
+    b = ev.latency_block([30.0, None, 40.0, 20.0])
+    assert b == {"p50": 30.0, "p95": 40.0, "max": 40.0, "n": 3}
+    assert ev.latency_block([]) == {"p50": None, "p95": None, "max": None, "n": 0}
+
+
+def test_print_full_lists_judge_errors(capsys):
+    q = qs()
+    row = ev.score_row(q["A-01"], res(), None)
+    row["judge"] = {"error": "APITimeoutError: Request timed out.", "judge_ms": 600000}
+    report = {"mode": "full", "flags": {}, "rows": [row], "judge": {"model": "m", "errors": 1},
+              "summary": ev.summary_of([row], 1.0, 2.0), "by_type": {}, "by_category": {}}
+    ev.print_full(report)
+    out = capsys.readouterr().out
+    assert "judge errors: 1" in out and "JUDGE ERROR A-01: APITimeoutError: Request timed out." in out
+
+
+def test_first_hit_counts_a_fact_cards_second_cite_url():
+    q = qs()["N-01"]  # expects the Oracle connector page
+    card = {"doc_url": "https://olake.io/docs/", "source_url": "https://olake.io/docs/",
+            "source_urls": ["https://olake.io/docs/", "https://olake.io/docs/connectors/oracle/"]}
+    assert ev.first_hit_rank(q, [{"doc_url": "https://olake.io/docs/x/"}, card]) == 2
+
+
+def test_rescore_does_not_overwrite_its_input(tmp_path, monkeypatch):
+    q = qs()
+    old = {"mode": "full", "flags": {}, "rows": [ev.score_row(q["A-01"], res(), None)],
+           "summary": {"ask_wall_s": 1.0, "judge_wall_s": 0.0}}
+    src = tmp_path / "run.json"
+    src.write_text(json.dumps(old))
+    before = src.read_text()
+    monkeypatch.setattr(ev, "load_questions", lambda path=None: list(qs().values()))
+    with pytest.raises(SystemExit) as e:
+        ev.main(["--rescore", str(src)])
+    assert e.value.code == 0
+    assert src.read_text() == before and (tmp_path / "run.rescored.json").exists()
+    assert "rescored_with" in json.loads((tmp_path / "run.rescored.json").read_text())

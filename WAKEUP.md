@@ -93,7 +93,10 @@ curl -s -X POST http://127.0.0.1:8000/ask -H 'content-type: application/json' \
 
 A good answer has `X-Ask-Reason: answered`, `[1]`-style markers, and `sources` that start with
 `https://olake.io/docs/`.
-- `degraded_*` means no provider is configured, or the call failed. The answer lists pages but cites nothing.
+- `llm_failed`, `ask_timeout`, `queue_timeout`, `rate_limited` or `budget_exhausted` means the degraded answer:
+  no provider is configured, every call failed, or a time or load limit fired. It starts "I couldn't generate an
+  answer right now" and lists up to 3 of the most relevant pages, each cited `[n]`, and `sources` holds those
+  pages. When no pages were retrieved, it says "Please try again in a minute" and `sources` is empty.
 - `retrieval_gate` means the off-topic gate fired.
 Stop the server with Ctrl-C.
 

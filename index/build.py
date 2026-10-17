@@ -307,11 +307,13 @@ def sources_section(c: Corpus) -> dict:
 
 # ----------------------------------------------------------------------------- build
 def publish(index_root: Path, chunks: list[dict], *, model: str, docs: dict, repos: dict, releases: dict,
-            denylist_skipped: list[str], sources_info: dict, build_info: dict) -> tuple[str, dict, dict]:
-    """Embed (reusing vectors), write a new version and swap CURRENT. Returns (version, manifest, embed stats)."""
+            denylist_skipped: list[str], sources_info: dict, build_info: dict,
+            reuse_vectors: bool = True) -> tuple[str, dict, dict]:
+    """Embed (reusing vectors unless reuse_vectors is False), write a new version and swap CURRENT.
+    Returns (version, manifest, embed stats)."""
     current = read_current(index_root)
-    reuse = vectors_from_index(index_root / current, model) if current else {}
-    matrix, stats = embed_chunks(chunks, model=model, reuse=reuse)
+    reuse = vectors_from_index(index_root / current, model) if current and reuse_vectors else {}
+    matrix, stats = embed_chunks(chunks, model=model, reuse=reuse, use_cache=reuse_vectors)
     now = utc_now()
     version = new_version(index_root, now)
     manifest = make_manifest(version=version, built_at=now, model=model, dim=stats["dim"], chunks=chunks, docs=docs,
@@ -325,15 +327,17 @@ def publish(index_root: Path, chunks: list[dict], *, model: str, docs: dict, rep
 
 
 def build(*, offline: bool = False, outside: bool = True, do_prune: bool = False, index_root: Path = INDEX_DIR,
-          model: str = EMBED_MODEL) -> dict:
+          model: str = EMBED_MODEL, reuse_vectors: bool = True) -> dict:
     try:
         with index_lock():
-            return _build(offline=offline, outside=outside, do_prune=do_prune, index_root=index_root, model=model)
+            return _build(offline=offline, outside=outside, do_prune=do_prune, index_root=index_root, model=model,
+                          reuse_vectors=reuse_vectors)
     except Busy as e:
         raise SystemExit(str(e)) from e
 
 
-def _build(*, offline: bool, outside: bool, do_prune: bool, index_root: Path, model: str) -> dict:
+def _build(*, offline: bool, outside: bool, do_prune: bool, index_root: Path, model: str,
+           reuse_vectors: bool = True) -> dict:
     t0 = time.perf_counter()
     corpus = collect(offline=offline, outside=outside)
     chunks = chunk_corpus(corpus)
@@ -351,7 +355,8 @@ def _build(*, offline: bool, outside: bool, do_prune: bool, index_root: Path, mo
         releases=releases_section(corpus), denylist_skipped=corpus.denylist_skipped,
         sources_info={**sources_section(corpus), "factcard_check": {"unmatched": len(factcard_misses),
                                                                     "items": factcard_misses}},
-        build_info={"command": "index.build", "offline": offline, "outside": outside})
+        build_info={"command": "index.build", "offline": offline, "outside": outside, "reuse_vectors": reuse_vectors},
+        reuse_vectors=reuse_vectors)
     removed = prune(index_root) if do_prune else []
     if index_root.resolve() == INDEX_DIR.resolve():
         # the refresher's poll state follows the main index only (an A/B build elsewhere leaves it alone):
@@ -391,11 +396,13 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--offline", action="store_true", help="re-extract from cached HTML, clones and API responses")
     ap.add_argument("--no-outside", action="store_true", help="leave the curated outside pages (tier 4) out")
     ap.add_argument("--prune", action="store_true", help="keep only CURRENT and the previous version")
+    ap.add_argument("--no-reuse", action="store_true", help="embed every chunk (no vector reuse): to time a cold build")
     ap.add_argument("--out-root", "--index-dir", dest="out_root", type=Path, default=INDEX_DIR,
                     help="index root to write (default: INDEX_DIR, i.e. data/index); A/B builds go to .cache/index-ab")
     args = ap.parse_args(argv)
     logs.setup()
-    build(offline=args.offline, outside=not args.no_outside, do_prune=args.prune, index_root=args.out_root)
+    build(offline=args.offline, outside=not args.no_outside, do_prune=args.prune, index_root=args.out_root,
+          reuse_vectors=not args.no_reuse)
 
 
 if __name__ == "__main__":

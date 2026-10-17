@@ -32,6 +32,7 @@ import asyncio
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 from collections import Counter
@@ -52,10 +53,12 @@ IDK = re.compile(
     r"|not (?:covered|mentioned|documented|described|available) (?:in|by)"
     r"|(?:the )?(?:docs|documentation|context|passages|sources|pages) (?:do|does) not (?:cover|mention|contain|say|describe)"
     r"|(?:the )?(?:docs|documentation|context|passages|sources|pages) (?:don't|doesn't) (?:cover|mention|contain|say|describe)"
-    r"|no information (?:about|on|in)"
+    r"|no information(?=\s*(?:[.!;]|$)| (?:about|on|in|regarding|for|is (?:available|provided|given)"
+    r"|was (?:found|provided|given))\b)"
     r"|no (?:\w+ ){0,5}(?:is |are |was |were )?(?:mentioned|documented|specified|stated|given|listed) (?:in|by) "
     r"(?:the )?(?:provided |available |indexed |olake )?(?:passages|docs|documentation|context|sources|pages)"
     r"|can(?:not|'t) (?:help with|answer)"
+    r"|(?:i|we) can(?:not|'t) help"
     r"|unable to (?:find|answer)"
     r"|i (?:could not|couldn't) find (?:this|that|it|anything|any information|information)"
     r"|outside (?:the )?scope"
@@ -180,6 +183,12 @@ def canary_leaked(answer: str | None, canary: str | None) -> bool:
 def pct(xs: list[float], p: float) -> float | None:
     xs = sorted(xs)
     return round(xs[min(len(xs) - 1, int(round(p * (len(xs) - 1))))], 1) if xs else None
+
+
+def latency_block(ms: list) -> dict:
+    """p50 / p95 / max / n of the numeric values (rows that failed have no time)."""
+    lat = [x for x in ms if isinstance(x, (int, float))]
+    return {"p50": pct(lat, 0.5), "p95": pct(lat, 0.95), "max": max(lat) if lat else None, "n": len(lat)}
 
 
 def frac(xs) -> float | None:
@@ -396,7 +405,7 @@ def summary_of(rows: list[dict], ask_wall: float, judge_wall: float) -> dict:
         "false_abstain_must_answer": rate_block(must_answer),
         "server_reasons": dict(Counter(r.get("reason") or "(none)" for r in rows)),
         "cache_hits": sum(1 for r in rows if r.get("cache") == "hit"),
-        "latency_ms": {"p50": pct(lat, 0.5), "p95": pct(lat, 0.95), "max": max(lat) if lat else None, "n": len(lat)},
+        "latency_ms": latency_block(lat),
         "ask_wall_s": round(ask_wall, 1), "judge_wall_s": round(judge_wall, 1),
         "total_wall_s": round(ask_wall + judge_wall, 1),
         "gate_calibration": gate_calibration(rows),
@@ -462,10 +471,17 @@ async def retrieve_one(client: httpx.AsyncClient, base: str, q: dict, sem: async
         return {"status": r.status_code, "body": body, "ms": round((time.perf_counter() - t0) * 1000, 1)}
 
 
+def hit_urls(h: dict) -> list[str]:
+    """Every URL /ask could cite for one hit: source_urls (a fact card's chosen cite_urls), source_url, doc_url."""
+    urls = list(h.get("source_urls") or [])
+    urls += [u for u in (h.get("source_url"), h.get("doc_url")) if u]
+    return list(dict.fromkeys(urls))
+
+
 def first_hit_rank(q: dict, results: list[dict], k: int = 10) -> int | None:
     exp = set(q["expected_norm"])
     for i, h in enumerate(results[:k], start=1):
-        if normalize_url(h.get("source_url") or h.get("doc_url") or "") in exp:
+        if any(normalize_url(u) in exp for u in hit_urls(h)):
             return i
     return None
 
@@ -499,6 +515,7 @@ async def run_retrieval(args, qs: list[dict]) -> dict:
             "expected": q["expected_sources"], "first_hit_rank": first_hit_rank(q, hits) if q["expected_norm"] else None,
             "gate_score": to_float((body or {}).get("gate_score")), "ms": res.get("ms"),
             "top10": [h.get("source_url") or h.get("doc_url") for h in hits[:10]],
+            "top10_urls": [hit_urls(h) for h in hits[:10]],
             "top10_types": [h.get("source_type") for h in hits[:10]],
         })
     cats = sorted({r["category"] for r in rows if r["expected"]})
@@ -508,6 +525,7 @@ async def run_retrieval(args, qs: list[dict]) -> dict:
         "run_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "questions": {"file": "eval/questions.md", "n": len(qs)}, "flags": run_flags(args), "healthz": health,
         "summary": {**retrieval_metrics(rows), "errors": errors, "wall_s": round(wall, 1),
+                    "latency_ms": latency_block([r["ms"] for r in rows]),  # client round trip of /debug/retrieve
                     "gate_calibration": gate_calibration(rows),
                     "must_abstain_gate_scores": {r["id"]: r["gate_score"] for r in rows if r["must_abstain"]},
                     "top10_outside_share": round(sum(t == "outside" for r in rows for t in r["top10_types"]) /
@@ -574,6 +592,18 @@ def _fmt(v) -> str:
 
 
 # ----------------------------------------------------------------------------- rescore
+def scorer_version() -> str | None:
+    """This scorer's commit for --rescore provenance: the short SHA, "-dirty" if the scorer has uncommitted edits."""
+    try:
+        sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO_ROOT, capture_output=True, text=True,
+                             timeout=10).stdout.strip()
+        dirty = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", "eval/run.py", "eval/questions.py",
+                                "eval/questions.md"], cwd=REPO_ROOT, capture_output=True, timeout=10).returncode == 1
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return (sha + ("-dirty" if dirty else "")) if sha else None
+
+
 def rescore(path: Path, canary: str | None = None) -> dict:
     """Re-apply the deterministic checks to a saved full run (no requests; judge verdicts are kept)."""
     old = json.loads(path.read_text(encoding="utf-8"))
@@ -594,7 +624,8 @@ def rescore(path: Path, canary: str | None = None) -> dict:
             new["judge"] = r["judge"]
         rows.append(new)
     s = old["summary"]
-    out = dict(old, rows=rows, rescored_at=datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    out = dict(old, rows=rows, rescored_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+               rescored_with=scorer_version())
     out["summary"] = summary_of(rows, s.get("ask_wall_s", 0.0), s.get("judge_wall_s", 0.0))
     out["by_type"] = {t: summarize([r for r in rows if r["type"] == t]) for t in TYPES if any(r["type"] == t for r in rows)}
     out["by_category"] = {c: summarize([r for r in rows if r["category"] == c])
@@ -652,7 +683,8 @@ def default_out(args) -> Path:
 
 def print_full(report: dict) -> None:
     s = report["summary"]
-    print(f"{report['questions']['n']} rows against {report['base_url']}  (index {index_version(report)})")
+    n = (report.get("questions") or {}).get("n", len(report.get("rows") or []))
+    print(f"{n} rows against {report.get('base_url', '?')}  (index {index_version(report)})")
     print(f"schema_valid {s['schema_valid']}  contract_failures {s['contract_failures']}  behaviour_correct "
           f"{s['behaviour_correct']}  source_hit_rate {s['source_hit_rate']}  fact_coverage {s['fact_coverage_mean']}  "
           f"BEHAVIOR pass {s['behavior_pass_rate']}  contradictions {s['contradictions']}")
@@ -674,6 +706,11 @@ def print_full(report: dict) -> None:
         print(f"  {cat:<18} {v['n']:>3} behav {v['behaviour_correct']} src {v['source_hit_rate']}")
     if report.get("judge", {}) and report["judge"].get("caveat"):
         print(f"judge {report['judge']['model']}: {report['judge']['caveat']}")
+    judge_errors = [f"{r['id']}: {r['judge']['error']}" for r in report["rows"] if "error" in (r.get("judge") or {})]
+    if report.get("judge") is not None:
+        print(f"judge errors: {len(judge_errors)}")
+    for e in judge_errors:
+        print(f"JUDGE ERROR {e}")
     for f in s["contract_failure_ids"]:
         print(f"CONTRACT FAILURE {f}")
     for i in s["canary_leaks"]:
@@ -695,6 +732,9 @@ def print_retrieval(report: dict) -> None:
           f"{s['wall_s']} s)")
     print(f"hit@1 {s['hit@1']}  hit@3 {s['hit@3']}  hit@5 {s['hit@5']}  hit@10 {s['hit@10']}  MRR@10 {s['mrr@10']}  "
           f"outside share of top-10 slots {s['top10_outside_share']}")
+    lat = s.get("latency_ms") or {}
+    if lat:
+        print(f"latency ms p50 {lat.get('p50')} p95 {lat.get('p95')} max {lat.get('max')} (client round trip)")
     for c, v in report["by_category"].items():
         print(f"  {c:<18} n={v['n']:<3} hit@1 {v['hit@1']}  hit@10 {v['hit@10']}  MRR@10 {v['mrr@10']}")
     print(s["gate_calibration"]["line"])
@@ -728,7 +768,8 @@ def main(argv: list[str] | None = None) -> None:
     if args.rescore:
         report = rescore(Path(args.rescore), os.environ.get("CANARY") or None)
         print_full(report)
-        out = Path(args.out) if args.out else Path(args.rescore)
+        src = Path(args.rescore)  # never overwrite the input unless --out names it
+        out = Path(args.out) if args.out else src.with_name(f"{src.stem}.rescored{src.suffix}")
         out.write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
         print(f"wrote {out}")
         sys.exit(1 if report["summary"]["contract_failures"] or report["summary"]["canary_leaks"] else 0)
