@@ -128,6 +128,8 @@ A good answer has `X-Ask-Reason: answered`, `[1]`-style markers, and `sources` t
   answer right now" and lists up to 3 of the most relevant pages, each cited `[n]`, and `sources` holds those
   pages. When no pages were retrieved, it says "Please try again in a minute" and `sources` is empty.
 - `retrieval_gate` means the off-topic gate fired.
+- `smalltalk` means a greeting, thanks, goodbye or "what can you do" message got the canned intro, with no
+  retrieval, no LLM call and empty `sources`.
 Stop the server with Ctrl-C.
 
 ## 4. Google Cloud project, billing and APIs [outward] [$: billing must be enabled]
@@ -230,8 +232,9 @@ done
 ```
 
 Each `/ask` writes one JSON log line with `"event": "ask"`. The fields to watch:
-- `reason`: `answered`, or why not. `abstain_reason` repeats it for the abstains: `retrieval_gate` (the off-topic
-  gate), `model_dont_know`, `out_of_scope` and `no_valid_citation`.
+- `reason`: `answered`, `smalltalk` (the canned intro to a greeting, thanks, goodbye or "what can you do", with no
+  LLM call), or why not. `abstain_reason` repeats it for the abstains: `retrieval_gate` (the off-topic gate),
+  `model_dont_know`, `out_of_scope` and `no_valid_citation`.
 - `degraded: true`, with `reason` `llm_failed`, `ask_timeout`, `queue_timeout`, `rate_limited` or
   `budget_exhausted`: the user got the "most relevant pages" answer. More than a few means trouble upstream.
 - `provider` (`primary`, `fallback` or `fallback2`) answered; `failovers` lists each provider that failed first and

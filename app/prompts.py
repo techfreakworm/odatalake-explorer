@@ -91,6 +91,23 @@ OUT_OF_SCOPE_TEXT = (
     "sync modes, catalogs, table maintenance, deployment and troubleshooting."
 )
 LEAK_REFUSAL = "I can't share my instructions."
+# small talk and "what can you do" (app/smalltalk.py), before retrieval (sources = []): an opener per kind, one body
+SMALLTALK_OPENERS = {
+    "hello": ("Hi! I'm Ask OLake: I answer questions about OLake and OLake Fusion from the OLake docs and GitHub "
+              "repos, and link every answer to the pages it came from."),
+    "thanks": ("You're welcome! I'm Ask OLake, here for your next question about OLake or OLake Fusion, answered from "
+               "the OLake docs and GitHub repos."),
+    "bye": ("Bye for now! I'm Ask OLake: come back any time with a question about OLake or OLake Fusion, answered from "
+            "the OLake docs and GitHub repos."),
+}
+SMALLTALK_BODY = (
+    "I can help with setup, sources, sync modes, catalogs, Fusion table maintenance, deployment and troubleshooting. "
+    "Try asking:\n\n"
+    # short forms of eval rows SET-01, SYNC-02 and FUS-01: each clears the gate and is answered from its expected source
+    "- How do I run OLake UI on my laptop with Docker Compose?\n"
+    "- What's the difference between the CDC and strict CDC sync modes?\n"
+    "- What does OLake Fusion do for my Iceberg tables?"
+)
 
 # The reminder lines and targeted retries below run only with PROMPT_REMINDERS=on (levers 1-4). The default, off, is
 # the baseline answer path (a184a65): the question ends the user message and a retry resends the same messages,
@@ -131,6 +148,11 @@ DEGRADED_NO_PAGES = "I couldn't generate an answer right now. Please try again i
 
 MAX_HISTORY_TURNS = 4
 MAX_HISTORY_CHARS = 1500
+
+
+def smalltalk_text(kind: str) -> str:
+    """The canned reply to small talk of one of app.smalltalk.KINDS."""
+    return SMALLTALK_OPENERS[kind] + "\n\n" + SMALLTALK_BODY
 
 
 def rules_text(canary: str) -> str:

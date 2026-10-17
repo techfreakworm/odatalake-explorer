@@ -1,4 +1,8 @@
-"""The /ask pipeline: cache -> retrieve -> off-topic gate -> limits -> one LLM call -> abstain policy -> citations.
+"""The /ask pipeline: small talk -> cache -> retrieve -> off-topic gate -> limits -> one LLM call -> abstain policy ->
+citations.
+
+Small talk and "what can you do" messages (app/smalltalk.py) get a canned intro first, because the dense gate scores
+a bare greeting below ABSTAIN_THRESHOLD and used to answer it with the off-topic decline.
 
 Abstain policy (docs/research.md §4.3, decision D8): the dense gate only short-circuits clearly off-topic questions;
 otherwise the model decides (NO_ANSWER, OUT_OF_SCOPE), and an answer with no valid citation left abstains. Every
@@ -16,7 +20,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from app import prompts
+from app import prompts, smalltalk
 from app.citations import (
     CitedSource,
     citation_details,
@@ -38,6 +42,7 @@ MIN_RETRY_S = 1.0  # a retry of a truncated or unparseable answer starts only wi
 RETRIEVAL_HISTORY_CHARS = 300
 
 ABSTAIN_REASONS = ("retrieval_gate", "model_dont_know", "no_valid_citation", "out_of_scope")
+SMALLTALK_REASON = "smalltalk"  # the canned intro to small talk: an answer without sources, not an abstain
 
 
 class NotReady(RuntimeError):
@@ -58,7 +63,7 @@ class AskOutcome:
     answer: str
     sources: list[str]
     citations: list[dict] = field(default_factory=list)
-    reason: str = "answered"  # "answered", an abstain reason, "prompt_leak_blocked" or a degraded reason
+    reason: str = "answered"  # "answered", "smalltalk", an abstain reason, "prompt_leak_blocked" or a degraded reason
     abstain_reason: str | None = None
     degraded: bool = False
     gate_score: float | None = None
@@ -153,6 +158,12 @@ class AskService:
         if snap is None:
             raise NotReady("index not loaded")
         run.version = snap.version
+        kind = smalltalk.detect(req.question)
+        if kind is not None:  # ahead of the cache and retrieval: never cached, no LLM call, no bucket token, no budget
+            out = self._outcome(run, prompts.smalltalk_text(kind), [], [], SMALLTALK_REASON, None)
+            if emit is not None:
+                emit(out.answer)
+            return out
         key = cache_key(req.question, snap.version)
         cacheable = not req.history
         if cacheable and not req.no_cache:
