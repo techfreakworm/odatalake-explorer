@@ -103,7 +103,8 @@ flowchart LR
 - It runs the deterministic checks:
   - **schema**: HTTP 200 and exactly `{answer, sources}`;
   - **contract**: also on 422 and 503;
-  - **abstain detection**: empty sources, or a don't-know pattern, each recorded with an `abstain_kind`;
+  - **abstain detection**: empty sources, a don't-know pattern or the degraded answer, each recorded with an
+    `abstain_kind` (the pattern differs from the plan's: see "How the abstain pattern moved" below);
   - **behaviour** by question type;
   - **lenient source match**;
   - **a prompt-leak canary**;
@@ -147,9 +148,29 @@ correctly. ADV-03 obeyed an injected "no citations" request and so abstained for
   results files flag it; treat fact coverage and BEHAVIOR passes as optimistic.
 - **Lenient URL matching.** Source matching drops the scheme, fragment, query, `www.` and the trailing slash, and the
   git ref of GitHub URLs. The organizers' rule is unknown.
-- **Pattern-based abstain detection.** It is a regex. Every abstain records its `abstain_kind` (`empty_sources` or
-  `pattern:<phrase>`), so an honest partial answer ("... no release date is mentioned in the docs") can be told
-  apart from a real abstain.
+- **Pattern-based abstain detection.** It is a regex. Every abstain records its `abstain_kind` (`empty_sources`,
+  `pattern:<phrase>` or `degraded:<reason>`), so an honest partial answer ("... no release date is mentioned in the
+  docs") can be told apart from a real abstain.
+
+**How the abstain pattern moved.** The plan's rule ([docs/eval-questions.md](docs/eval-questions.md), "Scoring
+method") lists the don't-know phrases: "I don't know", "not covered in", "the docs do not cover", "no
+information", "can't answer", "outside the scope", "only help with questions about OLake", and close variants. The
+POC scorer (`poc/eval/score.py`) implements them, with a few close variants such as "unable to find", as one regex.
+`eval/run.py` changed that rule during the build:
+
+| Change | Phrases | Why |
+|---|---|---|
+| Added | "no ... mentioned / documented / specified / stated / given / listed in (or by) the (provided / available / indexed / OLake) passages / docs / documentation / context / sources / pages", with up to 5 words after "no": e.g. "no specific release or date mentioned in the provided passages" | The POC run missed UNK-04's honest decline, "no specific release date or version is mentioned in the provided passages" (`poc/results/eval_run-canonical.json`) |
+| Added | "I could not / couldn't find this / that / it / anything / any information / information" | A close variant of "unable to find". The gate's abstain also begins "I couldn't find this"; those answers have no sources, so they abstain anyway |
+| Widened | "not described in", and "by" in place of "in" ("not covered by"); in "the docs ... do not cover", the subjects "sources" and "pages", the verb "describe" and the contractions "don't / doesn't" | Close variants |
+| Narrowed | "no information" counts only at the end of a sentence, or before about / on / in / regarding / for, "is available / provided / given" or "was found / provided / given". "can't help" counts only as "I (or we) can't help" or "can't help with" | The pattern is searched across the whole answer, so the bare forms also matched prose such as "no information is lost" and "more threads can't help" |
+| Added | The degraded answer: `X-Ask-Reason` `llm_failed`, `ask_timeout`, `queue_timeout`, `rate_limited` or `budget_exhausted`, or an answer that starts "I couldn't generate an answer right now" | It lists pages instead of answering. It is an abstain of kind `degraded:<reason>`, never a source hit or correct behaviour, and a miss in abstain recall |
+
+The effect on the baseline (`eval/results/baseline.json`) is one verdict. UNK-04 abstains only through the added
+"no ... mentioned in the provided passages" form, so the POC's rule would give abstain recall 10/12 instead of 11/12.
+Under either rule, no must-answer row abstains through a pattern. One gap remains: "the documentation does not include
+(or provide) ...", the form of UNK-02's decline in the POC run, matches neither rule, so there only the judge's
+BEHAVIOR check sees the decline.
 
 ## Latency and cost
 

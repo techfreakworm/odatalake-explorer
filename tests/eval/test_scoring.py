@@ -411,3 +411,21 @@ def test_rescore_does_not_overwrite_its_input(tmp_path, monkeypatch):
     assert e.value.code == 0
     assert src.read_text() == before and (tmp_path / "run.rescored.json").exists()
     assert "rescored_with" in json.loads((tmp_path / "run.rescored.json").read_text())
+
+
+def test_compare_full_runs_shows_reason_and_kind_changes_and_newly_cited_declines():
+    q = qs()
+    old_rows = [ev.score_row(q["U-01"], res("I don't know.", sources=(), reason="no_valid_citation"), None),
+                ev.score_row(q["O-01"], res("Sorry.", sources=(), reason="retrieval_gate"), None),
+                ev.score_row(q["A-01"], res(), None)]
+    new_rows = [ev.score_row(q["U-01"], res("The docs do not cover this [1].", reason="answered"), None),
+                ev.score_row(q["O-01"], res("Here is how [1].", reason="answered"), None),
+                ev.score_row(q["A-01"], res(), None)]
+    old = {"mode": "full", "rows": old_rows, "summary": ev.summary_of(old_rows, 1.0, 0.0)}
+    new = {"mode": "full", "rows": new_rows, "summary": ev.summary_of(new_rows, 1.0, 0.0)}
+    text = "\n".join(ev.compare(new, old))
+    assert "X-Ask-Reason changed (2): U-01 no_valid_citation->answered, O-01 retrieval_gate->answered" in text
+    assert "abstain_kind changed (2): U-01 empty_sources->pattern:the docs do not cover, O-01 empty_sources->None" in text
+    assert ("must-abstain rows that now cite sources (2): U-01 (no_valid_citation->answered, 1 sources, still abstains, "
+            "pattern:the docs do not cover), O-01 (retrieval_gate->answered, 1 sources, counted as answered)") in text
+    assert "abstain_recall: 2/2 -> 1/2" in text and "abstain recall misses now: O-01" in text

@@ -21,7 +21,8 @@ must-mention fact coverage, BEHAVIOR checks (AND-ed with their deterministic "Sc
 over the 82 rows with expected sources (by the URL /ask would cite for each hit), overall and per category, each
 row's first-hit rank and gate score, and the gate-calibration line. No LLM.
 
---compare FILE prints what changed against an earlier result of the same mode. Exit 1 on any contract failure or
+--compare FILE prints what changed against an earlier result of the same mode (with --rescore too: compare two
+saved runs without asking again). Exit 1 on any contract failure or
 canary leak.
 """
 
@@ -570,18 +571,44 @@ def compare(new: dict, old: dict) -> list[str]:
         lines.append(f"gate calibration old: {so.get('gate_calibration', {}).get('line')}")
         lines.append(f"gate calibration new: {sn.get('gate_calibration', {}).get('line')}")
         return lines
-    for field in ("behaviour_correct", "source_hit", "abstained"):
+    for field in ("behaviour_correct", "source_hit", "abstained", "abstain_kind", "reason"):
         changes = []
         for r in new["rows"]:
             p = o.get(r["id"])
             if p and p.get(field) != r.get(field):
                 extra = f" [{r.get('abstain_kind')}]" if field == "abstained" and r.get("abstained") else ""
                 changes.append(f"{r['id']} {p.get(field)}->{r.get(field)}{extra}")
-        lines.append(f"{field} changed ({len(changes)}): {', '.join(changes) or '-'}")
+        lines.append(f"{'X-Ask-Reason' if field == 'reason' else field} changed ({len(changes)}): "
+                     f"{', '.join(changes) or '-'}")
+    # a decline that became a cited answer: a must-abstain row that returned no sources before and cites some now
+    cited = []
+    for r in new["rows"]:
+        p = o.get(r["id"])
+        if p and r.get("must_abstain") and not p.get("sources") and r.get("sources"):
+            now = f"still abstains, {r['abstain_kind']}" if r.get("abstained") else "counted as answered"
+            cited.append(f"{r['id']} ({p.get('reason')}->{r.get('reason')}, {len(r['sources'])} sources, {now})")
+    lines.append(f"must-abstain rows that now cite sources ({len(cited)}): {', '.join(cited) or '-'}")
     sn, so = new["summary"], old["summary"]
-    for k in ("schema_valid", "behaviour_correct", "source_hit_rate", "fact_coverage_mean", "behavior_pass_rate"):
+    for k in ("schema_valid", "contract_failures", "behaviour_correct", "source_hit_rate", "fact_coverage_mean",
+              "behavior_pass_rate", "contradictions"):
         lines.append(f"  {k}: {so.get(k)} -> {sn.get(k)}")
+    for k in ("abstain_recall", "false_abstain_answerable", "false_abstain_must_answer"):
+        a, b = so.get(k) or {}, sn.get(k) or {}
+        lines.append(f"  {k}: {a.get('count')}/{a.get('n')} -> {b.get('count')}/{b.get('n')}  "
+                     f"now {b.get('kinds') or '-'} {b.get('ids') or ''}".rstrip())
+    missed = [r["id"] for r in new["rows"] if r.get("must_abstain") and not (r.get("abstained") and not r.get("degraded"))]
+    lines.append(f"  abstain recall misses now: {', '.join(missed) or '-'}")
+    lines.append(f"  degraded: {(so.get('degraded') or {}).get('count')} -> {(sn.get('degraded') or {}).get('count')}")
+    la, lb = so.get("latency_ms") or {}, sn.get("latency_ms") or {}
+    lines.append(f"  latency p50 / p95 ms: {la.get('p50')} / {la.get('p95')} -> {lb.get('p50')} / {lb.get('p95')}")
+    lines.append(f"  server reasons: {so.get('server_reasons')} -> {sn.get('server_reasons')}")
     return lines
+
+
+def print_compare(report: dict, path: str) -> None:
+    print(f"--- compare with {path}")
+    for line in compare(report, json.loads(Path(path).read_text(encoding="utf-8"))):
+        print(line)
 
 
 def _delta(a, b) -> str:
@@ -775,6 +802,8 @@ def main(argv: list[str] | None = None) -> None:
         out = Path(args.out) if args.out else src.with_name(f"{src.stem}.rescored{src.suffix}")
         out.write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
         print(f"wrote {out}")
+        if args.compare:
+            print_compare(report, args.compare)
         sys.exit(1 if report["summary"]["contract_failures"] or report["summary"]["canary_leaks"] else 0)
     if not args.base_url:
         raise SystemExit("--base-url is required (or --rescore FILE)")
@@ -792,9 +821,7 @@ def main(argv: list[str] | None = None) -> None:
     out.write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {out}")
     if args.compare:
-        print(f"--- compare with {args.compare}")
-        for line in compare(report, json.loads(Path(args.compare).read_text(encoding="utf-8"))):
-            print(line)
+        print_compare(report, args.compare)
     if report["mode"] == "full" and (report["summary"]["contract_failures"] or report["summary"]["canary_leaks"]):
         sys.exit(1)
     if report["mode"] == "retrieval" and report["summary"]["errors"]:
