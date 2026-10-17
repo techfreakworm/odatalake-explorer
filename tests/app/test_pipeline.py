@@ -2,13 +2,16 @@
 
 import asyncio
 import dataclasses
+import json
 
 import pytest
 
 from app import prompts
 from app.config import Settings
 from app.index_store import IndexHolder, load_snapshot
+from app.logs import configure_logging
 from app.pipeline import AskRequest, AskService
+from eval.gate_probes import GUARD_PROBES
 from tests.app.fakes import FakeLLM, HashEmbedder, unavailable
 
 CANARY = "0123456789abcdef"
@@ -586,3 +589,37 @@ def test_a_greeting_to_olake_is_still_small_talk(index_dir):
     assert (out.reason, out.answer) == ("smalltalk", prompts.smalltalk_text("hello"))
     assert out.gate_score is None and svc.embedder.calls == 0  # small talk answers before retrieval and the gate
     assert llm.calls == []
+
+
+# ---------------------------------------------------------------- the gate_override line and the plain-text rule
+
+PAYLOAD_GUARDS = [q for q in GUARD_PROBES if not q.isascii()]  # intros hiding another request outside plain text
+
+
+def gate_override_lines(capsys) -> list[dict]:
+    return [json.loads(ln) for ln in capsys.readouterr().out.splitlines() if '"event": "gate_override"' in ln]
+
+
+def test_the_gate_override_line_carries_the_request_id_and_the_gate_score(index_dir, capsys):
+    configure_logging("INFO")
+    svc = service(index_dir, FakeLLM(OLAKE_ANSWER), abstain_threshold=INTRO_GATE)
+
+    async def go():
+        return await svc.answer(AskRequest(question="tell me about olake", request_id="req-intro-7", client="1.2.3.4"))
+
+    out = asyncio.run(go())
+    assert out.reason == "answered" and out.gate_score is not None and out.gate_score < INTRO_GATE
+    lines = gate_override_lines(capsys)
+    assert len(lines) == 1, lines
+    assert lines[0].get("request_id") == "req-intro-7"
+    assert lines[0].get("gate_score") == pytest.approx(out.gate_score, abs=1e-4)
+
+
+@pytest.mark.parametrize("q", PAYLOAD_GUARDS)
+def test_an_intro_with_a_hidden_payload_still_gets_the_gate_decline(index_dir, capsys, q):
+    configure_logging("INFO")
+    llm = FakeLLM(OLAKE_ANSWER)
+    out = ask(service(index_dir, llm, abstain_threshold=INTRO_GATE), q)
+    assert out.gate_score is not None and out.gate_score < INTRO_GATE
+    assert (out.reason, out.answer, out.sources) == ("retrieval_gate", prompts.SHORT_CIRCUIT_TEXT, [])
+    assert llm.calls == [] and gate_override_lines(capsys) == []

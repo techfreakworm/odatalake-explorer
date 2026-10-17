@@ -1,8 +1,11 @@
 """The product-intro override (app/product_intro.py): is_product_intro is true only when the whole message is one
-general intro question about the product ("tell me about olake", "who is ask olake?"). The product name around an
-off-topic request, inside a real docs question, or in a message over 80 characters or 12 words never fires it."""
+general intro question about the product ("tell me about olake", "who is ask olake?") in plain text. The product name
+around an off-topic request, inside a real docs question, in a message over 80 characters or 12 words, or in one with
+a character other than whitespace, a letter, a digit or punctuation (an emoji, a symbol, an invisible character) never
+fires it."""
 
 import re
+import unicodedata
 
 import pytest
 
@@ -11,12 +14,25 @@ from eval.gate_probes import GUARD_PROBES, INTRO_PROBES, OFF_TOPIC_PROBES
 from eval.questions import load_questions
 
 CURLY_APOSTROPHE = "\N{RIGHT SINGLE QUOTATION MARK}"
-WIDE_OLAKE = "".join(chr(ord(c) + 0xFEE0) for c in "OLake")  # fullwidth letters, which NFKC folds to "OLake"
+SMILE = "\N{SLIGHTLY SMILING FACE}"
+WAVE = "\N{WAVING HAND SIGN}"
+SKIN_TONE = "\N{EMOJI MODIFIER FITZPATRICK TYPE-4}"
+
+
+def wide(text: str) -> str:
+    """Fullwidth forms of the ASCII characters in text (NFKC folds them back)."""
+    return "".join(chr(ord(c) + 0xFEE0) if "!" <= c <= "~" else c for c in text)
+
+
+WIDE_OLAKE = wide("OLake")
+CIRCLED_OLAKE = "".join(chr(0x24D0 + ord(c) - ord("a")) for c in "olake")  # symbols (So) that NFKC folds to letters
+BOLD_OLAKE = "".join(chr(0x1D41A + ord(c) - ord("a")) for c in "olake")  # mathematical bold small letters
 
 # one or more messages per frame of the contract, beyond the intro probes
 FRAMES = [
-    # what is / whats / who is P, optionally followed by "used for", "for" or "all about"
-    "what is olake for?", "what's olake all about?", "who is olake fusion?",
+    # what is / whats / who is / whos P, optionally followed by "used for", "for" or "all about"
+    "what is olake for?", "what's olake all about?", "who is olake fusion?", "who's olake fusion?", "whos ask olake",
+    f"who{CURLY_APOSTROPHE}s olake go?",
     # (can you / could you / please) tell me (more / a bit / a little) about P
     "could you tell me about olake?", "please tell me about ask olake", "tell me more about olake",
     "tell me a bit about olake go", "can you tell me a little about olake fusion?",
@@ -52,11 +68,45 @@ FRAMES = [
     "explain olake briefly", "what is olake again?", "tell me about olake pls", "describe olake plz",
 ]
 
-# normalized like app/smalltalk.py: NFKC, casefold, apostrophes, punctuation and emoji dropped, whitespace collapsed
+# normalized like app/smalltalk.py: NFKC, casefold, apostrophes and punctuation dropped, whitespace collapsed
 NORMALIZED = [
-    "OLAKE", "olake?", "  Tell me about   OLake  ", "tell me about olake \N{SLIGHTLY SMILING FACE}", "whats olake",
-    "what's olake", f"what are OLake{CURLY_APOSTROPHE}s features?", f"what is {WIDE_OLAKE}?",
-    "Tell me about OLake!!!",
+    "OLAKE", "olake?", "  Tell me about   OLake  ", "whats olake", "what's olake",
+    f"what are OLake{CURLY_APOSTROPHE}s features?", f"what is {WIDE_OLAKE}?", "Tell me about OLake!!!",
+]
+
+# plain text: after NFKC, nothing but whitespace, letters (L*), digits (N*) and punctuation (P*)
+PLAIN = [
+    # whitespace of any kind inside the message
+    "tell me\tabout olake", "what is\nolake?", "tell me about\u00a0olake", "  who is olake?\r\n",
+    # curly quotes and apostrophes, ASCII punctuation
+    "tell me about \u201colake\u201d", f"what{CURLY_APOSTROPHE}s \u2018olake\u2019?", "what is olake?!",
+    "what is olake? :)", "olake...", "tell me about olake (please)",
+    # fullwidth, circled and math-bold letters, which NFKC folds into plain letters before the check
+    wide("WHAT IS OLAKE?"), f"what is {CIRCLED_OLAKE}?", f"what is {BOLD_OLAKE}?",
+]
+
+
+def visible(text: str) -> str:
+    """text after NFKC with only what the plain-text rule allows: whitespace, letters, digits and punctuation."""
+    return "".join(ch for ch in unicodedata.normalize("NFKC", text)
+                   if ch.isspace() or unicodedata.category(ch)[0] in "LNP")
+
+
+# the guards that hide another request in characters outside plain text (eval/gate_probes.py)
+PAYLOAD_GUARDS = [q for q in GUARD_PROBES if visible(q) != unicodedata.normalize("NFKC", q)]
+
+# not plain text: each is False although its visible words form a frame
+NOT_PLAIN = [
+    # an emoji anywhere, a skin-tone modifier included
+    f"what is olake? {SMILE}", f"{SMILE} what is olake?", f"what is {SMILE} olake?", f"tell me about olake {SMILE}",
+    f"hi {WAVE}{SKIN_TONE}, tell me about olake",
+    # format and invisible characters: zero-width space and joiner, a variation selector
+    "what is\u200b olake?", "tell me about olake\u200b", "what is olake?\u200d", "what is olake\ufe0f?",
+    # a private-use character, a combining mark NFKC leaves on its own, an unassigned code point
+    "what is olake? \ue000", "what is olake? \u0301", "what is olake \u0378",
+    # an ASCII symbol is a symbol (S*) too; ASCII punctuation is fine
+    "tell me about olake =)",
+    *PAYLOAD_GUARDS,
 ]
 
 SMALL_TALK = ["hi", "thanks", "hello there", "thank you so much!", "bye", "what can you do?", "who are you?", "help me",
@@ -110,8 +160,27 @@ def test_every_frame_of_the_contract_is_a_product_intro(q):
 
 
 @pytest.mark.parametrize("q", NORMALIZED)
-def test_case_apostrophes_punctuation_emoji_and_width_are_normalized(q):
+def test_case_apostrophes_punctuation_and_width_are_normalized(q):
     assert product_intro.is_product_intro(q) is True
+
+
+@pytest.mark.parametrize("q", PLAIN)
+def test_whitespace_quotes_punctuation_and_folded_letters_are_plain_text(q):
+    assert product_intro.is_product_intro(q) is True
+
+
+def test_three_guards_hide_a_payload_outside_plain_text():
+    assert len(PAYLOAD_GUARDS) == 3
+
+
+def test_the_unassigned_code_point_in_the_cases_is_still_unassigned():
+    assert unicodedata.category("\u0378") == "Cn"  # in this Python's Unicode database
+
+
+@pytest.mark.parametrize("q", NOT_PLAIN)
+def test_a_message_that_is_not_plain_text_is_never_a_product_intro(q):
+    assert product_intro.is_product_intro(visible(q)) is True  # its visible words form a frame
+    assert product_intro.is_product_intro(q) is False
 
 
 @pytest.mark.parametrize("q", ["", "   ", "\n\t "])
