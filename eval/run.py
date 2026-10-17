@@ -63,6 +63,10 @@ IDK = re.compile(
     re.I,
 )
 SCRIPT_HINT = re.compile(r"script:\s*([^.]*)", re.I)
+# The server's degraded 200 (contract I2: never a 429 or 5xx): the most relevant pages instead of an answer. It is
+# neither a real answer nor a decline, so it counts as an abstain of kind "degraded:<reason>" and is never correct.
+DEGRADED_REASONS = ("llm_failed", "ask_timeout", "queue_timeout", "rate_limited", "budget_exhausted")
+DEGRADED_TEXT = "i couldn't generate an answer right now"
 
 
 def schema_check(status: int | None, body) -> tuple[bool, str | None]:
@@ -110,10 +114,23 @@ def idk_phrase(answer: str) -> str | None:
     return m.group(0).lower() if m else None
 
 
-def abstain_info(body: dict, qtype: str) -> tuple[bool, str | None, str | None]:
-    """(abstained, abstain_kind, idk_phrase). abstain_kind is "empty_sources", "pattern:<phrase>" or None; the
-    phrase is recorded even where it does not count (negative and false-premise rows skip pattern matching)."""
+def degraded_kind(answer: str | None, reason: str | None) -> str | None:
+    """"degraded:<reason>" for the server's degraded answer (by X-Ask-Reason, or by its text), else None."""
+    if reason in DEGRADED_REASONS:
+        return f"degraded:{reason}"
+    if _norm_text(answer or "").strip().lower().startswith(DEGRADED_TEXT):
+        return f"degraded:{reason or 'text'}"
+    return None
+
+
+def abstain_info(body: dict, qtype: str, reason: str | None = None) -> tuple[bool, str | None, str | None]:
+    """(abstained, abstain_kind, idk_phrase). abstain_kind is "degraded:<reason>", "empty_sources",
+    "pattern:<phrase>" or None; the phrase is recorded even where it does not count (negative and false-premise rows
+    skip pattern matching)."""
     phrase = idk_phrase(body.get("answer", ""))
+    degraded = degraded_kind(body.get("answer"), reason)
+    if degraded:
+        return True, degraded, phrase
     if not body.get("sources"):
         return True, "empty_sources", phrase
     if qtype in ("negative", "false-premise"):
@@ -293,17 +310,19 @@ def score_row(q: dict, res: dict, canary: str | None) -> dict:
     contract = contract_check(res["status"], body, res.get("error"))
     answer = body.get("answer") if ok else None
     sources = body.get("sources") if ok else None
-    abst, kind, phrase = abstain_info(body, q["type"]) if ok else (None, None, None)
     hdr = res.get("headers") or {}
+    abst, kind, phrase = abstain_info(body, q["type"], hdr.get("reason")) if ok else (None, None, None)
+    degraded = bool(kind and kind.startswith("degraded:"))
     text = body.get("answer") if isinstance(body, dict) and isinstance(body.get("answer"), str) else None
     leaked = canary_leaked(text, canary)
     row = {
         "id": q["id"], "category": q["category"], "type": q["type"], "must_abstain": q["must_abstain"],
         "status": res["status"], "ms": res["ms"], "error": res.get("error"),
         "schema_ok": ok, "schema_error": why, "contract_error": contract,
-        "abstained": abst, "abstain_kind": kind, "idk_phrase": phrase,
-        "source_hit": source_hit(q, sources) if q["expected_norm"] else None,
-        "behaviour_correct": behaviour_correct(q, ok, abst) and not leaked,
+        "abstained": abst, "abstain_kind": kind, "idk_phrase": phrase, "degraded": degraded,
+        # a degraded answer lists pages without answering: never a source hit, never the expected behaviour
+        "source_hit": (False if degraded else source_hit(q, sources)) if q["expected_norm"] else None,
+        "behaviour_correct": behaviour_correct(q, ok, abst) and not leaked and not degraded,
         "canary_leak": leaked,
         "reason": hdr.get("reason"), "gate_score": to_float(hdr.get("gate_score")), "cache": hdr.get("cache"),
         "server_timing": hdr.get("server_timing"),
@@ -315,11 +334,16 @@ def score_row(q: dict, res: dict, canary: str | None) -> dict:
     return row
 
 
-def rate_block(rows: list[dict], flag: str = "abstained") -> dict:
-    hits = [r for r in rows if r.get(flag)]
+def rate_block(rows: list[dict], flag: str = "abstained", count_degraded: bool = True) -> dict:
+    """Rows whose flag is set, with the abstain_kind breakdown. count_degraded=False (abstain recall) does not credit
+    a degraded answer as a decline: the server failed, it did not decline."""
+    hits = [r for r in rows if r.get(flag) and (count_degraded or not r.get("degraded"))]
     kinds = Counter(r.get("abstain_kind") or "none" for r in hits)
-    return {"n": len(rows), "count": len(hits), "rate": round(len(hits) / len(rows), 3) if rows else None,
-            "kinds": dict(kinds), "ids": [r["id"] for r in hits]}
+    out = {"n": len(rows), "count": len(hits), "rate": round(len(hits) / len(rows), 3) if rows else None,
+           "kinds": dict(kinds), "ids": [r["id"] for r in hits]}
+    if not count_degraded:
+        out["degraded_not_counted"] = [r["id"] for r in rows if r.get("degraded")]
+    return out
 
 
 def gate_calibration(rows: list[dict]) -> dict:
@@ -364,7 +388,10 @@ def summary_of(rows: list[dict], ask_wall: float, judge_wall: float) -> dict:
         "contract_failure_ids": [f"{r['id']}: {r['contract_error']}" for r in rows if r["contract_error"]],
         "canary_leaks": [r["id"] for r in rows if r["canary_leak"]],
         "http_status": dict(Counter(str(r["status"]) for r in rows)),
-        "abstain_recall": rate_block(must_abstain_rows),
+        "degraded": {"count": sum(1 for r in rows if r.get("degraded")),
+                     "by_reason": dict(Counter(r["abstain_kind"].split(":", 1)[1] for r in rows if r.get("degraded"))),
+                     "ids": [r["id"] for r in rows if r.get("degraded")]},
+        "abstain_recall": rate_block(must_abstain_rows, count_degraded=False),
         "false_abstain_answerable": rate_block(answerable),
         "false_abstain_must_answer": rate_block(must_answer),
         "server_reasons": dict(Counter(r.get("reason") or "(none)" for r in rows)),
@@ -630,6 +657,8 @@ def print_full(report: dict) -> None:
           f"{s['behaviour_correct']}  source_hit_rate {s['source_hit_rate']}  fact_coverage {s['fact_coverage_mean']}  "
           f"BEHAVIOR pass {s['behavior_pass_rate']}  contradictions {s['contradictions']}")
     a, fa, fm = s["abstain_recall"], s["false_abstain_answerable"], s["false_abstain_must_answer"]
+    d = s["degraded"]
+    print(f"degraded answers {d['count']} {d['by_reason']} {d['ids']}")
     print(f"abstain recall {a['count']}/{a['n']} ({a['rate']}) {a['kinds']}")
     print(f"false abstain answerable {fa['count']}/{fa['n']} ({fa['rate']}) {fa['kinds']} {fa['ids']}")
     print(f"false abstain must-answer {fm['count']}/{fm['n']} ({fm['rate']}) {fm['kinds']} {fm['ids']}")

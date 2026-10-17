@@ -30,6 +30,14 @@ def index_version(r: dict) -> str:
     return str(idx.get("version")) if isinstance(idx, dict) else "?"
 
 
+def _degraded(s: dict) -> str:
+    d = s.get("degraded") or {}
+    if not d:
+        return "-"
+    reasons = ", ".join(f"{k} {v}" for k, v in sorted((d.get("by_reason") or {}).items()))
+    return f"{d.get('count', 0)}" + (f" ({reasons})" if reasons else "")
+
+
 def full_table(r: dict, name: str) -> str:
     s = r["summary"]
     a, fa, fm = s["abstain_recall"], s["false_abstain_answerable"], s["false_abstain_must_answer"]
@@ -40,6 +48,7 @@ def full_table(r: dict, name: str) -> str:
         ("Schema valid", _v(s["schema_valid"])),
         ("Contract failures", _v(s["contract_failures"])),
         ("Behaviour correct", _v(s["behaviour_correct"])),
+        ("Degraded answers (server fell back to listing pages)", _degraded(s)),
         ("Source hit rate", _v(s["source_hit_rate"])),
         ("Fact coverage (judge)", _v(s["fact_coverage_mean"])),
         ("BEHAVIOR pass (judge)", _v(s["behavior_pass_rate"])),

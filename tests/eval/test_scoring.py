@@ -125,7 +125,9 @@ def test_summary_rates_and_kinds():
     ]
     s = ev.summary_of(rows, ask_wall=1.5, judge_wall=0.0)
     assert s["n"] == 7 and s["contract_failures"] == 0 and s["schema_valid"] == 1.0
-    assert s["abstain_recall"] == {"n": 2, "count": 1, "rate": 0.5, "kinds": {"empty_sources": 1}, "ids": ["O-01"]}
+    assert s["abstain_recall"] == {"n": 2, "count": 1, "rate": 0.5, "kinds": {"empty_sources": 1}, "ids": ["O-01"],
+                                   "degraded_not_counted": []}
+    assert s["degraded"] == {"count": 0, "by_reason": {}, "ids": []}
     assert s["false_abstain_answerable"] == {"n": 2, "count": 1, "rate": 0.5,
                                              "kinds": {"pattern:i don't know": 1}, "ids": ["A-02"]}
     fm = s["false_abstain_must_answer"]
@@ -318,3 +320,38 @@ def test_results_never_record_absolute_paths(tmp_path):
     flags = ev.run_flags(SimpleNamespace(base_url="http://x", questions=str(ev.REPO_ROOT / "eval" / "questions.md"),
                                          out=str(tmp_path / "r.json"), compare="", rescore="", label=""))
     assert flags["questions"] == "eval/questions.md" and flags["out"] == "r.json"
+
+
+# ----------------------------------------------------------------------------- degraded answers
+DEGRADED = "I couldn't generate an answer right now. These pages are the most relevant:\n- [1] Install"
+
+
+@pytest.mark.parametrize("reason", ["llm_failed", "ask_timeout", "queue_timeout", "rate_limited", "budget_exhausted"])
+def test_degraded_answer_is_an_abstain_never_a_hit(reason):
+    q = qs()
+    r = ev.score_row(q["A-01"], res(DEGRADED, reason=reason), None)
+    assert r["schema_ok"] and r["contract_error"] is None
+    assert r["abstained"] and r["abstain_kind"] == f"degraded:{reason}" and r["degraded"]
+    assert r["source_hit"] is False and r["behaviour_correct"] is False
+    neg = ev.score_row(q["N-01"], res(DEGRADED, reason=reason), None)  # pattern-exempt types too
+    assert neg["abstained"] and not neg["behaviour_correct"]
+
+
+def test_degraded_detected_by_text_without_a_reason_header():
+    q = qs()
+    r = ev.score_row(q["A-01"], res("I couldn’t generate an answer right now. Please try again in a minute.",
+                                    sources=(), reason=None), None)
+    assert r["abstain_kind"] == "degraded:text" and r["degraded"]
+
+
+def test_summary_counts_degraded_and_recall_does_not_credit_it():
+    q = qs()
+    rows = [ev.score_row(q["A-01"], res(DEGRADED, reason="llm_failed"), None),
+            ev.score_row(q["O-01"], res(DEGRADED, reason="queue_timeout"), None),
+            ev.score_row(q["U-01"], res("I don't know.", sources=(), reason="model_dont_know"), None)]
+    s = ev.summary_of(rows, 1.0, 0.0)
+    assert s["degraded"] == {"count": 2, "by_reason": {"llm_failed": 1, "queue_timeout": 1}, "ids": ["A-01", "O-01"]}
+    assert s["abstain_recall"]["count"] == 1 and s["abstain_recall"]["degraded_not_counted"] == ["O-01"]
+    assert s["false_abstain_answerable"]["kinds"] == {"degraded:llm_failed": 1}
+    from eval import report as rp
+    assert rp._degraded(s) == "2 (llm_failed 1, queue_timeout 1)"
