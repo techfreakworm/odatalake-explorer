@@ -1,19 +1,21 @@
 """Measured container and pipeline numbers for the README -> eval/results/container-smoke.json
 
     uv run python -m eval.container_smoke [--image ask-olake:local] [--port 8766] [--skip-build] [--amd64]
-                                          [--note TEXT] [--out FILE]
+                                          [--only refresh|amd64] [--note TEXT] [--out FILE]
 
 No LLM and no keys (the container answers /ask with its degraded 200, so no model is called):
 1. image: `docker image inspect` (size, architecture)
 2. container: `docker run -d -p 127.0.0.1:PORT:8080 IMAGE`; the time from `docker run` to /readyz 200; /healthz;
    RSS from `docker stats` idle and after five /ask calls (status, exact keys and X-Ask-Reason recorded)
-3. refresh: `uv run python -m index.refresh --check --json` on the host (wall time and the "changed" verdict)
+3. refresh: `uv run python -m index.refresh --check --json` on the host, 3 runs (network-bound: the median is the
+   number, every sample is kept with its "changed" verdict)
 4. builds from the cached pages, into .cache/index-ab/cold (data/index is not touched):
    cold `uv run python -m index.build --offline --no-reuse --out-root .cache/index-ab/cold` (every chunk embedded),
    then warm, the same without --no-reuse and with --prune (every vector reused)
 5. with --amd64: `docker build --platform linux/amd64` of the same Dockerfile (exit code, time, size; the check
-   image is removed afterwards). --amd64-only runs just this and merges it into an existing --out file, so the
-   slow emulated build can run apart from the timed steps.
+   image is removed afterwards).
+--only refresh|amd64 runs just that part and merges it into an existing --out file (with its own time and SHA),
+so a re-sample or the slow emulated build can run apart from the timed steps.
 It refuses a busy port and removes only the container it started. The file records the date, the git SHA, the host
 and the exact commands.
 """
@@ -98,17 +100,21 @@ def measure_container(image: str, port: int) -> dict:
     return out
 
 
-def measure_refresh() -> dict:
-    t0 = time.perf_counter()
-    r = sh(["uv", "run", "python", "-m", "index.refresh", "--check", "--json"], timeout=600, check=False)
-    wall = time.perf_counter() - t0
-    try:
-        res = json.loads(r.stdout[r.stdout.find("{"):])
-    except json.JSONDecodeError:
-        res = {}
-    return {"command": "uv run python -m index.refresh --check --json", "wall_s": round(wall, 2),
-            "refresh_seconds": res.get("seconds"), "changed": res.get("changed"),
-            "sitemap_status": (res.get("docs") or {}).get("sitemap_status"), "errors": res.get("errors")}
+def measure_refresh(runs: int = 3) -> dict:
+    samples = []
+    for _ in range(runs):
+        t0 = time.perf_counter()
+        r = sh(["uv", "run", "python", "-m", "index.refresh", "--check", "--json"], timeout=600, check=False)
+        wall = time.perf_counter() - t0
+        try:
+            res = json.loads(r.stdout[r.stdout.find("{"):])
+        except json.JSONDecodeError:
+            res = {}
+        samples.append({"wall_s": round(wall, 2), "refresh_seconds": res.get("seconds"), "changed": res.get("changed"),
+                        "sitemap_status": (res.get("docs") or {}).get("sitemap_status"), "errors": res.get("errors")})
+    walls = sorted(x["wall_s"] for x in samples)
+    return {"command": "uv run python -m index.refresh --check --json", "runs": runs,
+            "median_wall_s": walls[len(walls) // 2], "samples": samples}
 
 
 def measure_build(extra: list[str]) -> dict:
@@ -143,18 +149,20 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--port", type=int, default=8766)
     ap.add_argument("--skip-build", action="store_true", help="skip the index build timings")
     ap.add_argument("--amd64", action="store_true", help="also check that the image builds for linux/amd64")
-    ap.add_argument("--amd64-only", action="store_true", help="only the amd64 check, merged into the --out file")
+    ap.add_argument("--only", choices=("refresh", "amd64"), help="run just this part, merged into the --out file")
     ap.add_argument("--out", default="eval/results/container-smoke.json")
     ap.add_argument("--note", default="", help="measurement conditions, e.g. other load on the machine")
     args = ap.parse_args(argv)
     git_sha = sh(["git", "rev-parse", "--short", "HEAD"]).stdout.strip()
     out = REPO / args.out
-    if args.amd64_only:
+    if args.only:
         report = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
-        report["amd64_build"] = {"measured_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                                 "git_sha": git_sha, **measure_amd64(git_sha)}
+        key = {"refresh": "refresh_check", "amd64": "amd64_build"}[args.only]
+        stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        part = measure_refresh() if args.only == "refresh" else measure_amd64(git_sha)
+        report[key] = {"measured_at": stamp, "git_sha": git_sha, **part}
         out.write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
-        print(json.dumps(report["amd64_build"], indent=1))
+        print(json.dumps(report[key], indent=1))
         sys.exit(0)
     report = {
         "measured_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
