@@ -734,7 +734,7 @@ ordinary page the same widget worked across origins, and a second request reused
   requests still holding the slot (`poc/README.md`, "Runaway generation"). So every call passes `max_tokens` (`MAX_TOKENS`,
   1500; it was 600 until the Opus 5.5 eval truncated 67 of 90 answers at that cap), and a truncation is logged. Answers
   averaged 72 completion tokens with prompt v1 and 6 passages
-  (`poc/results/answer.json`), and 166.7 (p50 146) with prompt v3 and k=10. In that run one answer hit the cap, came back
+  (`poc/results/answer.json`), and 166.7 (p50 146) with prompt v3 and k=10. In that run one answer hit the 600-token cap, came back
   as truncated JSON and became a false abstain (SRC-03, `poc/results/eval_run-canonical-combined.json`). The event's answer is plain text with `[n]`
   citations and no JSON mode, so an unparseable or truncated answer gets one retry and is then salvaged: the validated,
   cited sentences are kept. The server's
