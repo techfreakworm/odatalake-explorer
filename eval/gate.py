@@ -268,6 +268,11 @@ def _score(v: float | None) -> str:
     return "-" if v is None else f"{v:.4f}"
 
 
+def _shown(text: str) -> str:
+    """A message as printed: escaped when it holds invisible characters (the tag-character guard probe)."""
+    return text if text.isprintable() else ascii(text)
+
+
 def print_report(report: dict) -> None:
     print(f"gate calibration on index {report['index_version']} ({report['embed_model']}), ABSTAIN_THRESHOLD "
           f"{report['threshold']}, git {report['git_sha']}")
@@ -281,11 +286,11 @@ def print_report(report: dict) -> None:
         print(f"{name} probes ({len(probes)}): decision before -> after, gate score, product intro")
         for p in probes:
             print(f"  {p['before']:<14} -> {p['after']:<14} {_score(p['gate_score'])}  "
-                  f"{'intro' if p['product_intro'] else '-    '}  {p['question']}")
+                  f"{'intro' if p['product_intro'] else '-    '}  {_shown(p['question'])}")
     for c in report["criteria"]:
         print(f"{'PASS' if c['passed'] else 'FAIL'}  ({c['criterion']}) {c['line']}")
         for f in c["failures"]:
-            print(f"      {f}")
+            print(f"      {_shown(f)}")
     if report["options"] is not None:
         print("options, recomputed on the same questions:")
         for line in options_markdown(report["options"]):
@@ -303,7 +308,8 @@ def main(argv: list[str] | None = None) -> None:
     print_report(report)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    # ASCII-escaped, so the guard probes' invisible payload characters never sit raw in a committed file
+    out.write_text(json.dumps(report, indent=1, ensure_ascii=True) + "\n", encoding="utf-8")
     print(f"wrote {out}")
     sys.exit(0 if report["passed"] else 1)
 
