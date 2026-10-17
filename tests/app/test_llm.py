@@ -4,6 +4,7 @@ The SDK runs against an httpx2 MockTransport, so the real request/stream parsing
 """
 
 import asyncio
+import contextlib
 import json
 import time
 
@@ -215,6 +216,91 @@ def test_adapts_to_a_provider_that_wants_max_completion_tokens():
     res, _ = asyncio.run(call(chain(r, "primary", "fallback")))
     assert res.provider == "primary"
     assert calls[-1]["max_completion_tokens"] == 600 and "max_tokens" not in calls[-1]
+    assert r.hosts() == ["primary", "primary"]
+
+
+TEMPERATURE_400 = "`temperature` is deprecated for this model."
+STREAM_OPTIONS_400 = "Unrecognized request argument supplied: stream_options"
+MAX_TOKENS_400 = ("Unsupported parameter: 'max_tokens' is not supported with this model. "
+                  "Use 'max_completion_tokens' instead.")
+
+
+def held_400(reject, n=4):
+    """A primary that answers 400 with reject(body), a message naming a param the request carries, and streams
+    "ok [1]." when reject(body) is None. Each 400 is held until n requests have arrived, so all n cold requests are
+    built before any adapt() runs; the wait is bounded, so a broken run fails instead of hanging."""
+    arrived, all_in = [0], asyncio.Event()
+    answer = ok(["ok [1]."])
+
+    async def h(body):
+        arrived[0] += 1
+        if arrived[0] >= n:
+            all_in.set()
+        message = reject(body)
+        if message is None:
+            return await answer(body)
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(all_in.wait(), 2)
+        return await status(400, message)(body)
+    return h
+
+
+async def cold_calls(ch, n=4):
+    return await asyncio.gather(*(call(ch) for _ in range(n)))
+
+
+@pytest.mark.parametrize("key,message,effort", [
+    ("temperature", TEMPERATURE_400, None),
+    ("stream_options", STREAM_OPTIONS_400, None),
+    ("reasoning_effort", "Unrecognized request argument supplied: reasoning_effort", "none"),
+    ("max_tokens", MAX_TOKENS_400, None),
+], ids=["temperature", "stream_options", "reasoning_effort", "max_tokens"])
+def test_concurrent_cold_calls_all_adapt_to_a_rejected_param(key, message, effort):
+    # 4 calls in flight on a fresh chain all get the 400 for a param they carried: every one adapts and retries on the
+    # primary, not only the first to adapt (the others found the param already dropped and failed over)
+    r = Router(primary=held_400(lambda body: message if key in body else None), fallback=ok(["unused"]))
+    results = asyncio.run(cold_calls(chain(r, "primary", "fallback", effort=effort)))
+    assert [(res.provider, res.failovers) for res, _ in results] == [("primary", [])] * 4
+    assert [(res.text, streamed) for res, streamed in results] == [("ok [1].", "ok [1].")] * 4
+    assert r.hosts() == ["primary"] * 8  # one rejected send and one retry per call; the fallback is never hit
+    retries = [body for _, body in r.requests[4:]]
+    assert all(key not in body for body in retries)
+    if key == "max_tokens":
+        assert all(body["max_completion_tokens"] == 600 for body in retries)
+
+
+def test_concurrent_cold_calls_adapt_to_two_rejected_params_within_the_send_bound():
+    rejected = {"temperature": TEMPERATURE_400, "stream_options": STREAM_OPTIONS_400}
+    # each 400 names whichever rejected param comes first in the body
+    r = Router(primary=held_400(lambda body: next((rejected[k] for k in body if k in rejected), None)),
+               fallback=ok(["unused"]))
+    results = asyncio.run(cold_calls(chain(r, "primary", "fallback")))
+    assert [(res.provider, res.failovers) for res, _ in results] == [("primary", [])] * 4
+    assert [streamed for _, streamed in results] == ["ok [1]."] * 4
+    assert set(r.hosts()) == {"primary"} and len(r.requests) <= 16  # at most 4 sends per call, never the fallback
+
+
+def test_a_400_for_a_param_the_request_left_out_fails_over_after_two_sends():
+    # the primary rejects temperature even when the request has none: the second send already lacks it, so retrying
+    # would resend an identical request; fail over instead
+    r = Router(primary=status(400, TEMPERATURE_400), fallback=ok(["From fallback [1]."]))
+    res, streamed = asyncio.run(call(chain(r, "primary", "fallback")))
+    assert res.provider == "fallback" and streamed == "From fallback [1]."
+    assert res.failovers == ["primary: HTTP 400"]
+    assert r.hosts() == ["primary", "primary", "fallback"]
+    assert "temperature" in r.requests[0][1] and "temperature" not in r.requests[1][1]
+
+
+def test_no_failover_after_the_first_byte_of_an_adapted_retry():
+    rejected, broken = status(400, TEMPERATURE_400), breaks_after_first_chunk()
+
+    async def primary(body):
+        return await (rejected if "temperature" in body else broken)(body)
+
+    r = Router(primary=primary, fallback=ok(["should not be used"]))
+    with pytest.raises(LLMStreamError) as e:
+        asyncio.run(call(chain(r, "primary", "fallback")))
+    assert e.value.partial.text == "Partial answer [1]."
     assert r.hosts() == ["primary", "primary"]
 
 

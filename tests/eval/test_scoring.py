@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from types import SimpleNamespace
 
 import httpx
+import httpx2
+import openai
 import pytest
 
 from eval import run as ev
@@ -171,6 +174,134 @@ def test_judge_script_hint_overrides_a_passing_verdict():
     assert v["behavior_ok"] == [False] and v["behavior_ok_judge_only"] == [True] and v["behavior_pass"] is False
 
 
+# ----------------------------------------------------------------------------- judge against an OpenAI-compatible API
+# A real openai client over a fake httpx2 transport: the SDK path production uses.
+FAKE_KEY = "test"
+ANTHROPIC_400 = {"temperature": "`temperature` is deprecated for this model.",
+                 "response_format": "response_format.type: Input should be 'json_schema'"}
+MAX_TOKENS_400 = ("Unsupported parameter: 'max_tokens' is not supported with this model. "
+                  "Use 'max_completion_tokens' instead.")
+VERDICT = 'Verdict below.\n{"covered": [true], "behavior_ok": [true], "contradiction": false}\nThat is all.'
+
+
+def judge_endpoint(rejects: dict, hold: int = 0):
+    """Records every request body. A request carrying a key of `rejects` gets an Anthropic-shaped 400 with that key's
+    message (the first match in `rejects` order); any other gets a chat.completion whose content is free text with the
+    JSON verdict inside. hold=n holds each 400 until n requests have arrived; the wait is bounded, so a broken run
+    fails instead of hanging."""
+    seen, all_in = [], asyncio.Event()
+
+    async def handler(request: httpx2.Request) -> httpx2.Response:
+        body = json.loads(request.content)
+        seen.append(body)
+        if hold and len(seen) >= hold:
+            all_in.set()
+        message = next((m for k, m in rejects.items() if k in body), None)
+        if message is None:
+            return httpx2.Response(200, json={
+                "id": "j1", "object": "chat.completion", "created": 1, "model": body["model"],
+                "choices": [{"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": VERDICT}}],
+                "usage": {"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70}})
+        if hold:
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(all_in.wait(), 2)
+        return httpx2.Response(400, json={"type": "error",
+                                          "error": {"type": "invalid_request_error", "message": message}})
+    return handler, seen
+
+
+def judge_client(handler):
+    return openai.AsyncOpenAI(base_url="http://judge/v1", api_key=FAKE_KEY, max_retries=0,
+                              http_client=openai.DefaultAsyncHttpxClient(transport=httpx2.MockTransport(handler)))
+
+
+def judge_env(monkeypatch, **env) -> dict:
+    """judge_settings() for the fake endpoint: no reasoning effort and the default max_tokens unless env sets them."""
+    monkeypatch.setenv("JUDGE_MODEL", "judge-model")
+    monkeypatch.setenv("JUDGE_BASE_URL", "http://judge/v1")
+    monkeypatch.setenv("JUDGE_API_KEY", FAKE_KEY)
+    for k in ("JUDGE_REASONING_EFFORT", "JUDGE_MAX_TOKENS"):
+        monkeypatch.delenv(k, raising=False)
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+    return ev.judge_settings()
+
+
+def run_judge(handler, settings, ids=("F-01",), retries=1):
+    """judge_one for each id at once (Semaphore(len(ids))), all sharing one settings dict and one client."""
+    q = qs()
+
+    async def go():
+        client, sem = judge_client(handler), asyncio.Semaphore(len(ids))
+        try:
+            return await asyncio.gather(*(ev.judge_one(client, settings, q[i], ev.score_row(q[i], res(), None), sem,
+                                                       retries=retries) for i in ids))
+        finally:
+            await client.close()
+    return asyncio.run(go())
+
+
+def test_judge_adapts_to_an_endpoint_that_rejects_temperature_and_response_format(monkeypatch):
+    handler, seen = judge_endpoint(ANTHROPIC_400)
+    [v] = run_judge(handler, judge_env(monkeypatch))
+    assert "error" not in v, v["error"]
+    assert (v["covered"], v["behavior_ok"], v["coverage"], v["behavior_pass"]) == ([True], [True], 1.0, True)
+    assert seen[0]["temperature"] == 0 and seen[0]["response_format"] == {"type": "json_object"}
+    assert "temperature" not in seen[-1] and "response_format" not in seen[-1]
+    assert len(seen) == 3  # one send per rejected param, then the verdict
+    assert [b.get("max_tokens") for b in seen] == [2000] * 3
+
+
+def test_judge_adaptation_does_not_spend_the_retry_budget(monkeypatch):
+    handler, seen = judge_endpoint(ANTHROPIC_400)
+    [v] = run_judge(handler, judge_env(monkeypatch), retries=0)
+    assert "error" not in v, v["error"]
+    assert v["covered"] == [True] and len(seen) == 3
+
+
+def test_judge_max_tokens_comes_from_env(monkeypatch):
+    handler, seen = judge_endpoint({})
+    settings = judge_env(monkeypatch, JUDGE_MAX_TOKENS="4000")
+    [v] = run_judge(handler, settings)
+    assert "error" not in v, v["error"]
+    assert [b.get("max_tokens") for b in seen] == [4000]
+    assert settings.get("max_tokens") == 4000
+
+
+def test_judge_renames_max_tokens_for_an_endpoint_that_wants_max_completion_tokens(monkeypatch):
+    handler, seen = judge_endpoint({"max_tokens": MAX_TOKENS_400})  # an OpenAI reasoning model
+    [v] = run_judge(handler, judge_env(monkeypatch))
+    assert "error" not in v, v["error"]
+    assert seen[0].get("max_tokens") == 2000
+    assert seen[-1].get("max_completion_tokens") == 2000 and "max_tokens" not in seen[-1]
+    assert len(seen) == 2
+
+
+def test_judge_drops_a_rejected_reasoning_effort(monkeypatch):
+    handler, seen = judge_endpoint({"reasoning_effort": "Unrecognized request argument supplied: reasoning_effort"})
+    [v] = run_judge(handler, judge_env(monkeypatch, JUDGE_REASONING_EFFORT="high"))
+    assert "error" not in v, v["error"]
+    assert seen[0]["reasoning_effort"] == "high" and "reasoning_effort" not in seen[-1]
+    assert len(seen) == 2
+
+
+def test_concurrent_judge_calls_all_adapt(monkeypatch):
+    # 4 judge calls in flight all get the first 400 for a param they carried: every one adapts, not only the first.
+    # retries=0, so a call that does not adapt fails instead of passing on its retry
+    handler, seen = judge_endpoint(ANTHROPIC_400, hold=4)
+    verdicts = run_judge(handler, judge_env(monkeypatch), ids=("A-01", "A-02", "N-01", "F-01"), retries=0)
+    assert [v.get("error") for v in verdicts] == [None] * 4
+    assert [v["covered"] for v in verdicts] == [[True]] * 4
+    assert all("temperature" in b for b in seen[:4])  # all 4 cold requests were in flight before any 400
+
+
+def test_judge_returns_an_error_for_a_400_it_cannot_adapt():
+    # guard: an unknown model is no param to drop or rename, so one send per attempt: retries+1 = 2 in all
+    handler, seen = judge_endpoint({"model": "model: unknown model 'nope'"})
+    [v] = run_judge(handler, {"model": "nope", "reasoning_effort": None})
+    assert "BadRequestError" in v["error"] and len(seen) == 2
+
+
 # ----------------------------------------------------------------------------- retrieval metrics and compare
 def test_retrieval_metrics_and_first_hit():
     q = qs()["A-01"]
@@ -216,12 +347,11 @@ def mock_server(behaviour: dict):
 
 
 def patch_client(monkeypatch, handler):
-    real = httpx.AsyncClient
-
-    def factory(*a, **kw):
-        kw["transport"] = httpx.MockTransport(handler)
-        return real(*a, **kw)
-    monkeypatch.setattr(ev.httpx, "AsyncClient", factory)
+    class Client(httpx.AsyncClient):  # a class, not a function: the openai SDK isinstance-checks httpx.AsyncClient
+        def __init__(self, *a, **kw):
+            kw["transport"] = httpx.MockTransport(handler)
+            super().__init__(*a, **kw)
+    monkeypatch.setattr(ev.httpx, "AsyncClient", Client)
 
 
 def write_table(tmp_path):
@@ -254,6 +384,27 @@ def test_full_run_exits_0_when_the_contract_holds(tmp_path, monkeypatch):
     report = json.loads(out.read_text())
     assert report["questions"]["n"] == 3 and report["label"] == "unit"
     assert report["summary"]["abstain_recall"]["count"] == 1
+
+
+def test_full_run_judge_adapts_to_an_anthropic_like_endpoint_and_records_it(tmp_path, monkeypatch):
+    handler, _ = mock_server({})
+    patch_client(monkeypatch, handler)
+    judge_env(monkeypatch)
+    jhandler, jseen = judge_endpoint(ANTHROPIC_400)
+    real = openai.AsyncOpenAI
+
+    def factory(*a, **kw):  # run_full imports AsyncOpenAI inside the function
+        kw["http_client"] = openai.DefaultAsyncHttpxClient(transport=httpx2.MockTransport(jhandler))
+        return real(*a, **kw)
+    monkeypatch.setattr(openai, "AsyncOpenAI", factory)
+    out = tmp_path / "r.json"
+    ev.main(["--base-url", "http://test", "--questions", str(write_table(tmp_path)), "--judge", "--out", str(out)])
+    report = json.loads(out.read_text())
+    judge = report["judge"]
+    assert judge["errors"] == 0, [r["judge"]["error"] for r in report["rows"] if "error" in r.get("judge", {})][:1]
+    assert judge.get("dropped_params") == ["response_format", "temperature"]
+    assert judge.get("max_completion_tokens") is False
+    assert len(jseen) == 7 + 2  # one adaptation for the whole run: the later 6 judge calls send the adapted request
 
 
 def test_retrieval_only_run(tmp_path, monkeypatch):
