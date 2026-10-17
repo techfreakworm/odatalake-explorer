@@ -147,6 +147,17 @@ test("the nav keeps its right border, side background and padding (guard)", () =
   assert.ok(nav.has("padding"), "nav keeps its padding");
 });
 
+test("the nav leaves overscroll-behavior at auto, so the wheel over it still scrolls the page (guard)", () => {
+  // From Chrome 147, overscroll-behavior contain (or none) on a scroll container that does not overflow stops the
+  // wheel from scrolling the page while the pointer is over it, and the six links fit (at 1440x900 they do)
+  const set = RULES.filter((r) => r.selectors.includes("nav")).flatMap((r) => r.decls
+    .filter((d) => /^overscroll-behavior(-y|-block)?$/.test(d.prop))
+    .filter((d) => d.value.toLowerCase().split(" ").some((v) => v !== "auto"))
+    .map((d) => `nav { ${d.prop}: ${d.value} }${r.at && ` in ${r.at}`}`));
+  assert.ok(!set.length, `${set.join(", ")}: contain or none on the nav stops the page scrolling under the pointer ` +
+    "in Chrome 147+ when the nav does not overflow; leave it auto");
+});
+
 // ---- the anchors
 
 test("the nav links are Overview, Script tag, Plain iframe, Docusaurus, Options and Privacy, each with a target (guard)",
