@@ -150,34 +150,29 @@ again adds a new version to each secret.
 
 ## 6. Deploy to Cloud Run [outward] [$: about $0.65 a day idle at 2 GiB with min-instances 1, plus Cloud Build]
 
-First copy the non-secret half of the LLM chain from `.env` into `deploy/env.yaml`. Both hosts read their settings
-from `deploy/env.yaml` only, never from `.env`, and the keys stay out of it (they are in Secret Manager since
-step 5). Also carry over `MAX_CONCURRENCY` if step 2 found a tight limit.
-
-```yaml
-LLM_BASE_URL: "<the primary's base URL>"
-LLM_MODEL: "<the primary's model>"
-LLM_REASONING_EFFORT: "<its lowest setting, or empty>"
-LLM_FALLBACK_BASE_URL: "<the paid fallback's base URL>"   # and the same three keys for each fallback you use
-LLM_FALLBACK_MODEL: "<its model>"
-LLM_FALLBACK_REASONING_EFFORT: ""
-```
-
-`deploy/deploy.sh primary` stops if `LLM_BASE_URL` or `LLM_MODEL` is empty there, or if the `llm-api-key` secret is
-missing: without them every answer would be the degraded one.
-
 ```bash
+set -a; source .env; set +a                                   # the provider settings from step 1
 deploy/deploy.sh primary
 export URL=$(gcloud run services describe ask-olake --region asia-south1 --format 'value(status.url)')
 export CANARY=$(cat .canary)                                  # the fresh prompt-leak canary of this deploy
 ```
 
+`.env` is the one place to fill. `deploy.sh` takes each provider's `BASE_URL`, `MODEL` and `REASONING_EFFORT` from
+the shell and prints them, with where each came from, before it deploys (never a key). The keys reach the service
+from Secret Manager (step 5). `deploy/env.yaml` holds only the tuning defaults (`ABSTAIN_THRESHOLD`, timeouts,
+limits, the refresher): edit it only to change those, since the same names in `.env` affect local runs only. A
+provider setting left empty in `.env` falls back to `deploy/env.yaml`.
+
+`deploy/deploy.sh primary` stops if the primary's base URL or model is empty, if a base URL points at this laptop
+(`.env`'s local-ollama block), or if the `llm-api-key` secret is missing: without them every answer would be the
+degraded one.
+
 The script echoes every command before it runs it:
 - It builds remotely from this directory with the Dockerfile, so no image is uploaded from the laptop.
 - It writes a fresh CANARY to `.canary`.
-- It passes the non-secret settings from `deploy/env.yaml`.
+- It passes the tuning defaults from `deploy/env.yaml`, with the provider settings from your shell.
 - It maps only the secrets that exist, each pinned to its newest version.
-- It adds `--no-cpu-throttling` when `REFRESH_INTERVAL_MIN` is above 0.
+- It adds `--no-cpu-throttling` when `REFRESH_INTERVAL_MIN` in `deploy/env.yaml` is above 0.
 - It caps the service at `MAX_INSTANCES` instances (default 1). The token budget, rate limiter and concurrency cap
   are per process: with N instances, N × `DAILY_TOKEN_BUDGET` and N × `MAX_CONCURRENCY` toward the provider. Raise
   it only if the provider's limits allow.
@@ -208,8 +203,8 @@ Also check:
 - The `index.version` in /healthz matches `cat data/index/CURRENT`.
 - The `N token events over M distinct second(s)` line shows tokens spread over several seconds. All of them in one
   second means the stream is buffered; the widget then falls back to `/ask`.
-- A FAIL on `answered by the LLM` with a degraded reason means no provider answered. Check `deploy/env.yaml`
-  (step 6), the secrets (step 5) and the logs below.
+- A FAIL on `answered by the LLM` with a degraded reason means no provider answered. Check the provider settings
+  `deploy.sh` printed in step 6, the secrets (step 5) and the logs below.
 
 **Watch it** while the scorer runs, in two more terminals:
 
@@ -278,8 +273,9 @@ the 30 s `/ask` bound, so a hung primary leaves the fallback only about 5 s.
 
 **DigitalOcean App Platform, BLR** [outward] [$: apps-s-1vcpu-2gb is $25 a month, billed per second]
 
-App Platform builds from GitHub, so the repo must be pushed first, and App Platform needs access to it. It takes
-the same non-secret settings from `deploy/env.yaml` (step 6), and the keys from your shell as SECRET envs.
+App Platform builds from GitHub, so the repo must be pushed first, and App Platform needs access to it. As in
+step 6, it takes the provider settings and the keys from your shell (the keys become SECRET envs) and the tuning
+defaults from `deploy/env.yaml`.
 
 ```bash
 doctl auth init                                               # token: https://cloud.digitalocean.com/account/api/tokens

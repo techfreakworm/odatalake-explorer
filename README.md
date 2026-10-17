@@ -279,9 +279,10 @@ the post-deploy checks, the eval against the public URL, gate recalibration, the
 emergency path, and rollback. In short:
 
 ```bash
+set -a; source .env; set +a                           # .env: the keys and provider settings (.env.example)
 deploy/deploy.sh secrets                              # once: service account + Secret Manager secrets
 deploy/deploy.sh primary                              # Cloud Run asia-south1, built remotely from the Dockerfile
-deploy/deploy.sh smoke "$URL"                         # /healthz, /readyz, /ask contract, CORS, SSE (SMOKE_BURST=50)
+deploy/deploy.sh smoke "$URL"                         # /healthz, /readyz, /ask contract and answer, CORS, SSE
 ```
 
 ## Deviations from the plan (with data)

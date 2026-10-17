@@ -51,10 +51,26 @@ require_env() {
 }
 run() { printf '+'; printf ' %q' "$@"; printf '\n'; "$@"; }
 
-# KEY: "value" lines of deploy/env.yaml (comments and blanks skipped), as KEY<TAB>value
+# Each provider's non-secret settings come from the shell (.env, loaded with set -a; source .env; set +a) when they
+# are set there, else from deploy/env.yaml. Keys are never among them; everything else (the tuning) is env.yaml's.
+PROVIDER_VARS="LLM_BASE_URL LLM_MODEL LLM_REASONING_EFFORT"
+PROVIDER_VARS="$PROVIDER_VARS LLM_FALLBACK_BASE_URL LLM_FALLBACK_MODEL LLM_FALLBACK_REASONING_EFFORT"
+PROVIDER_VARS="$PROVIDER_VARS LLM_FALLBACK2_BASE_URL LLM_FALLBACK2_MODEL LLM_FALLBACK2_REASONING_EFFORT"
+is_provider_var() { case " $PROVIDER_VARS " in *" $1 "*) return 0 ;; esac; return 1; }
+
+# KEY<TAB>value for every KEY: "value" line of deploy/env.yaml (comments and blanks skipped), each provider setting
+# replaced by its shell value when that is set (non-empty)
 env_pairs() {
   [ -f "$ENV_FILE" ] || die "$ENV_FILE is missing"
-  sed -n -E 's/^([A-Z][A-Z0-9_]*):[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1	\2/p' "$ENV_FILE"
+  local k v
+  sed -n -E 's/^([A-Z][A-Z0-9_]*):[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1	\2/p' "$ENV_FILE" |
+    while IFS="$(printf '\t')" read -r k v; do
+      if is_provider_var "$k" && [ -n "${!k:-}" ]; then v=${!k}; fi
+      printf '%s\t%s\n' "$k" "$v"
+    done
+  for k in $PROVIDER_VARS; do  # a provider setting that env.yaml lacks, set in the shell
+    if [ -n "${!k:-}" ] && ! grep -q "^$k:" "$ENV_FILE"; then printf '%s\t%s\n' "$k" "${!k}"; fi
+  done
 }
 env_value() { env_pairs | awk -F'\t' -v k="$1" '$1 == k { print $2 }'; }
 
@@ -131,11 +147,36 @@ check_instances() {  # whole numbers, 1 <= MAX_INSTANCES, MIN_INSTANCES <= MAX_I
   fi
 }
 
-check_llm_env() {  # the hosts take the non-secret LLM settings from deploy/env.yaml only, never from .env
-  local k missing=""
+check_llm_env() {  # the effective provider settings: a primary base URL and model, and no base URL on this laptop
+  local k v missing=""
   for k in LLM_BASE_URL LLM_MODEL; do [ -n "$(env_value "$k")" ] || missing="$missing $k"; done
-  [ -z "$missing" ] || die "deploy/env.yaml has no value for$missing: copy the primary's base URL and model there from" \
-    ".env (WAKEUP.md step 6; keys never go there). Without them /ask only returns the degraded answer"
+  [ -z "$missing" ] || die "no value for$missing: set it in .env and load it (set -a; source .env; set +a), or in" \
+    "deploy/env.yaml (WAKEUP.md step 6). Without it /ask only returns the degraded answer"
+  for k in LLM_BASE_URL LLM_FALLBACK_BASE_URL LLM_FALLBACK2_BASE_URL; do
+    v=$(env_value "$k")
+    case "$v" in
+      *://localhost*|*://127.*|*://0.0.0.0*|*://\[::1\]*)
+        die "$k=$v points at this laptop, which a cloud host cannot reach (is .env's local-ollama block on?)" ;;
+    esac
+  done
+}
+
+show_llm_env() {  # show_llm_env [NO_FALLBACK2]: each provider's effective settings and where they come from; no keys
+  local entry name prefix k var v line
+  echo "LLM providers for this deploy (keys not shown; [.env] = from the shell, [env.yaml] = deploy/env.yaml):"
+  for entry in primary:LLM_ fallback:LLM_FALLBACK_ fallback2:LLM_FALLBACK2_; do
+    name=${entry%%:*}
+    prefix=${entry#*:}
+    if [ "$name" = fallback2 ] && [ -n "${1:-}" ]; then echo "  fallback2  left out (no key)"; continue; fi
+    line=""
+    for k in BASE_URL MODEL REASONING_EFFORT; do
+      var=$prefix$k
+      v=$(env_value "$var")
+      if [ -z "$v" ]; then line="$line  $k -"; continue; fi
+      if [ -n "${!var:-}" ]; then line="$line  $k $v [.env]"; else line="$line  $k $v [env.yaml]"; fi
+    done
+    printf '  %-9s%s\n' "$name" "$line"
+  done
 }
 
 cmd_primary() {
@@ -159,15 +200,14 @@ cmd_primary() {
     *,LLM_API_KEY=*) ;;
     *) die "no llm-api-key secret: run deploy/deploy.sh secrets with LLM_API_KEY set first (WAKEUP.md step 5)" ;;
   esac
-  case ",$mapping" in
-    *,LLM_FALLBACK2_API_KEY=*) write_env_deploy deploy/env.deploy.yaml ;;
-    *) write_env_deploy deploy/env.deploy.yaml "$FALLBACK2_VARS"
-       echo "no llm-fallback2-api-key secret: the Gemini fallback is left out of the env" ;;
-  esac
+  local no_fb2=""
+  case ",$mapping" in *,LLM_FALLBACK2_API_KEY=*) ;; *) no_fb2=1 ;; esac
+  write_env_deploy deploy/env.deploy.yaml ${no_fb2:+"$FALLBACK2_VARS"}
+  show_llm_env "$no_fb2"
   local extra=()
   [ -n "$mapping" ] && extra+=(--update-secrets "$mapping")
-  refresh=$(env_value REFRESH_INTERVAL_MIN)
-  refresh=${REFRESH_INTERVAL_MIN:-${refresh:-0}}
+  refresh=$(env_value REFRESH_INTERVAL_MIN)  # the value the app gets: tuning comes from deploy/env.yaml
+  refresh=${refresh:-0}
   # the in-app index refresher needs CPU between requests (research.md §5.5)
   case "$refresh" in ''|0|0.0) ;; *) extra+=(--no-cpu-throttling) ;; esac
   run gcloud run deploy "$SERVICE" --source . --project "$PROJECT" --region "$REGION" --allow-unauthenticated \
@@ -211,6 +251,7 @@ cmd_fallback() {
   require_env DO_REPO
   check_llm_env
   [ -n "${LLM_API_KEY:-}" ] || die "LLM_API_KEY is not set in this shell: set -a; source .env; set +a (WAKEUP.md step 10)"
+  show_llm_env "$([ -n "${LLM_FALLBACK2_API_KEY:-}" ] || echo 1)"
   local spec=deploy/do-app.deploy.yaml id
   new_canary
   umask 077
@@ -264,7 +305,7 @@ PY
   check "POST /ask answered by the LLM (X-Ask-Reason: ${reason:-none})" "$([ "$reason" = answered ] && echo 0 || echo 1)"
   case "$reason" in
     llm_failed|ask_timeout|queue_timeout|rate_limited|budget_exhausted)
-      echo "      degraded answer: check LLM_BASE_URL and LLM_MODEL in deploy/env.yaml, the key secret, and the logs" ;;
+      echo "      degraded answer: check the provider settings deploy.sh printed, the key secret, and the logs" ;;
   esac
 
   curl -sS -m 10 -o /dev/null -D "$tmp/preflight" -X OPTIONS "$base/ask" -H 'Origin: https://olake.io' \
