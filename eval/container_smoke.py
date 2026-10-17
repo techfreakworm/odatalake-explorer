@@ -51,6 +51,16 @@ def mib(usage: str) -> float | None:
     return round(val * {"KiB": 1 / 1024, "KB": 1 / 1024, "MiB": 1, "MB": 1, "GiB": 1024, "GB": 1024}[unit], 1)
 
 
+def image_sizes(tag: str) -> dict:
+    """The DISK USAGE (unpacked) and CONTENT SIZE (compressed) columns of `docker image ls`, when this Docker
+    prints them (the containerd image store); {} otherwise. Its JSON format has no content size."""
+    lines = sh(["docker", "image", "ls", tag], check=False).stdout.splitlines()
+    if len(lines) < 2 or "CONTENT SIZE" not in lines[0]:
+        return {}
+    row = dict(zip(re.split(r"\s{2,}", lines[0].strip()), re.split(r"\s{2,}", lines[1].strip())))
+    return {"disk_usage": row.get("DISK USAGE"), "content_size": row.get("CONTENT SIZE")}
+
+
 def port_busy(port: int) -> bool:
     return sh(["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN"], check=False).returncode == 0
 
@@ -61,7 +71,7 @@ def measure_container(image: str, port: int) -> dict:
     inspect = json.loads(sh(["docker", "image", "inspect", image]).stdout)[0]
     name = f"ask-olake-ingest-smoke-{os.getpid()}"
     out = {"image": image, "image_id": inspect["Id"][:19], "architecture": inspect.get("Architecture"),
-           "image_size_mb": round(inspect["Size"] / 1e6, 1)}
+           "image_size_mb": round(inspect["Size"] / 1e6, 1), "sizes": image_sizes(image)}
     t0 = time.perf_counter()
     sh(["docker", "run", "-d", "--name", name, "-p", f"127.0.0.1:{port}:8080", image])
     try:
@@ -128,7 +138,7 @@ def measure_build(extra: list[str]) -> dict:
             "embedded": int(m.group(3)) if m else None, "reused": int(m.group(4)) if m else None}
 
 
-def measure_amd64(git_sha: str) -> dict:
+def measure_amd64(git_sha: str, native_image: str) -> dict:
     tag = "ask-olake:amd64-check"
     cmd = ["docker", "build", "--platform", "linux/amd64", "-t", tag, "--build-arg", f"GIT_SHA={git_sha}", "."]
     t0 = time.perf_counter()
@@ -136,7 +146,10 @@ def measure_amd64(git_sha: str) -> dict:
     out = {"command": " ".join(cmd), "exit": r.returncode, "wall_s": round(time.perf_counter() - t0, 1)}
     if r.returncode == 0:
         inspect = json.loads(sh(["docker", "image", "inspect", tag]).stdout)[0]
-        out.update(architecture=inspect.get("Architecture"), image_size_mb=round(inspect["Size"] / 1e6, 1))
+        # `docker image inspect` Size is a native image's unpacked size but only a foreign-platform image's
+        # compressed content (this host never unpacks it), so the comparable number is CONTENT SIZE
+        out.update(architecture=inspect.get("Architecture"), sizes=image_sizes(tag),
+                   native=({"image": native_image, **image_sizes(native_image)}))
         sh(["docker", "image", "rm", tag], check=False)
     else:
         out["stderr_tail"] = r.stderr[-600:]
@@ -159,7 +172,7 @@ def main(argv: list[str] | None = None) -> None:
         report = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
         key = {"refresh": "refresh_check", "amd64": "amd64_build"}[args.only]
         stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        part = measure_refresh() if args.only == "refresh" else measure_amd64(git_sha)
+        part = measure_refresh() if args.only == "refresh" else measure_amd64(git_sha, args.image)
         report[key] = {"measured_at": stamp, "git_sha": git_sha, **part}
         out.write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
         print(json.dumps(report[key], indent=1))
@@ -178,7 +191,7 @@ def main(argv: list[str] | None = None) -> None:
         report["cold_build"] = measure_build(["--no-reuse"])
         report["warm_build"] = measure_build(["--prune"])
     if args.amd64:
-        report["amd64_build"] = measure_amd64(git_sha)
+        report["amd64_build"] = measure_amd64(git_sha, args.image)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=1))
