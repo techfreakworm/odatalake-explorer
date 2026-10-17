@@ -376,9 +376,9 @@ deploy/deploy.sh smoke "$URL"                         # /healthz, /readyz, /ask 
 - **429 handling** (`09c26a7`).
   - When another provider is behind it, the SDK's Retry-After sleep (up to 2 minutes) is skipped and the chain fails
     over at once; the last provider caps Retry-After at 2 s. Without this a 429 would eat the 30 s `/ask` bound.
-  - On a 400 that names a parameter, the call adapts once per provider: `max_tokens` becomes
-    `max_completion_tokens`, or `temperature`, `stream_options` or `reasoning_effort` is dropped (logged as
-    `llm_param_adapted`).
+  - On a 400 that names a parameter, the call adapts once per provider: `max_tokens` becomes `max_completion_tokens`,
+    or `temperature`, `stream_options` or `reasoning_effort` is dropped (logged as `llm_param_adapted`); calls already
+    in flight that carried the parameter retry with the adapted params instead of failing over.
   - Each attempt's first-byte bound is the smaller of `LLM_TIMEOUT_S` and the time left in `ASK_TIMEOUT_S`, so a hung
     primary still leaves time for the fallback.
 - **Prompt levers, opt-in** (`PROMPT_REMINDERS=on`; default off). L1 (`c3f3f50`) is the ADV-03 fix:

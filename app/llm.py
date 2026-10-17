@@ -102,16 +102,18 @@ class _Provider:
             p.pop(k, None)
         return p
 
-    def adapt(self, err: openai.BadRequestError) -> bool:
-        """Some providers reject a parameter; drop or rename it once and retry on the same provider."""
+    def adapt(self, err: openai.BadRequestError, sent: dict[str, Any]) -> bool:
+        """Some providers reject a parameter; drop or rename it and retry on the same provider. Concurrent calls race:
+        another may have adapted already, so the change is idempotent and every call whose request (`sent`) carried the
+        param retries. A 400 for a param the request left out is False: the retry would resend the same request."""
         msg = str(err).lower()
-        if "max_tokens" in msg and "max_completion_tokens" in msg and not self.use_max_completion_tokens:
+        if "max_tokens" in sent and "max_tokens" in msg and "max_completion_tokens" in msg:
             self.use_max_completion_tokens = True
             return True
         for param, words in (("stream_options", ("stream_options", "include_usage")),
                              ("temperature", ("temperature",)),
                              ("reasoning_effort", ("reasoning_effort",))):
-            if param not in self.dropped and any(w in msg for w in words):
+            if param in sent and any(w in msg for w in words):
                 self.dropped.add(param)
                 return True
         return False
@@ -170,11 +172,12 @@ class ProviderChain:
             try:
                 async with asyncio.timeout_at(first_deadline):
                     for _ in range(4):
+                        params = p.params(messages, self.max_tokens)
                         try:
-                            stream = await p.client.chat.completions.create(**p.params(messages, self.max_tokens))
+                            stream = await p.client.chat.completions.create(**params)
                             break
                         except openai.BadRequestError as e:
-                            if not p.adapt(e):
+                            if not p.adapt(e, params):
                                 raise
                             log_event("llm_param_adapted", logging.WARNING, provider=p.cfg.name,
                                       dropped=sorted(p.dropped), max_completion_tokens=p.use_max_completion_tokens)
