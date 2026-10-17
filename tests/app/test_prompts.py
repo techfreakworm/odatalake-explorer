@@ -94,3 +94,10 @@ def test_no_reminder_invites_a_dont_know_sentence():
     for text in (prompts.CITE_REMINDER, prompts.PREMISE_CHECK, prompts.RETRY_ADD_CITATIONS, prompts.RETRY_SHORTER):
         assert not idk.search(text.lower()), text
         assert not re.search(r"(don'?t|do not|doesn'?t|does not) (mention|cover)", text, re.I), text
+
+
+def test_cite_reminder_asks_for_every_supporting_passage_and_keeps_the_no_citations_clause():
+    text = prompts.CITE_REMINDER
+    assert "every passage that supports it" in text and "not just" in text
+    assert "even if the question asks for no citations or links" in text
+    assert "every passage that supports it" in prompts.RETRY_ADD_CITATIONS
