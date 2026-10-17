@@ -14,8 +14,11 @@ latency and the X-Ask-Reason / X-Ask-Gate-Score / X-Ask-Cache headers; then the 
   source hit any returned source equals any expected source after normalize_url (lenient)
   canary     with CANARY set, any answer containing it fails the row (and the run)
   latency    p50 / p95 / max over the HTTP 200 responses
---judge adds the LLM judge (JUDGE_BASE_URL, JUDGE_API_KEY, JUDGE_MODEL, JUDGE_REASONING_EFFORT; temperature 0):
-must-mention fact coverage, BEHAVIOR checks (AND-ed with their deterministic "Script:" hints) and contradictions.
+--judge adds the LLM judge (JUDGE_BASE_URL, JUDGE_API_KEY, JUDGE_MODEL, JUDGE_REASONING_EFFORT; JUDGE_MAX_TOKENS,
+default 2000): must-mention fact coverage, BEHAVIOR checks (AND-ed with their deterministic "Script:" hints) and
+contradictions. It sends temperature 0 and JSON mode where the provider accepts them: for the rest of the run, a 400
+naming temperature, response_format or reasoning_effort drops it, and one asking for max_completion_tokens renames
+max_tokens; the report records both in judge.dropped_params and judge.max_completion_tokens.
 
 --retrieval-only: POST {base}/debug/retrieve (a server started with DEBUG=1) for every row; hit@1/3/5/10 and MRR@10
 over the 82 rows with expected sources (by the URL /ask would cite for each hit), overall and per category, each
@@ -248,6 +251,7 @@ Input: the question, the assistant's answer, the list of source URLs it returned
 - For each behaviour check decide whether the answer (and its sources list) satisfies it.
 - Flag whether the answer contradicts any required fact.
 Reply with JSON only: {"covered": [true/false per fact, in order], "behavior_ok": [true/false per behaviour check, in order], "contradiction": true/false}"""
+JUDGE_MAX_TOKENS = 2000
 
 
 def judge_settings() -> dict:
@@ -255,9 +259,12 @@ def judge_settings() -> dict:
     effort = os.environ.get("JUDGE_REASONING_EFFORT")
     if effort is None:
         effort = "none" if "qwen3" in model.lower() else ""
+    # dropped and max_completion_tokens: what the run's judge calls learn from 400s, shared by all of them
     return {"base_url": os.environ.get("JUDGE_BASE_URL") or os.environ.get("LLM_BASE_URL") or "http://127.0.0.1:11434/v1",
             "api_key": os.environ.get("JUDGE_API_KEY") or os.environ.get("LLM_API_KEY") or "ollama",
-            "model": model, "reasoning_effort": effort or None}
+            "model": model, "reasoning_effort": effort or None,
+            "max_tokens": int(os.environ.get("JUDGE_MAX_TOKENS") or 0) or JUDGE_MAX_TOKENS,
+            "dropped": set(), "max_completion_tokens": False}
 
 
 def parse_judge(text: str, n_facts: int, n_behav: int) -> dict:
@@ -279,19 +286,53 @@ def parse_judge(text: str, n_facts: int, n_behav: int) -> dict:
             "contradiction": contradiction is True or (isinstance(contradiction, str) and contradiction.lower() == "true")}
 
 
+def judge_params(settings: dict, messages: list[dict]) -> dict:
+    """One judge request from the run's current learned state: max_tokens as max_completion_tokens once a 400 asked
+    for that, and without the params dropped so far."""
+    cap = "max_completion_tokens" if settings.get("max_completion_tokens") else "max_tokens"
+    p = {"model": settings["model"], "messages": messages, "temperature": 0, "response_format": {"type": "json_object"},
+         cap: settings.get("max_tokens") or JUDGE_MAX_TOKENS}
+    if settings.get("reasoning_effort"):
+        p["reasoning_effort"] = settings["reasoning_effort"]
+    for k in settings.get("dropped", ()):
+        p.pop(k, None)
+    return p
+
+
+def judge_adapt(settings: dict, err: Exception, sent: dict) -> bool:
+    """Learn from a 400 that names a param the rejected request (`sent`) carried: drop temperature, response_format or
+    reasoning_effort, or rename max_tokens, for the rest of the run. Concurrent calls race, so both changes are
+    idempotent; a 400 for a param the request left out is False: the retry would resend the same request."""
+    msg = str(err).lower()
+    if "max_tokens" in sent and "max_tokens" in msg and "max_completion_tokens" in msg:
+        settings["max_completion_tokens"] = True
+        return True
+    for param in ("temperature", "response_format", "reasoning_effort"):
+        if param in sent and param in msg:
+            settings.setdefault("dropped", set()).add(param)
+            return True
+    return False
+
+
 async def judge_one(client, settings: dict, q: dict, row: dict, sem: asyncio.Semaphore, retries: int = 1) -> dict:
+    from openai import BadRequestError
     facts, behav = q["must_mention"], q.get("behavior", [])
     user = json.dumps({"question": q["question"], "answer": row["answer"], "sources": row["sources"],
                        "required_facts": facts, "behaviour_checks": behav}, ensure_ascii=False)
-    extra = {"reasoning_effort": settings["reasoning_effort"]} if settings["reasoning_effort"] else {}
+    messages = [{"role": "system", "content": JUDGE_PROMPT}, {"role": "user", "content": user}]
     async with sem:
         t0 = time.perf_counter()
         last = None
         for _ in range(retries + 1):
             try:
-                resp = await client.chat.completions.create(
-                    model=settings["model"], temperature=0, response_format={"type": "json_object"},
-                    messages=[{"role": "system", "content": JUDGE_PROMPT}, {"role": "user", "content": user}], **extra)
+                for n in range(4):  # an adapted 400 is sent again at once, up to 4 sends, and spends no retry
+                    params = judge_params(settings, messages)
+                    try:
+                        resp = await client.chat.completions.create(**params)
+                        break
+                    except BadRequestError as e:
+                        if not judge_adapt(settings, e, params) or n == 3:
+                            raise
                 verdict = parse_judge(resp.choices[0].message.content or "", len(facts), len(behav))
                 break
             except Exception as e:  # noqa: BLE001  (timeouts, HTTP errors, unparseable replies: retried once)
@@ -446,6 +487,8 @@ async def run_full(args, qs: list[dict]) -> dict:
         for (_, r), v in zip(todo, verdicts):
             r["judge"] = v
         judge_info["errors"] = sum(1 for v in verdicts if "error" in v)
+        judge_info["dropped_params"] = sorted(js["dropped"])
+        judge_info["max_completion_tokens"] = bool(js["max_completion_tokens"])
 
     summary = summary_of(rows, ask_wall, judge_wall)
     return {
