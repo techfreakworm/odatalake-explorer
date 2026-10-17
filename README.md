@@ -51,7 +51,7 @@ flowchart LR
   subgraph S ["API container: app/ (FastAPI)"]
     Q["POST /ask, POST /ask/stream"] --> CA{"exact-match cache"}
     CA -- "miss" --> RT["BM25 + dense, RRF k=60, ranking rules,<br/>max 3 per page, top 10"]
-    RT --> GT{"dense gate at or above<br/>ABSTAIN_THRESHOLD?"}
+    RT --> GT{"dense gate at or above<br/>ABSTAIN_THRESHOLD, or a general<br/>question about the product?"}
     GT -- "no" --> SC["decline, sources = []"]
     GT -- "yes" --> LLM["one LLM call over the provider chain<br/>failover before the first byte"]
     LLM --> AB{"NO_ANSWER, OUT_OF_SCOPE<br/>or no valid citation?"}
@@ -89,7 +89,7 @@ flowchart LR
 | Structure-aware chunks: 300-token target, 450 hard max, a context header `title \| product > breadcrumbs > headings [tab path]` | Fixed-size windows; 600-token chunks | Never splits a code fence or a table (oversized tables repeat their header row), never mixes two tab panels, keeps headings with their content. 600-token chunks scored lower on every POC config (`poc/results/retrieval-canonical.json`) |
 | Fact cards with per-section citations | Relying on pages that never state a negative | "Does OLake support Oracle CDC?" needs a page that says no. 6 cards, each fact checked against its cited pages (`index/factcheck.py`); each section cites only the pages its facts come from |
 | Canonical URLs in `sources`, deep links in the UI | Anchored URLs in `sources` | Robust matching for graders, precise navigation for people |
-| Three logged abstain triggers: the off-topic gate, the model's NO_ANSWER / OUT_OF_SCOPE, no valid citation | A prompt-only "say I don't know" | Measurable and tunable. The gate alone, at the calibrated 0.6894, catches 5 of the 12 must-abstain rows with no false abstain (`eval/results/retrieval-baseline.json`); the model and citation validation do the rest |
+| Three logged abstain triggers: the off-topic gate, the model's NO_ANSWER / OUT_OF_SCOPE, no valid citation | A prompt-only "say I don't know" | Measurable and tunable. The gate alone, at the calibrated 0.6894, catches 5 of the 12 must-abstain rows with no false abstain (`eval/results/retrieval-baseline.json`); the model and citation validation do the rest. A general question about the product (what or who is OLake, OLake Fusion or Ask OLake, tell me about ...) passes the gate even below the threshold, since no threshold separates it from UNK-06 (`eval/results/gate-calibration.json`, `python -m eval.gate`) |
 | Outside pages (Iceberg, Amoro, Postgres, MySQL, MongoDB, Kafka, catalogs), labelled, ranked below first-party pages | No outside pages | Without them MRR@10 drops 0.854 to 0.840 and hit@1 0.780 to 0.768 (`eval/results/retrieval-no-outside.json`). The 12 must-abstain gate scores are unchanged (UNK-04 moves by 6e-08, float rounding), so the calibrated threshold is the same. Two must-answer gate scores drop: SYNC-08 0.7728 to 0.7673, SYNC-12 0.7868 to 0.7782 |
 | Loader plus iframe widget | A Shadow DOM widget | Needs no host-page CORS or connect-src change, and styles are isolated |
 | Exact-match cache only | A semantic cache | Two similar questions can need different answers |
