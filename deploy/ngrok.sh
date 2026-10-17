@@ -41,7 +41,9 @@ case "$MODE" in
     env_args=()
     [ -f .env ] && env_args+=(--env-file .env)
     docker rm -f "$NAME" >/dev/null 2>&1 || true
+    # -e after --env-file wins: the image's baked model paths beat a .env written for host runs
     docker run -d --name "$NAME" -p "127.0.0.1:$PORT:8080" ${env_args[@]+"${env_args[@]}"} \
+      -e FASTEMBED_CACHE_PATH=/app/models -e TIKTOKEN_CACHE_DIR=/app/models/tiktoken \
       -e "PUBLIC_BASE_URL=https://$NGROK_DOMAIN" "$IMAGE" >/dev/null
     ;;
   uvicorn)

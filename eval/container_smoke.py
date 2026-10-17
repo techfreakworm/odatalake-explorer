@@ -12,7 +12,8 @@ No LLM and no keys (the container answers /ask with its degraded 200, so no mode
    cold `uv run python -m index.build --offline --no-reuse --out-root .cache/index-ab/cold` (every chunk embedded),
    then warm, the same without --no-reuse and with --prune (every vector reused)
 5. with --amd64: `docker build --platform linux/amd64` of the same Dockerfile (exit code, time, size; the check
-   image is removed afterwards)
+   image is removed afterwards). --amd64-only runs just this and merges it into an existing --out file, so the
+   slow emulated build can run apart from the timed steps.
 It refuses a busy port and removes only the container it started. The file records the date, the git SHA, the host
 and the exact commands.
 """
@@ -142,10 +143,19 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--port", type=int, default=8766)
     ap.add_argument("--skip-build", action="store_true", help="skip the index build timings")
     ap.add_argument("--amd64", action="store_true", help="also check that the image builds for linux/amd64")
+    ap.add_argument("--amd64-only", action="store_true", help="only the amd64 check, merged into the --out file")
     ap.add_argument("--out", default="eval/results/container-smoke.json")
     ap.add_argument("--note", default="", help="measurement conditions, e.g. other load on the machine")
     args = ap.parse_args(argv)
     git_sha = sh(["git", "rev-parse", "--short", "HEAD"]).stdout.strip()
+    out = REPO / args.out
+    if args.amd64_only:
+        report = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
+        report["amd64_build"] = {"measured_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                                 "git_sha": git_sha, **measure_amd64(git_sha)}
+        out.write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
+        print(json.dumps(report["amd64_build"], indent=1))
+        sys.exit(0)
     report = {
         "measured_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "git_sha": git_sha,
@@ -161,7 +171,6 @@ def main(argv: list[str] | None = None) -> None:
         report["warm_build"] = measure_build(["--prune"])
     if args.amd64:
         report["amd64_build"] = measure_amd64(git_sha)
-    out = REPO / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=1))

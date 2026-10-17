@@ -2,6 +2,7 @@
 #
 #   docker build -t ask-olake:local --build-arg GIT_SHA=$(git rev-parse --short HEAD) .
 #   docker run --rm -p 8080:8080 --env-file .env ask-olake:local
+#   (.env must leave FASTEMBED_CACHE_PATH and TIKTOKEN_CACHE_DIR unset, as .env.example does: the models are baked in)
 #
 # The index is built on the laptop (uv run python -m index.build) and copied in: the corpus is never embedded
 # during the build or at container start. The query-side models are downloaded at build time.
