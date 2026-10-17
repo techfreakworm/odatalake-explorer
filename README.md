@@ -350,10 +350,12 @@ deploy/deploy.sh smoke "$URL"                         # /healthz, /readyz, /ask 
   - The SSE parser is shared with 19 node tests that cover XSS and SSE.
   - The default request timeout is 35 s, not the plan's 30 (`5dadc69`). The server bounds a whole `/ask` at 30 s,
     so the browser waits longer and receives the degraded "most relevant pages" answer instead of its own timeout.
+    `data-timeout` still overrides it.
 - **One instance, explicitly** (`MAX_INSTANCES`, default 1). The daily token budget, the rate limiter and the
-  concurrency cap are per process, so a scale-out would multiply them. `deploy/deploy.sh primary` passes
-  `--max-instances` to Cloud Run, and the DigitalOcean spec keeps `instance_count: 1`. With N instances the provider
-  can see N × `DAILY_TOKEN_BUDGET` and N × `MAX_CONCURRENCY`; raise it only if the provider's limits allow.
+  concurrency cap are per process, so a scale-out would multiply them (and split the answer cache).
+  `deploy/deploy.sh primary` passes `--max-instances` to Cloud Run, and the DigitalOcean spec keeps
+  `instance_count: 1`. With N instances the provider can see N × `DAILY_TOKEN_BUDGET` and N × `MAX_CONCURRENCY`;
+  raise it only if the provider's limits allow.
 - **D2: ported, not rebuilt.** The `poc/` modules were ported (ingest, chunker, retrieval, eval) instead of rewritten
   at the event. The operator approved this, and is not competing for prizes.
 - **The LLM and the judge are local.** All end-to-end numbers come from ollama `qwen3:32b` on the laptop. It is also
