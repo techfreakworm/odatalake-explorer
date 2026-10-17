@@ -304,6 +304,55 @@ def test_no_failover_after_the_first_byte_of_an_adapted_retry():
     assert r.hosts() == ["primary", "primary"]
 
 
+def test_a_call_makes_at_most_4_sends_to_a_provider_then_fails_over():
+    rejected = {"stream_options": STREAM_OPTIONS_400, "temperature": TEMPERATURE_400,
+                "reasoning_effort": "Unrecognized request argument supplied: reasoning_effort",
+                "max_tokens": MAX_TOKENS_400}
+    answer = ok(["ok [1]."])
+
+    async def primary(body):  # rejects the first of these keys the request carries, in this order
+        message = next((m for k, m in rejected.items() if k in body), None)
+        return await (answer if message is None else status(400, message))(body)
+
+    r = Router(primary=primary, fallback=ok(["From fallback [1]."]))
+    ch = chain(r, "primary", "fallback", effort="none")
+
+    async def go():
+        first = await call(ch)
+        hosts = r.hosts()
+        return first, hosts, await call(ch)
+
+    (first, _), hosts, (second, streamed) = asyncio.run(go())
+    # 4 sends, each adapting to one param, use up the bound: the 5th request goes to the fallback
+    assert hosts == ["primary"] * 4 + ["fallback"]
+    assert (first.provider, first.failovers) == ("fallback", ["primary: HTTP 400"])
+    # the provider kept all four adaptations: the next call answers from the primary in 1 send
+    assert r.hosts()[5:] == ["primary"]
+    assert (second.provider, second.failovers, streamed) == ("primary", [], "ok [1].")
+
+
+def test_a_warm_provider_fails_over_on_a_400_for_a_param_it_already_dropped():
+    mode = {"every": False}
+    answer, rejected = ok(["ok [1]."]), status(400, TEMPERATURE_400)
+
+    async def primary(body):  # rejects requests carrying temperature; with mode["every"], every request
+        return await (rejected if mode["every"] or "temperature" in body else answer)(body)
+
+    r = Router(primary=primary, fallback=ok(["From fallback [1]."]))
+    ch = chain(r, "primary", "fallback")
+
+    async def go():
+        first = await call(ch)
+        mode["every"] = True
+        return first, len(r.requests), await call(ch)
+
+    (first, _), n, (second, streamed) = asyncio.run(go())
+    assert first.provider == "primary" and r.hosts()[:n] == ["primary", "primary"]
+    # the second call's request already lacks temperature: one primary send, then the fallback
+    assert r.hosts()[n:] == ["primary", "fallback"]
+    assert (second.provider, second.failovers, streamed) == ("fallback", ["primary: HTTP 400"], "From fallback [1].")
+
+
 def test_empty_chain_is_unavailable():
     ch = ProviderChain([], timeout_s=5, max_tokens=600)
     assert not ch.configured

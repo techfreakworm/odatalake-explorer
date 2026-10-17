@@ -302,6 +302,57 @@ def test_judge_returns_an_error_for_a_400_it_cannot_adapt():
     assert "BadRequestError" in v["error"] and len(seen) == 2
 
 
+def test_judge_does_not_adapt_to_a_400_for_a_param_the_request_left_out(monkeypatch):
+    # the endpoint names temperature on every request, even one without it (every request carries a model); from the
+    # 11th request on it answers, so a broken loop ends instead of hanging
+    rejects, _ = judge_endpoint({"model": ANTHROPIC_400["temperature"]})
+    answers, _ = judge_endpoint({})
+    seen = []
+
+    async def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(json.loads(request.content))
+        return await (rejects if len(seen) <= 10 else answers)(request)
+
+    [v] = run_judge(handler, judge_env(monkeypatch), retries=1)
+    # one adapted send, then each attempt ends on the 400 for a param its request left out: 3 sends in all
+    assert "error" in v and len(seen) == 3
+    assert "temperature" in seen[0] and not any("temperature" in b for b in seen[1:])
+
+
+EVERY_PARAM_400 = {**ANTHROPIC_400, "reasoning_effort": "Unrecognized request argument supplied: reasoning_effort",
+                   "max_tokens": MAX_TOKENS_400}
+
+
+def test_judge_makes_at_most_4_sends_per_attempt_and_keeps_what_it_learned(monkeypatch):
+    # the endpoint rejects the first of temperature, response_format, reasoning_effort, max_tokens the request carries
+    handler, seen = judge_endpoint(EVERY_PARAM_400)
+    settings = judge_env(monkeypatch, JUDGE_REASONING_EFFORT="high")
+    q = qs()["F-01"]
+    row = ev.score_row(q, res(), None)
+
+    async def go():
+        client, sem = judge_client(handler), asyncio.Semaphore(1)
+        try:
+            first = await ev.judge_one(client, settings, q, row, sem, retries=0)
+            sends = len(seen)
+            return first, sends, await ev.judge_one(client, settings, q, row, sem, retries=0)
+        finally:
+            await client.close()
+
+    first, sends, second = asyncio.run(go())
+    # 4 sends per attempt, the first included: the 4th 400 ends the attempt although it adapted
+    assert sends == 4 and "BadRequestError" in first.get("error", "")
+    # the same settings kept all four adaptations: the next call answers in 1 send
+    assert "error" not in second, second["error"]
+    assert len(seen) == 5 and not {"temperature", "response_format", "reasoning_effort"} & set(seen[4])
+    assert seen[4].get("max_completion_tokens") == 2000 and "max_tokens" not in seen[4]
+    # with a retry, fresh settings get the verdict on exactly the 5th send
+    handler, seen = judge_endpoint(EVERY_PARAM_400)
+    [v] = run_judge(handler, judge_env(monkeypatch, JUDGE_REASONING_EFFORT="high"), retries=1)
+    assert "error" not in v, v["error"]
+    assert len(seen) == 5
+
+
 # ----------------------------------------------------------------------------- retrieval metrics and compare
 def test_retrieval_metrics_and_first_hit():
     q = qs()["A-01"]
@@ -405,6 +456,48 @@ def test_full_run_judge_adapts_to_an_anthropic_like_endpoint_and_records_it(tmp_
     assert judge.get("dropped_params") == ["response_format", "temperature"]
     assert judge.get("max_completion_tokens") is False
     assert len(jseen) == 7 + 2  # one adaptation for the whole run: the later 6 judge calls send the adapted request
+
+
+def patch_judge(monkeypatch, jhandler):
+    real = openai.AsyncOpenAI
+
+    def factory(*a, **kw):  # run_full imports AsyncOpenAI inside the function
+        kw["http_client"] = openai.DefaultAsyncHttpxClient(transport=httpx2.MockTransport(jhandler))
+        return real(*a, **kw)
+    monkeypatch.setattr(openai, "AsyncOpenAI", factory)
+
+
+def test_full_run_report_never_records_the_judge_key(tmp_path, monkeypatch):
+    handler, _ = mock_server({})
+    patch_client(monkeypatch, handler)
+    judge_env(monkeypatch)
+    monkeypatch.setenv("JUDGE_API_KEY", "judge-key-never-in-report")
+    jhandler, _ = judge_endpoint(ANTHROPIC_400)
+    auth = []
+
+    async def judge(request: httpx2.Request) -> httpx2.Response:
+        auth.append(request.headers.get("authorization"))
+        return await jhandler(request)
+    patch_judge(monkeypatch, judge)
+    out = tmp_path / "r.json"
+    ev.main(["--base-url", "http://test", "--questions", str(write_table(tmp_path)), "--judge", "--out", str(out)])
+    assert auth and set(auth) == {"Bearer judge-key-never-in-report"}  # the judge calls did use it
+    report = json.loads(out.read_text())
+    assert report["judge"]["errors"] == 0 and "api_key" not in report["judge"]
+    assert "judge-key-never-in-report" not in out.read_text()
+
+
+def test_full_run_fails_fast_on_a_bad_judge_max_tokens(tmp_path, monkeypatch):
+    handler, seen = mock_server({})
+    patch_client(monkeypatch, handler)
+    judge_env(monkeypatch)
+    monkeypatch.setenv("JUDGE_MAX_TOKENS", "lots")
+    patch_judge(monkeypatch, judge_endpoint({})[0])
+    with pytest.raises((ValueError, SystemExit)) as e:
+        ev.main(["--base-url", "http://test", "--questions", str(write_table(tmp_path)), "--judge",
+                 "--out", str(tmp_path / "r.json")])
+    assert "JUDGE_MAX_TOKENS" in str(e.value)
+    assert not [s for s in seen if s["path"] == "/ask"]  # it stops before the first /ask, not after all of them
 
 
 def test_retrieval_only_run(tmp_path, monkeypatch):
