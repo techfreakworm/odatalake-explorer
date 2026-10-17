@@ -67,3 +67,30 @@ def test_create_app_redacts_provider_keys_and_the_canary_in_every_log_line(index
     out = capsys.readouterr().out
     assert key not in out and canary not in out.lower()
     assert out.count("[redacted]") == 3
+
+
+def _scorer_idk():
+    from eval.run import IDK  # the eval runner's don't-know pattern (an answer matching it counts as an abstain)
+
+    return IDK
+
+
+def test_premise_check_closes_every_user_message_after_the_cite_reminder():
+    msg = prompts.user_message("Is `initial_wait_time: 10` honored?", [], "Docs indexed 2026-10-17")
+    assert msg.endswith(prompts.CITE_REMINDER + "\n" + prompts.PREMISE_CHECK)
+    assert msg.index("Question: Is `initial_wait_time: 10` honored?") < msg.index(prompts.CITE_REMINDER)
+    assert prompts.PREMISE_CHECK not in prompts.system_prompt("c" * 16)  # the system prompt stays the plan's text
+
+
+def test_premise_check_asks_for_an_assertive_cited_correction_and_verbatim_configs():
+    text = prompts.PREMISE_CHECK
+    assert '"No:"' in text and "citation" in text
+    assert "verbatim" in text and "policies" in text
+    assert "honored" in text and "automatic" in text  # the kinds of assumption seen in the misses, stated generally
+
+
+def test_no_reminder_invites_a_dont_know_sentence():
+    idk = _scorer_idk()
+    for text in (prompts.CITE_REMINDER, prompts.PREMISE_CHECK, prompts.RETRY_ADD_CITATIONS, prompts.RETRY_SHORTER):
+        assert not idk.search(text.lower()), text
+        assert not re.search(r"(don'?t|do not|doesn'?t|does not) (mention|cover)", text, re.I), text
