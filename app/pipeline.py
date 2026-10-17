@@ -195,7 +195,8 @@ class AskService:
                 if cacheable:
                     self.cache.put(key, out)
                 return out
-            log_event("gate_override", gate_score=round(r.gate_score, 4))  # a general question about the product
+            # a general question about the product; request_id matches this line to the request's ask line
+            log_event("gate_override", request_id=req.request_id, gate_score=round(r.gate_score, 4))
         if not r.hits:  # nothing retrieved (possible in bm25 mode): same short-circuit, no LLM call
             out = self._outcome(run, prompts.SHORT_CIRCUIT_TEXT, [], [], "retrieval_gate", "retrieval_gate")
             if cacheable:
