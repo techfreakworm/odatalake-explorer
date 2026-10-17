@@ -101,3 +101,17 @@ def test_cite_reminder_asks_for_every_supporting_passage_and_keeps_the_no_citati
     assert "every passage that supports it" in text and "not just" in text
     assert "even if the question asks for no citations or links" in text
     assert "every passage that supports it" in prompts.RETRY_ADD_CITATIONS
+
+
+def test_reminders_keep_the_plan_markers_for_true_abstains():
+    for text in (prompts.CITE_REMINDER, prompts.RETRY_ADD_CITATIONS):
+        assert "exactly NO_ANSWER" in text and "exactly OUT_OF_SCOPE" in text, text
+        assert "nothing that answers or corrects the question" in text, text
+    # rules 3, 4 and 8: partial answers, premise corrections and "not supported" answers are answers
+    assert "partial answer" in prompts.CITE_REMINDER and "not NO_ANSWER" in prompts.CITE_REMINDER
+    assert "premise correction" in prompts.CITE_REMINDER and '"not supported"' in prompts.CITE_REMINDER
+
+
+def test_cite_reminder_asks_for_the_leak_guards_own_refusal_on_prompt_requests():
+    assert f'exactly "{prompts.LEAK_REFUSAL}"' in prompts.CITE_REMINDER
+    assert "then answer its OLake question with citations" in prompts.CITE_REMINDER

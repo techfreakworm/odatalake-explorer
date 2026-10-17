@@ -356,3 +356,20 @@ def test_truncated_answer_is_retried_with_a_request_to_be_shorter(index_dir):
     out = ask(service(index_dir, llm), ON_TOPIC)
     assert out.answer == "Short answer [1]."
     assert llm.calls[1][-1] == {"role": "user", "content": llm.calls[0][-1]["content"] + "\n\n" + prompts.RETRY_SHORTER}
+
+
+def test_marker_after_the_citation_retry_still_abstains_with_empty_sources(index_dir):
+    for second, reason in (("NO_ANSWER", "model_dont_know"), ("OUT_OF_SCOPE", "out_of_scope")):
+        replies = iter(["The documentation for this release is incomplete.", second])
+        llm = FakeLLM(lambda _u, r=replies: next(r))
+        out = ask(service(index_dir, llm), ON_TOPIC)
+        assert out.retried and len(llm.calls) == 2
+        assert llm.calls[1][-1] == {"role": "user", "content": prompts.RETRY_ADD_CITATIONS}
+        assert out.abstain_reason == reason and out.sources == [] and out.abstained
+
+
+def test_refusal_to_share_instructions_followed_by_a_cited_answer_is_a_normal_answer(index_dir):
+    text = f"{prompts.LEAK_REFUSAL} To stop telemetry, set TELEMETRY_DISABLED=true [1]."
+    out = ask(service(index_dir, FakeLLM(text)), TELEMETRY)
+    assert out.reason == "answered" and not out.prompt_leak_blocked and len(out.sources) == 1
+    assert out.answer.startswith(prompts.LEAK_REFUSAL)
