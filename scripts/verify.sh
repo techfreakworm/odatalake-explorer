@@ -12,7 +12,8 @@
 #   6. docker            docker build -t ask-olake:verify .   (SKIP while there is no Dockerfile)
 #
 # Env: VERIFY_BASE (default soma/odatalake-explorer, the branch point for the trailer check),
-#      VERIFY_LOCK_WAIT_S (default 600, how long to wait for the ollama lock).
+#      VERIFY_LOCK_WAIT_S (default 600, how long to wait for the ollama lock),
+#      OLLAMA_LOCK_HELD=1 (the caller already holds .cache/ollama.lock: e2e runs under it, untouched).
 set -uo pipefail
 
 ALLOW_DIRTY=0
@@ -118,20 +119,26 @@ else
 fi
 
 # 5. e2e against a local ollama: one heavy ollama job at a time across the team
-mkdir -p .cache
-waited=0
-while :; do
-  if mkdir "$LOCK" 2>/dev/null; then LOCK_OWNED=1; break; fi
-  if [ "$waited" -ge "$LOCK_WAIT_S" ]; then break; fi
-  [ "$waited" = 0 ] && echo "      waiting for $LOCK (held by: $(cat "$LOCK/owner" 2>/dev/null || echo unknown))"
-  sleep 10; waited=$((waited + 10))
-done
-if [ "$LOCK_OWNED" = 1 ]; then
-  echo "api: scripts/verify.sh e2e (pid $$)" >"$LOCK/owner"
+if [ "${OLLAMA_LOCK_HELD:-}" = 1 ]; then
+  # the caller already holds .cache/ollama.lock: trust it, never take or release it here
+  echo "      OLLAMA_LOCK_HELD=1: using the caller's ollama lock (no mkdir, no release)"
   run_step e2e env OLLAMA_LOCK_HELD=1 E2E_REQUIRED=1 uv run pytest -q -m e2e tests/e2e
-  release_lock
 else
-  result FAIL e2e "ollama lock still held after ${LOCK_WAIT_S}s by: $(cat "$LOCK/owner" 2>/dev/null || echo unknown)"
+  mkdir -p .cache
+  waited=0
+  while :; do
+    if mkdir "$LOCK" 2>/dev/null; then LOCK_OWNED=1; break; fi
+    if [ "$waited" -ge "$LOCK_WAIT_S" ]; then break; fi
+    [ "$waited" = 0 ] && echo "      waiting for $LOCK (held by: $(cat "$LOCK/owner" 2>/dev/null || echo unknown))"
+    sleep 10; waited=$((waited + 10))
+  done
+  if [ "$LOCK_OWNED" = 1 ]; then
+    echo "api: scripts/verify.sh e2e (pid $$)" >"$LOCK/owner"
+    run_step e2e env OLLAMA_LOCK_HELD=1 E2E_REQUIRED=1 uv run pytest -q -m e2e tests/e2e
+    release_lock
+  else
+    result FAIL e2e "ollama lock still held after ${LOCK_WAIT_S}s by: $(cat "$LOCK/owner" 2>/dev/null || echo unknown)"
+  fi
 fi
 
 # 6. container image
