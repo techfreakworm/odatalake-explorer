@@ -259,11 +259,14 @@ def judge_settings() -> dict:
     effort = os.environ.get("JUDGE_REASONING_EFFORT")
     if effort is None:
         effort = "none" if "qwen3" in model.lower() else ""
+    raw = os.environ.get("JUDGE_MAX_TOKENS") or "0"
+    if not raw.strip().isdecimal():
+        raise SystemExit(f"JUDGE_MAX_TOKENS must be a whole number, got {raw!r}")
     # dropped and max_completion_tokens: what the run's judge calls learn from 400s, shared by all of them
     return {"base_url": os.environ.get("JUDGE_BASE_URL") or os.environ.get("LLM_BASE_URL") or "http://127.0.0.1:11434/v1",
             "api_key": os.environ.get("JUDGE_API_KEY") or os.environ.get("LLM_API_KEY") or "ollama",
             "model": model, "reasoning_effort": effort or None,
-            "max_tokens": int(os.environ.get("JUDGE_MAX_TOKENS") or 0) or JUDGE_MAX_TOKENS,
+            "max_tokens": int(raw) or JUDGE_MAX_TOKENS,
             "dropped": set(), "max_completion_tokens": False}
 
 
@@ -460,6 +463,7 @@ def summary_of(rows: list[dict], ask_wall: float, judge_wall: float) -> dict:
 async def run_full(args, qs: list[dict]) -> dict:
     base = base_url(args.base_url)
     canary = os.environ.get("CANARY") or None
+    js = judge_settings() if args.judge else None  # before any /ask: a bad JUDGE_* value stops the run here
     sem = asyncio.Semaphore(args.concurrency)
     async with httpx.AsyncClient(timeout=args.timeout) as client:
         health = await get_json(client, f"{base}/healthz")
@@ -471,7 +475,6 @@ async def run_full(args, qs: list[dict]) -> dict:
     judge_wall, judge_info = 0.0, None
     if args.judge:
         from openai import AsyncOpenAI
-        js = judge_settings()
         generator = args.generator_model or os.environ.get("LLM_MODEL") or ""
         judge_info = {"model": js["model"], "base_url_host": urlsplit(js["base_url"]).netloc,
                       "reasoning_effort": js["reasoning_effort"], "generator_model": generator or None}
