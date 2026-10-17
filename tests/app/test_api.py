@@ -498,3 +498,84 @@ def test_ready_log_line_records_prompt_reminders(make_client, capsys):
         make_client(prompt_reminders=reminders)
         ready = [json.loads(ln) for ln in capsys.readouterr().out.splitlines() if '"event": "ready"' in ln]
         assert len(ready) == 1 and ready[0]["prompt_reminders"] == value
+
+
+# ---------------------------------------------------------------- small talk (app/smalltalk.py)
+
+
+@pytest.mark.parametrize("q", ["Howdy", "What can you do for me?"])
+def test_small_talk_over_http_gets_the_intro(make_client, q):
+    llm = FakeLLM()
+    r = make_client(llm=llm).post("/ask", json={"question": q})
+    assert r.status_code == 200
+    assert r.headers["x-ask-reason"] == "smalltalk"
+    assert r.json() == {"answer": prompts.smalltalk_text("hello"), "sources": []}
+    assert r.headers["x-ask-cache"] == "miss" and r.headers["x-ask-gate-score"] == ""
+    assert "llm;dur=0.0" in r.headers["server-timing"]
+    assert llm.calls == []
+
+
+@pytest.mark.parametrize("q", ["Howdy", "What can you do for me?"])
+def test_small_talk_stream_is_meta_one_token_and_done(make_client, q):
+    llm = FakeLLM()
+    r = make_client(llm=llm).post("/ask/stream", json={"question": q}, headers={"X-Request-ID": "eval-HI"})
+    assert r.status_code == 200
+    events = sse_events(r.text)
+    done = events[-1][1]
+    assert done["abstain_reason"] is None and done["abstained"] is False
+    assert [n for n, _ in events] == ["meta", "token", "done"]
+    reply = prompts.smalltalk_text("hello")
+    assert events[0][1] == {"request_id": "eval-HI", "index_version": "20261017T0000Z"}
+    assert events[1][1] == {"text": reply}
+    assert set(done) == {"answer", "sources", "citations", "abstained", "abstain_reason", "request_id", "timings_ms"}
+    assert (done["answer"], done["sources"], done["citations"]) == (reply, [], [])
+    assert done["request_id"] == "eval-HI" and set(done["timings_ms"]) == {"retrieve", "rerank", "llm", "total"}
+    assert llm.calls == []
+
+
+@pytest.mark.parametrize("q", ["hi, how do I install OLake UI?", "hello, does OLake support Oracle CDC?"])
+def test_a_greeting_in_front_of_a_question_is_answered_over_http(make_client, q):
+    llm = FakeLLM("Run the compose one-liner [1].")
+    c = make_client(llm=llm)
+    r = c.post("/ask", json={"question": q})
+    assert r.status_code == 200 and r.headers["x-ask-reason"] == "answered" and r.json()["sources"]
+    assert r.headers["x-ask-gate-score"] != ""
+    events = sse_events(c.post("/ask/stream", json={"question": q}, headers={"Cache-Control": "no-cache"}).text)
+    names = [n for n, _ in events]
+    assert names[0] == "meta" and names[-1] == "done" and "token" in names
+    assert events[-1][1]["abstained"] is False and events[-1][1]["sources"]
+    assert len(llm.calls) == 2
+
+
+@pytest.mark.parametrize("q", ["what is the weather in Paris", "write me a poem"])
+def test_off_topic_requests_still_get_the_retrieval_gate_over_http(make_client, q):
+    llm = FakeLLM()
+    c = make_client(llm=llm)
+    r = c.post("/ask", json={"question": q})
+    assert r.headers["x-ask-reason"] == "retrieval_gate"
+    assert r.json() == {"answer": prompts.SHORT_CIRCUIT_TEXT, "sources": []}
+    events = sse_events(c.post("/ask/stream", json={"question": q}, headers={"Cache-Control": "no-cache"}).text)
+    assert [n for n, _ in events] == ["meta", "done"]
+    assert events[-1][1]["abstain_reason"] == "retrieval_gate"
+    assert llm.calls == []
+
+
+def test_small_talk_over_http_is_never_a_cache_hit(make_client):
+    llm = FakeLLM()
+    c = make_client(llm=llm)
+    for headers in ({}, {}, {"Cache-Control": "no-cache"}):
+        r = c.post("/ask", json={"question": "Howdy"}, headers=headers)
+        assert (r.headers["x-ask-reason"], r.headers["x-ask-cache"]) == ("smalltalk", "miss")
+        assert r.json() == {"answer": prompts.smalltalk_text("hello"), "sources": []}
+    assert llm.calls == [] and len(c.app.state.rt.service.cache) == 0
+
+
+def test_small_talk_in_a_conversation_over_the_stream(make_client):
+    llm = FakeLLM("ok [1].")
+    c = make_client(llm=llm)
+    hist = [{"role": "user", "content": ON_TOPIC}, {"role": "assistant", "content": "Run the compose one-liner [1]."}]
+    events = sse_events(c.post("/ask/stream", json={"question": "Thanks!", "history": hist}).text)
+    assert events[-1][1]["answer"] == prompts.smalltalk_text("thanks")
+    assert [n for n, _ in events] == ["meta", "token", "done"]
+    assert events[1][1]["text"] == events[-1][1]["answer"]
+    assert llm.calls == []

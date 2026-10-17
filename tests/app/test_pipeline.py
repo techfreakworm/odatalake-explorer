@@ -398,3 +398,134 @@ def test_reminders_on_appends_both_lines_and_uses_targeted_retries(index_dir):
     ask(service(index_dir, llm, prompt_reminders=True), ON_TOPIC)
     user = llm.calls[0][1]["content"]
     assert user.endswith(f"\n\nQuestion: {ON_TOPIC}\n\n{prompts.CITE_REMINDER}\n{prompts.PREMISE_CHECK}")
+
+
+# ---------------------------------------------------------------- small talk (app/smalltalk.py)
+
+SMALL_TALK = ["Howdy", "What can you do for me?"]  # the live-demo reports that got SHORT_CIRCUIT_TEXT from the gate
+
+
+@pytest.mark.parametrize("q", SMALL_TALK)
+def test_small_talk_gets_the_intro_without_retrieval_or_the_llm(index_dir, q):
+    llm = FakeLLM()
+    svc = service(index_dir, llm)
+    out = ask(svc, q)
+    assert out.reason == "smalltalk"
+    assert out.answer == prompts.smalltalk_text("hello")
+    assert out.abstain_reason is None and not out.abstained and not out.degraded
+    assert out.sources == [] and out.citations == [] and out.top_doc_urls == []
+    assert out.gate_score is None and svc.embedder.calls == 0  # retrieval never ran
+    assert llm.calls == [] and out.tokens_in == 0 and out.tokens_out == 0
+    assert not out.cache_hit and out.index_version == svc.holder.current.version
+    assert out.timings_ms.get("retrieve", 0.0) == 0.0 and out.timings_ms.get("llm", 0.0) == 0.0
+
+
+def test_smalltalk_reason_is_not_an_abstain_reason():
+    from app import pipeline
+
+    assert pipeline.SMALLTALK_REASON == "smalltalk"
+    assert pipeline.SMALLTALK_REASON not in pipeline.ABSTAIN_REASONS
+
+
+@pytest.mark.parametrize("q", SMALL_TALK)
+def test_small_talk_streams_the_whole_reply_once(index_dir, q):
+    tokens = []
+    llm = FakeLLM()
+    out = ask(service(index_dir, llm), q, emit=tokens.append)
+    assert out.reason == "smalltalk"
+    assert tokens == [prompts.smalltalk_text("hello")] == [out.answer]
+    assert llm.calls == []
+
+
+@pytest.mark.parametrize("q", ["hi, how do I install OLake UI?", "hello, does OLake support Oracle CDC?"])
+def test_a_greeting_in_front_of_a_question_goes_through_the_pipeline(index_dir, q):
+    llm = FakeLLM("Run the compose one-liner [1].")
+    svc = service(index_dir, llm)
+    out = ask(svc, q)
+    assert out.reason == "answered" and out.sources and len(llm.calls) == 1
+    assert svc.embedder.calls >= 1 and out.gate_score is not None
+
+
+@pytest.mark.parametrize("q", ["what is the weather in Paris", "write me a poem"])
+def test_off_topic_requests_still_hit_the_retrieval_gate(index_dir, q):
+    llm = FakeLLM()
+    svc = service(index_dir, llm)
+    out = ask(svc, q)
+    assert (out.reason, out.answer, out.sources) == ("retrieval_gate", prompts.SHORT_CIRCUIT_TEXT, [])
+    assert out.abstained and out.gate_score is not None and llm.calls == []
+
+
+@pytest.mark.parametrize("q", ["what is olake?", "what can olake do?"])
+def test_questions_about_olake_are_not_small_talk(index_dir, q):
+    llm = FakeLLM("OLake moves data into Iceberg [1].")
+    svc = service(index_dir, llm)
+    out = ask(svc, q)
+    assert out.reason == "answered" and len(llm.calls) == 1
+    assert svc.embedder.calls >= 1 and out.gate_score is not None
+
+
+def test_a_follow_up_with_history_still_reaches_retrieval(index_dir):
+    llm = FakeLLM("ok [1].")
+    svc = service(index_dir, llm)
+    hist = [{"role": "user", "content": "How do I set up Postgres CDC?"},
+            {"role": "assistant", "content": "Create a replication slot [1]."}]
+    out = ask(svc, "what about MySQL?", history=hist)
+    assert out.reason == "answered" and len(llm.calls) == 1 and svc.embedder.calls >= 1
+    assert "User: How do I set up Postgres CDC?" in llm.calls[0][1]["content"]
+
+
+def test_small_talk_is_never_cached(index_dir):
+    llm = FakeLLM()
+    svc = service(index_dir, llm)
+    first = ask(svc, "Howdy")
+    assert first.reason == "smalltalk" and len(svc.cache) == 0
+    again = ask(svc, "Howdy")
+    assert again.reason == "smalltalk" and not again.cache_hit and again.answer == first.answer
+    assert len(svc.cache) == 0 and llm.calls == []
+
+
+def test_small_talk_wins_over_a_stale_cached_answer(index_dir):
+    from app.limits import cache_key
+    from app.pipeline import AskOutcome
+
+    svc = service(index_dir, FakeLLM())
+    version = svc.holder.current.version
+    stale = AskOutcome(answer=prompts.SHORT_CIRCUIT_TEXT, sources=[], reason="retrieval_gate",
+                       abstain_reason="retrieval_gate", index_version=version)
+    svc.cache.put(cache_key("Howdy", version), stale)  # e.g. cached before the fix
+    out = ask(svc, "Howdy")
+    assert out.reason == "smalltalk" and not out.cache_hit and not out.abstained
+    assert out.answer == prompts.smalltalk_text("hello")
+
+
+def test_small_talk_ignores_no_cache_and_history(index_dir):
+    llm = FakeLLM()
+    svc = service(index_dir, llm)
+    hist = [{"role": "user", "content": ON_TOPIC}, {"role": "assistant", "content": "Run the compose one-liner [1]."}]
+    a = ask(svc, "Howdy", no_cache=True)
+    b = ask(svc, "thanks!", history=hist)
+    assert (a.reason, b.reason) == ("smalltalk", "smalltalk")
+    assert (a.answer, b.answer) == (prompts.smalltalk_text("hello"), prompts.smalltalk_text("thanks"))
+    assert llm.calls == [] and svc.embedder.calls == 0 and len(svc.cache) == 0
+
+
+def test_small_talk_still_answers_when_the_daily_budget_is_spent(index_dir):
+    llm = FakeLLM("ok [1].")
+    svc = service(index_dir, llm, daily_token_budget=500)
+    svc.budget.add(1000)
+    assert svc.budget.exhausted()
+    out = ask(svc, "Howdy")
+    assert out.reason == "smalltalk" and not out.degraded and out.answer == prompts.smalltalk_text("hello")
+    assert svc.budget.used == 1000  # small talk adds no tokens
+    assert ask(svc, ON_TOPIC).reason == "budget_exhausted"  # the budget really is spent
+    assert llm.calls == []
+
+
+def test_small_talk_takes_no_token_from_the_bucket(index_dir):
+    llm = FakeLLM("ok [1].")
+    svc = service(index_dir, llm, rate_limit_burst=1, rate_limit_per_min=0.001)  # one token, no refill to speak of
+    for q in ("Howdy", "What can you do for me?", "thanks!"):
+        assert ask(svc, q).reason == "smalltalk"
+    assert ask(svc, ON_TOPIC).reason == "answered"  # the client's one token was still there
+    assert ask(svc, TELEMETRY).reason == "rate_limited"  # and now it is spent
+    assert len(llm.calls) == 1

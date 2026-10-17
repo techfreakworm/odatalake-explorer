@@ -97,3 +97,60 @@ def test_cors_preflight_from_olake_io(server):
     assert r.status_code == 200
     assert r.headers["access-control-allow-origin"] == "*"
     assert r.headers["access-control-max-age"] == "86400"
+
+
+# ---------------------------------------------------------------- small talk (app/smalltalk.py)
+
+
+def llm_ms(r: httpx.Response) -> float:
+    return float(r.headers["server-timing"].split("llm;dur=")[1].split(",")[0])
+
+
+@pytest.mark.parametrize("q", ["Howdy", "What can you do for me?"])
+def test_small_talk_gets_the_intro_without_the_llm(server, q):
+    r = httpx.post(f"{server['base']}/ask", json={"question": q}, timeout=60)
+    assert r.status_code == 200
+    assert r.headers["x-ask-reason"] == "smalltalk", (r.headers.get("x-ask-gate-score"), r.json())
+    body = r.json()
+    assert sorted(body) == ["answer", "sources"] and body["sources"] == []
+    assert body["answer"].startswith("Hi!") and "Ask OLake" in body["answer"]
+    assert llm_ms(r) == 0.0
+
+
+def test_small_talk_streams_meta_one_token_and_done(server):
+    r = httpx.post(f"{server['base']}/ask/stream", json={"question": "Howdy"}, timeout=60,
+                   headers={"Cache-Control": "no-cache"})
+    assert r.status_code == 200
+    events = sse_events(r.text)
+    done = events[-1][1]
+    assert done["abstain_reason"] is None, done
+    assert [n for n, _ in events] == ["meta", "token", "done"]
+    assert done["abstained"] is False and done["sources"] == []
+    assert done["answer"] == events[1][1]["text"]
+
+
+def test_a_greeting_in_front_of_an_install_question_gets_a_real_answer(server):
+    r = httpx.post(f"{server['base']}/ask", json={"question": "hi, how do I install OLake UI?"}, timeout=LLM_TIMEOUT,
+                   headers={"Cache-Control": "no-cache"})
+    assert r.status_code == 200
+    assert r.headers["x-ask-reason"] == "answered", r.json()
+    assert len(r.json()["sources"]) >= 1
+    assert llm_ms(r) > 0.0
+
+
+def test_a_greeting_in_front_of_a_product_question_reaches_the_llm(server):
+    r = httpx.post(f"{server['base']}/ask", json={"question": "hello, does OLake support Oracle CDC?"},
+                   timeout=LLM_TIMEOUT, headers={"Cache-Control": "no-cache"})
+    assert r.status_code == 200
+    assert r.headers["x-ask-reason"] not in ("smalltalk", "retrieval_gate"), r.json()  # the model decides the rest
+    assert llm_ms(r) > 0.0
+
+
+# gate scores on index 20261016T2259Z: 0.538 and 0.574, under the default ABSTAIN_THRESHOLD of 0.69
+@pytest.mark.parametrize("q", ["what is the weather in Paris", "write me a poem"])
+def test_off_topic_requests_short_circuit_without_the_llm(server, q):
+    r = httpx.post(f"{server['base']}/ask", json={"question": q}, timeout=60)
+    assert r.status_code == 200
+    assert r.headers["x-ask-reason"] == "retrieval_gate", r.headers.get("x-ask-gate-score")
+    assert r.json()["sources"] == []
+    assert llm_ms(r) == 0.0
