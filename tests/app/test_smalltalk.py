@@ -28,15 +28,19 @@ HELLO = [
     "Hi! How are you doing today?", "pls help", "help pls", "plz help", "hello friend", "hey buddy",
     "what can I ask?", "what can I ask you?", "what should I ask?", "are you a bot?", "are you human?",
     "are you an AI?", "anyone there?", "are you there?", "is anyone there?",
+    "hola", "namaste", "bonjour",
 ]
 THANKS = ["thanks", "Thanks!", "thank you", "Thank you so much!", "thx", "ty", "cheers", "ok thanks", "thanks a lot",
           "many thanks", "thanks olake",
           # what people type after an answer
           "thanks for the help", "Thanks for your help!", "thank you for the help", "thanks for the info",
           "thanks for that", "thanks, it works now", "thanks, that helped", "great, thanks!", "awesome, thank you",
-          "perfect, thanks", "cheers mate", "thanks buddy"]
+          "perfect, thanks", "cheers mate", "thanks buddy",
+          "Thank you so much for your help!", "thanks so much for the help", "thanks a lot for the info",
+          "thank you very much for your help", "many thanks for the help", "ty for the help", "thx for the info",
+          "thanks for the quick answer", "thanks for all your help", "thanks, got it", "got it, thanks!"]
 BYE = ["bye", "Bye!", "goodbye", "good bye", "see you", "see you later", "good night",
-       "see ya later", "see you soon", "ok bye"]
+       "see ya later", "see you soon", "ok bye", "cya", "cya later"]
 
 NOT_SMALL_TALK = [
     # a greeting or a thank-you in front of a real question or problem
@@ -59,6 +63,9 @@ NOT_SMALL_TALK = [
     "that helped", "great", "awesome", "perfect", "nice", "for the help", "pls", "today",
     "what can I ask about CDC?", "are you able to sync MySQL to Iceberg?", "are you using Kafka?",
     "is anyone there using olake with kafka?", "how are you syncing data?",
+    "ty for the s3 tip", "thanks so much for the help with the iceberg migration", "got it", "so much for the help",
+    "a lot for that", "hola, como instalo olake?", "bonjour, comment installer olake ?", "cya at the OLake meetup?",
+    "thanks for the quick answer, but it fails on MySQL 5.7",
 ]
 
 
