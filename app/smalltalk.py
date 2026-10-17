@@ -19,21 +19,23 @@ MAX_WORDS = 10
 _PHRASES = {
     "hello": [
         "h+i+", "h+e+y+", "he+l+o+", "howdy", "hiya", "yo", "good (?:morning|afternoon|evening|day)", "morning",
-        "how are you(?: doing)?", "hows it going", "whats up",
-        "who are you", "what are you", "whats your name", "what is your name",
+        "how are you(?: doing)?", "hows it going", "whats up", "(?:is )?anyone there", "are you there",
+        "who are you", "what are you", "whats your name", "what is your name", "are you (?:an? )?(?:bot|human|ai)",
         "what can you do(?: for me)?", "what do you do", "what can you help(?: me)? with", "how can you help(?: me)?",
-        "can you help(?: me)?", "help(?: me)?",
+        "can you help(?: me)?", "help(?: me)?", "what (?:can|should) i ask(?: you)?",
     ],
-    "thanks": ["thanks+", "thank (?:you|u)", "thx", "ty", "cheers", "many thanks", "much appreciated", "appreciate it"],
-    "bye": ["bye+", "bye bye", "good ?bye", "see you(?: later)?", "see ya", "good night", "take care"],
-    # filler and addressee words, the bot's own name included: never small talk on their own
-    "extra": ["there", "all", "everyone", "folks", "team", "ok", "okay", "so much", "a lot", "very much", "again",
-              "please", "and", "olake", "ask olake"],
+    "thanks": ["(?:thanks+|thank (?:you|u))(?: for (?:the help|your help|the info|that))?", "thx", "ty", "cheers",
+               "many thanks", "much appreciated", "appreciate it"],
+    "bye": ["bye+", "bye bye", "good ?bye", "see (?:you|ya)(?: (?:later|soon))?", "good night", "take care"],
+    # filler, addressee, acknowledgement and praise words, the bot's own name included: never small talk on their own
+    "extra": ["there", "all", "everyone", "folks", "team", "friends?", "buddy", "mate", "ok", "okay", "so much",
+              "a lot", "very much", "again", "please", "pls", "plz", "today", "and", "great", "awesome", "perfect",
+              "nice", "it works now", "that helped", "olake", "ask olake"],
 }
 _ANY = "|".join(p for phrases in _PHRASES.values() for p in phrases)
-_WHOLE = re.compile(rf"(?:{_ANY})(?: (?:{_ANY}))*")  # a full match backtracks through every split of the words
-# No phrase can match inside or across phrases of the other kinds, so a search finds the kinds the full match used.
-_KIND = {kind: re.compile(rf"\b(?:{'|'.join(_PHRASES[kind])})\b") for kind in KINDS}
+# A kind fires when the message splits into phrases and one of them is of that kind (the full match tries every
+# split), so "thanks for the help" is thanks: no split of it uses the hello phrase "help".
+_KIND = {kind: re.compile(rf"(?:(?:{_ANY}) )*(?:{'|'.join(_PHRASES[kind])})(?: (?:{_ANY}))*") for kind in KINDS}
 # A lone wave is a greeting (a skin-tone modifier after it goes with the other symbols); "what's" becomes "whats".
 _SUBSTITUTE = str.maketrans({"\N{WAVING HAND SIGN}": " hi ", "'": "", "\N{LEFT SINGLE QUOTATION MARK}": "",
                              "\N{RIGHT SINGLE QUOTATION MARK}": ""})
@@ -47,6 +49,4 @@ def detect(question: str) -> str | None:
     if not words or len(words) > MAX_WORDS:
         return None
     text = " ".join(words)
-    if not _WHOLE.fullmatch(text):
-        return None
-    return next((kind for kind in KINDS if _KIND[kind].search(text)), None)
+    return next((kind for kind in KINDS if _KIND[kind].fullmatch(text)), None)
