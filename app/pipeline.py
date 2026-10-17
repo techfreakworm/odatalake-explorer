@@ -2,7 +2,9 @@
 citations.
 
 Small talk and "what can you do" messages (app/smalltalk.py) get a canned intro first, because the dense gate scores
-a bare greeting below ABSTAIN_THRESHOLD and used to answer it with the off-topic decline.
+a bare greeting below ABSTAIN_THRESHOLD and used to answer it with the off-topic decline. A general question about
+the product ("who is OLake?", "tell me about Ask OLake", app/product_intro.py) can score below it too, so the gate lets
+it through to the LLM.
 
 Abstain policy (docs/research.md §4.3, decision D8): the dense gate only short-circuits clearly off-topic questions;
 otherwise the model decides (NO_ANSWER, OUT_OF_SCOPE), and an answer with no valid citation left abstains. Every
@@ -20,7 +22,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from app import prompts, smalltalk
+from app import product_intro, prompts, smalltalk
 from app.citations import (
     CitedSource,
     citation_details,
@@ -188,10 +190,12 @@ class AskService:
         run.timings["rerank"] = r.timings_ms.get("rerank", 0.0)
 
         if self.s.gate_signal == "dense" and r.gate_score is not None and r.gate_score < self.s.abstain_threshold:
-            out = self._outcome(run, prompts.SHORT_CIRCUIT_TEXT, [], [], "retrieval_gate", "retrieval_gate")
-            if cacheable:
-                self.cache.put(key, out)
-            return out
+            if not product_intro.is_product_intro(req.question):  # the current message, never the history
+                out = self._outcome(run, prompts.SHORT_CIRCUIT_TEXT, [], [], "retrieval_gate", "retrieval_gate")
+                if cacheable:
+                    self.cache.put(key, out)
+                return out
+            log_event("gate_override", gate_score=round(r.gate_score, 4))  # a general question about the product
         if not r.hits:  # nothing retrieved (possible in bm25 mode): same short-circuit, no LLM call
             out = self._outcome(run, prompts.SHORT_CIRCUIT_TEXT, [], [], "retrieval_gate", "retrieval_gate")
             if cacheable:
