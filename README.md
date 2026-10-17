@@ -151,6 +151,15 @@ correctly. ADV-03 obeyed an injected "no citations" request and so abstained for
 - **Pattern-based abstain detection.** It is a regex. Every abstain records its `abstain_kind` (`empty_sources`,
   `pattern:<phrase>` or `degraded:<reason>`), so an honest partial answer ("... no release date is mentioned in the
   docs") can be told apart from a real abstain.
+- **Soft abstains the rule does not recognise.** In `eval/results/lever1-cite.json`, three unanswerable rows decline
+  with sources, in wording the pattern does not cover. The deterministic check counts them as answered, so abstain
+  recall reads 9/12; the judge passed all three BEHAVIOR checks.
+  - UNK-02: "The provided documentation does not include specific Fusion compaction benchmark numbers ...".
+  - UNK-03: "The cost of an OLake enterprise support contract is not published ..." (missed in the baseline too).
+  - UNK-04: "... there is no specific release or date mentioned for when this feature will be available".
+  - The scorer is frozen at the version that scored the baseline and lever 1, so every before/after comparison uses
+    one rule. The fix is measured in the system instead: the cite reminder had suppressed the model's `NO_ANSWER`
+    and `OUT_OF_SCOPE` markers, and lever 4 addresses that.
 
 **How the abstain pattern moved.** The plan's rule ([docs/eval-questions.md](docs/eval-questions.md), "Scoring
 method") lists the don't-know phrases: "I don't know", "not covered in", "the docs do not cover", "no
