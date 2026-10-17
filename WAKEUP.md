@@ -136,6 +136,9 @@ The script echoes every command before it runs it:
 - It passes the non-secret settings from `deploy/env.yaml`.
 - It maps only the secrets that exist, each pinned to its newest version.
 - It adds `--no-cpu-throttling` when `REFRESH_INTERVAL_MIN` is above 0.
+- It caps the service at `MAX_INSTANCES` instances (default 1). The token budget, rate limiter and concurrency cap
+  are per process: with N instances, N × `DAILY_TOKEN_BUDGET` and N × `MAX_CONCURRENCY` toward the provider. Raise
+  it only if the provider's limits allow.
 
 ## 7. Post-deploy smoke [outward] [$: one answer, or 51 with the burst]
 

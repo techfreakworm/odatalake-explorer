@@ -14,6 +14,8 @@ services:
     dockerfile_path: Dockerfile
     http_port: 8080
     instance_size_slug: ${DO_SIZE}
+    # Keep 1: the daily token budget, rate limiter and concurrency cap are per process, so N instances mean
+    # N x DAILY_TOKEN_BUDGET and N x MAX_CONCURRENCY toward the provider (MAX_INSTANCES is the Cloud Run side)
     instance_count: 1
     health_check:
       http_path: /readyz

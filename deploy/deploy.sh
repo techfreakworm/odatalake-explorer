@@ -12,6 +12,8 @@
 #   REGION             default asia-south1          SERVICE        default ask-olake
 #   SA_NAME            default ask-olake-run        MEMORY         default 2Gi (1Gi minimum, 4Gi for bge-base/rerank)
 #   CPU                default 1                    MIN_INSTANCES  default 1
+#   MAX_INSTANCES      default 1 (primary). The token budget, rate limiter and concurrency cap are per process:
+#                      N instances mean N x DAILY_TOKEN_BUDGET and N x MAX_CONCURRENCY toward the provider
 #   LLM_API_KEY, LLM_FALLBACK_API_KEY, LLM_FALLBACK2_API_KEY, GITHUB_TOKEN    keys; any that is unset is skipped
 #   DO_REPO            GitHub owner/name for App Platform (fallback)
 #   DO_BRANCH          default main                 DO_APP_NAME    default ask-olake
@@ -31,6 +33,7 @@ SA_NAME=${SA_NAME:-ask-olake-run}
 MEMORY=${MEMORY:-2Gi}
 CPU=${CPU:-1}
 MIN_INSTANCES=${MIN_INSTANCES:-1}
+MAX_INSTANCES=${MAX_INSTANCES:-1}
 DO_BRANCH=${DO_BRANCH:-main}
 DO_APP_NAME=${DO_APP_NAME:-ask-olake}
 DO_SIZE=${DO_SIZE:-apps-s-1vcpu-2gb}
@@ -117,7 +120,19 @@ cmd_secrets() {
 }
 
 # ----------------------------------------------------------------------------- primary: Cloud Run
+check_instances() {  # whole numbers, 1 <= MAX_INSTANCES, MIN_INSTANCES <= MAX_INSTANCES; say when the limits multiply
+  case "$MIN_INSTANCES" in ''|*[!0-9]*) die "MIN_INSTANCES must be a whole number (got '$MIN_INSTANCES')" ;; esac
+  case "$MAX_INSTANCES" in ''|*[!0-9]*) die "MAX_INSTANCES must be a whole number (got '$MAX_INSTANCES')" ;; esac
+  [ "$MAX_INSTANCES" -ge 1 ] || die "MAX_INSTANCES must be at least 1"
+  [ "$MIN_INSTANCES" -le "$MAX_INSTANCES" ] || die "MIN_INSTANCES ($MIN_INSTANCES) is above MAX_INSTANCES ($MAX_INSTANCES)"
+  if [ "$MAX_INSTANCES" -gt 1 ]; then
+    echo "MAX_INSTANCES=$MAX_INSTANCES: the token budget, rate limiter and concurrency cap are per process, so the"
+    echo "  provider can see up to $MAX_INSTANCES x DAILY_TOKEN_BUDGET a day and $MAX_INSTANCES x MAX_CONCURRENCY calls at once"
+  fi
+}
+
 cmd_primary() {
+  check_instances
   need gcloud "https://cloud.google.com/sdk/docs/install"
   require_env PROJECT
   local sa="$SA_NAME@$PROJECT.iam.gserviceaccount.com" pair var name ver mapping="" refresh
@@ -145,7 +160,8 @@ cmd_primary() {
   # the in-app index refresher needs CPU between requests (research.md §5.5)
   case "$refresh" in ''|0|0.0) ;; *) extra+=(--no-cpu-throttling) ;; esac
   run gcloud run deploy "$SERVICE" --source . --project "$PROJECT" --region "$REGION" --allow-unauthenticated \
-    --service-account "$sa" --min-instances "$MIN_INSTANCES" --cpu "$CPU" --memory "$MEMORY" --timeout 60 \
+    --service-account "$sa" --min-instances "$MIN_INSTANCES" --max-instances "$MAX_INSTANCES" \
+    --cpu "$CPU" --memory "$MEMORY" --timeout 60 \
     --env-vars-file deploy/env.deploy.yaml \
     --startup-probe httpGet.path=/readyz,periodSeconds=5,failureThreshold=24,timeoutSeconds=2 \
     --liveness-probe httpGet.path=/healthz,periodSeconds=30,timeoutSeconds=2 \
