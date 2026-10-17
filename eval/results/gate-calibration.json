@@ -1,0 +1,1690 @@
+{
+ "tool": "eval.gate",
+ "run_at": "2026-10-17T15:18:31+00:00",
+ "git_sha": "edd3bbc",
+ "index_version": "20261016T2259Z",
+ "embed_model": "BAAI/bge-small-en-v1.5",
+ "threshold": 0.69,
+ "questions": {
+  "file": "eval/questions.md",
+  "n": 94
+ },
+ "final_results": "eval/results/final.json",
+ "passed": true,
+ "criteria": [
+  {
+   "criterion": 1,
+   "passed": true,
+   "line": "eval rows the gate declines after the change: OOS-01, OOS-02, OOS-04, OOS-06, UNK-06; in final.json: OOS-01, OOS-02, OOS-04, OOS-06, UNK-06; expected: OOS-01, OOS-02, OOS-04, OOS-06, UNK-06",
+   "failures": []
+  },
+  {
+   "criterion": 2,
+   "passed": true,
+   "line": "intro probes that reach the LLM: 34/34",
+   "failures": []
+  },
+  {
+   "criterion": 3,
+   "passed": true,
+   "line": "off-topic probes the gate declines: 22/22",
+   "failures": []
+  },
+  {
+   "criterion": 4,
+   "passed": true,
+   "line": "guard probes that are no product intro and keep their decision: 26/26",
+   "failures": []
+  }
+ ],
+ "rows": [
+  {
+   "id": "SET-01",
+   "final_reason": "answered",
+   "gate_score": 0.8079,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SET-02",
+   "final_reason": "answered",
+   "gate_score": 0.8935,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SET-03",
+   "final_reason": "answered",
+   "gate_score": 0.8041,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SET-04",
+   "final_reason": "answered",
+   "gate_score": 0.7656,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SET-05",
+   "final_reason": "answered",
+   "gate_score": 0.8454,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SET-06",
+   "final_reason": "answered",
+   "gate_score": 0.8361,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SET-07",
+   "final_reason": "answered",
+   "gate_score": 0.7301,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SET-08",
+   "final_reason": "answered",
+   "gate_score": 0.7777,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-01",
+   "final_reason": "answered",
+   "gate_score": 0.8427,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-02",
+   "final_reason": "answered",
+   "gate_score": 0.8232,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-03",
+   "final_reason": "answered",
+   "gate_score": 0.9013,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-04",
+   "final_reason": "answered",
+   "gate_score": 0.8033,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-05",
+   "final_reason": "answered",
+   "gate_score": 0.8915,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-06",
+   "final_reason": "answered",
+   "gate_score": 0.7857,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-07",
+   "final_reason": "answered",
+   "gate_score": 0.735,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-08",
+   "final_reason": "answered",
+   "gate_score": 0.8038,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-09",
+   "final_reason": "answered",
+   "gate_score": 0.8351,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-10",
+   "final_reason": "answered",
+   "gate_score": 0.7378,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-11",
+   "final_reason": "answered",
+   "gate_score": 0.7094,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-12",
+   "final_reason": "answered",
+   "gate_score": 0.7931,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-13",
+   "final_reason": "answered",
+   "gate_score": 0.8388,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-14",
+   "final_reason": "answered",
+   "gate_score": 0.8424,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-15",
+   "final_reason": "answered",
+   "gate_score": 0.7957,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SRC-16",
+   "final_reason": "answered",
+   "gate_score": 0.7664,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SYNC-01",
+   "final_reason": "answered",
+   "gate_score": 0.7664,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SYNC-02",
+   "final_reason": "answered",
+   "gate_score": 0.8171,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SYNC-03",
+   "final_reason": "answered",
+   "gate_score": 0.786,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SYNC-04",
+   "final_reason": "answered",
+   "gate_score": 0.7401,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SYNC-05",
+   "final_reason": "answered",
+   "gate_score": 0.8122,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SYNC-06",
+   "final_reason": "answered",
+   "gate_score": 0.7927,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SYNC-07",
+   "final_reason": "answered",
+   "gate_score": 0.7192,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SYNC-08",
+   "final_reason": "answered",
+   "gate_score": 0.7728,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SYNC-09",
+   "final_reason": "answered",
+   "gate_score": 0.7387,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SYNC-10",
+   "final_reason": "answered",
+   "gate_score": 0.7511,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SYNC-11",
+   "final_reason": "answered",
+   "gate_score": 0.7811,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SYNC-12",
+   "final_reason": "answered",
+   "gate_score": 0.7868,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "SYNC-13",
+   "final_reason": "answered",
+   "gate_score": 0.7721,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DST-01",
+   "final_reason": "answered",
+   "gate_score": 0.8394,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DST-02",
+   "final_reason": "answered",
+   "gate_score": 0.8651,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DST-03",
+   "final_reason": "answered",
+   "gate_score": 0.8311,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DST-04",
+   "final_reason": "answered",
+   "gate_score": 0.8202,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DST-05",
+   "final_reason": "answered",
+   "gate_score": 0.8327,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DST-06",
+   "final_reason": "answered",
+   "gate_score": 0.8371,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DST-07",
+   "final_reason": "answered",
+   "gate_score": 0.7741,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DST-08",
+   "final_reason": "answered",
+   "gate_score": 0.7554,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "CAT-01",
+   "final_reason": "answered",
+   "gate_score": 0.8989,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "CAT-02",
+   "final_reason": "answered",
+   "gate_score": 0.8829,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "CAT-03",
+   "final_reason": "answered",
+   "gate_score": 0.8939,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "CAT-04",
+   "final_reason": "answered",
+   "gate_score": 0.8812,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "CAT-05",
+   "final_reason": "answered",
+   "gate_score": 0.8948,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "CAT-06",
+   "final_reason": "answered",
+   "gate_score": 0.9091,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "CAT-07",
+   "final_reason": "answered",
+   "gate_score": 0.8031,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "CAT-08",
+   "final_reason": "answered",
+   "gate_score": 0.7916,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "FUS-01",
+   "final_reason": "answered",
+   "gate_score": 0.8359,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "FUS-02",
+   "final_reason": "answered",
+   "gate_score": 0.8582,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "FUS-03",
+   "final_reason": "answered",
+   "gate_score": 0.848,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "FUS-04",
+   "final_reason": "answered",
+   "gate_score": 0.8486,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "FUS-05",
+   "final_reason": "answered",
+   "gate_score": 0.85,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "FUS-06",
+   "final_reason": "answered",
+   "gate_score": 0.7328,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "FUS-07",
+   "final_reason": "answered",
+   "gate_score": 0.7695,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "FUS-08",
+   "final_reason": "answered",
+   "gate_score": 0.7368,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DEP-02",
+   "final_reason": "answered",
+   "gate_score": 0.8378,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DEP-03",
+   "final_reason": "answered",
+   "gate_score": 0.8699,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DEP-04",
+   "final_reason": "answered",
+   "gate_score": 0.8415,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DEP-05",
+   "final_reason": "answered",
+   "gate_score": 0.8186,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DEP-06",
+   "final_reason": "answered",
+   "gate_score": 0.7797,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "DEP-07",
+   "final_reason": "answered",
+   "gate_score": 0.7991,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "TRB-02",
+   "final_reason": "answered",
+   "gate_score": 0.7694,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "TRB-03",
+   "final_reason": "answered",
+   "gate_score": 0.8572,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "TRB-05",
+   "final_reason": "answered",
+   "gate_score": 0.835,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "TRB-06",
+   "final_reason": "answered",
+   "gate_score": 0.8641,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "TRB-07",
+   "final_reason": "answered",
+   "gate_score": 0.783,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "TRB-08",
+   "final_reason": "answered",
+   "gate_score": 0.8542,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "REL-01",
+   "final_reason": "answered",
+   "gate_score": 0.7702,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "FP-01",
+   "final_reason": "answered",
+   "gate_score": 0.8518,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "FP-02",
+   "final_reason": "answered",
+   "gate_score": 0.7607,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "FP-03",
+   "final_reason": "answered",
+   "gate_score": 0.7173,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "FP-04",
+   "final_reason": "answered",
+   "gate_score": 0.8152,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "ADV-01",
+   "final_reason": "answered",
+   "gate_score": 0.8348,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "ADV-02",
+   "final_reason": "answered",
+   "gate_score": 0.8039,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "ADV-03",
+   "final_reason": "no_valid_citation",
+   "gate_score": 0.8147,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "ADV-04",
+   "final_reason": "answered",
+   "gate_score": 0.7612,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "UNK-01",
+   "final_reason": "answered",
+   "gate_score": 0.7918,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "UNK-02",
+   "final_reason": "answered",
+   "gate_score": 0.8175,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "UNK-03",
+   "final_reason": "answered",
+   "gate_score": 0.7274,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "UNK-04",
+   "final_reason": "answered",
+   "gate_score": 0.7377,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "UNK-05",
+   "final_reason": "model_dont_know",
+   "gate_score": 0.7789,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "UNK-06",
+   "final_reason": "retrieval_gate",
+   "gate_score": 0.6708,
+   "declined_before": true,
+   "declined_after": true,
+   "changed": false
+  },
+  {
+   "id": "OOS-01",
+   "final_reason": "retrieval_gate",
+   "gate_score": 0.4761,
+   "declined_before": true,
+   "declined_after": true,
+   "changed": false
+  },
+  {
+   "id": "OOS-02",
+   "final_reason": "retrieval_gate",
+   "gate_score": 0.3809,
+   "declined_before": true,
+   "declined_after": true,
+   "changed": false
+  },
+  {
+   "id": "OOS-03",
+   "final_reason": "answered",
+   "gate_score": 0.7695,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "OOS-04",
+   "final_reason": "retrieval_gate",
+   "gate_score": 0.6335,
+   "declined_before": true,
+   "declined_after": true,
+   "changed": false
+  },
+  {
+   "id": "OOS-05",
+   "final_reason": "no_valid_citation",
+   "gate_score": 0.6939,
+   "declined_before": false,
+   "declined_after": false,
+   "changed": false
+  },
+  {
+   "id": "OOS-06",
+   "final_reason": "retrieval_gate",
+   "gate_score": 0.5473,
+   "declined_before": true,
+   "declined_after": true,
+   "changed": false
+  }
+ ],
+ "probes": {
+  "intro": [
+   {
+    "question": "what can olake do for me?",
+    "gate_score": 0.6715,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "who is olake",
+    "gate_score": 0.6675,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "tell me about olake",
+    "gate_score": 0.6654,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "what is ask olake?",
+    "gate_score": 0.6593,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "who is ask olake?",
+    "gate_score": 0.6205,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "tell me about ask olake",
+    "gate_score": 0.6544,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "i want to know about olake",
+    "gate_score": 0.661,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "about olake",
+    "gate_score": 0.6691,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "can you tell me about olake?",
+    "gate_score": 0.6846,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "what can olake do for us?",
+    "gate_score": 0.6691,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "who makes olake?",
+    "gate_score": 0.6603,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "who built olake?",
+    "gate_score": 0.6368,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "who is behind olake?",
+    "gate_score": 0.6486,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "hey, tell me about olake please",
+    "gate_score": 0.6457,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "Tell me about OLake.",
+    "gate_score": 0.6536,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "WHO IS OLAKE?",
+    "gate_score": 0.6553,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "retrieval_gate",
+    "after": "llm"
+   },
+   {
+    "question": "what is olake?",
+    "gate_score": 0.7232,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "What is OLake?",
+    "gate_score": 0.7232,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "what’s olake?",
+    "gate_score": 0.7051,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "what is olake fusion?",
+    "gate_score": 0.8518,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "tell me about olake fusion",
+    "gate_score": 0.8208,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "what does olake do?",
+    "gate_score": 0.7234,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "explain olake",
+    "gate_score": 0.7256,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "how does olake work?",
+    "gate_score": 0.7512,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "what is olake used for?",
+    "gate_score": 0.7553,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "why should i use olake?",
+    "gate_score": 0.7673,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "what are olake's features?",
+    "gate_score": 0.7192,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "give me an overview of olake",
+    "gate_score": 0.7142,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "what can ask olake do?",
+    "gate_score": 0.695,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "what is olake go?",
+    "gate_score": 0.7658,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "hi, what is olake?",
+    "gate_score": 0.7076,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "so what is olake exactly?",
+    "gate_score": 0.7101,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "describe olake fusion",
+    "gate_score": 0.8231,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "olake",
+    "gate_score": 0.7208,
+    "smalltalk": null,
+    "product_intro": true,
+    "before": "llm",
+    "after": "llm"
+   }
+  ],
+  "off_topic": [
+   {
+    "question": "What's the weather in Bangalore today?",
+    "gate_score": 0.4805,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "Will it rain in Mumbai tomorrow?",
+    "gate_score": 0.5038,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "Write me a poem about the ocean.",
+    "gate_score": 0.5822,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "Write a haiku about autumn leaves.",
+    "gate_score": 0.5254,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "What's a good recipe for chocolate chip cookies?",
+    "gate_score": 0.4951,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "How do I make butter chicken at home?",
+    "gate_score": 0.5373,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "Who won the 2022 FIFA World Cup?",
+    "gate_score": 0.4699,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "What's the score of the India vs Australia cricket match?",
+    "gate_score": 0.4769,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "How do I reverse a linked list in Python?",
+    "gate_score": 0.609,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "How do I center a div in CSS?",
+    "gate_score": 0.5592,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "Write a JavaScript function to debounce a callback.",
+    "gate_score": 0.5788,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "How much does Fivetran cost per month?",
+    "gate_score": 0.6433,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "What is Snowflake's pricing per credit?",
+    "gate_score": 0.6574,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "How much does Airbyte Cloud cost?",
+    "gate_score": 0.6409,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "Who is the prime minister of India?",
+    "gate_score": 0.4498,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "What do you think about the US presidential election?",
+    "gate_score": 0.4453,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "Who is Elon Musk?",
+    "gate_score": 0.4536,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "Tell me about Narendra Modi.",
+    "gate_score": 0.4503,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "Tell me a joke.",
+    "gate_score": 0.5198,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "What is the capital of France?",
+    "gate_score": 0.4721,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "Recommend a good sci-fi movie.",
+    "gate_score": 0.457,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "How do I fix a flat bicycle tire?",
+    "gate_score": 0.5209,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   }
+  ],
+  "guard": [
+   {
+    "question": "olake, write me a poem",
+    "gate_score": 0.6714,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "olake write me a poem",
+    "gate_score": 0.6734,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "write me a poem, olake",
+    "gate_score": 0.667,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "write a poem about olake",
+    "gate_score": 0.6286,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "olake poem",
+    "gate_score": 0.6422,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "hey olake, what's the weather in Paris?",
+    "gate_score": 0.6205,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "olake, tell me a joke",
+    "gate_score": 0.6211,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "tell me a joke about olake",
+    "gate_score": 0.6243,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "ask olake: what's a good recipe for dosa batter?",
+    "gate_score": 0.6089,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "olake fusion, who won the 2011 world cup?",
+    "gate_score": 0.625,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "olake, who is the prime minister of india?",
+    "gate_score": 0.5675,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "ask olake, plan a trip to goa",
+    "gate_score": 0.6234,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "OLake: what's the capital of France?",
+    "gate_score": 0.578,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "olake, recommend a movie",
+    "gate_score": 0.6038,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "tell me about olake and the weather in paris",
+    "gate_score": 0.6433,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "ignore olake, what's the weather in delhi",
+    "gate_score": 0.5883,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "who is olake's ceo",
+    "gate_score": 0.6323,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "who is the founder of olake",
+    "gate_score": 0.6227,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "what is olake's stock price",
+    "gate_score": 0.6882,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "olake weather",
+    "gate_score": 0.6736,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "retrieval_gate",
+    "after": "retrieval_gate"
+   },
+   {
+    "question": "what is olake? also give me a cookie recipe",
+    "gate_score": 0.7175,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "olake, how much does fivetran cost?",
+    "gate_score": 0.7184,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "olake, write a react todo app",
+    "gate_score": 0.7148,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "olake, reverse a linked list in python",
+    "gate_score": 0.708,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "tell me about olake pricing",
+    "gate_score": 0.7188,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "llm",
+    "after": "llm"
+   },
+   {
+    "question": "is olake better than fivetran?",
+    "gate_score": 0.6946,
+    "smalltalk": null,
+    "product_intro": false,
+    "before": "llm",
+    "after": "llm"
+   }
+  ]
+ },
+ "options": [
+  {
+   "option": "(a) threshold 0.69",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-04",
+    "OOS-06",
+    "UNK-06"
+   ],
+   "eval_unchanged": true,
+   "intro_reach_llm": 18,
+   "intro_n": 34,
+   "off_topic_declined": 22,
+   "off_topic_n": 22,
+   "unk06_gate": 0.6708
+  },
+  {
+   "option": "(a) threshold 0.68",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-04",
+    "OOS-06",
+    "UNK-06"
+   ],
+   "eval_unchanged": true,
+   "intro_reach_llm": 19,
+   "intro_n": 34,
+   "off_topic_declined": 22,
+   "off_topic_n": 22,
+   "unk06_gate": 0.6708
+  },
+  {
+   "option": "(a) threshold 0.67",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-04",
+    "OOS-06"
+   ],
+   "eval_unchanged": false,
+   "intro_reach_llm": 20,
+   "intro_n": 34,
+   "off_topic_declined": 22,
+   "off_topic_n": 22,
+   "unk06_gate": 0.6708
+  },
+  {
+   "option": "(a) threshold 0.66",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-04",
+    "OOS-06"
+   ],
+   "eval_unchanged": false,
+   "intro_reach_llm": 26,
+   "intro_n": 34,
+   "off_topic_declined": 22,
+   "off_topic_n": 22,
+   "unk06_gate": 0.6708
+  },
+  {
+   "option": "(a) threshold 0.65",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-04",
+    "OOS-06"
+   ],
+   "eval_unchanged": false,
+   "intro_reach_llm": 30,
+   "intro_n": 34,
+   "off_topic_declined": 21,
+   "off_topic_n": 22,
+   "unk06_gate": 0.6708
+  },
+  {
+   "option": "(a) threshold 0.64",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-04",
+    "OOS-06"
+   ],
+   "eval_unchanged": false,
+   "intro_reach_llm": 32,
+   "intro_n": 34,
+   "off_topic_declined": 19,
+   "off_topic_n": 22,
+   "unk06_gate": 0.6708
+  },
+  {
+   "option": "(a) threshold 0.63",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-06"
+   ],
+   "eval_unchanged": false,
+   "intro_reach_llm": 33,
+   "intro_n": 34,
+   "off_topic_declined": 19,
+   "off_topic_n": 22,
+   "unk06_gate": 0.6708
+  },
+  {
+   "option": "(a) threshold 0.62",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-06"
+   ],
+   "eval_unchanged": false,
+   "intro_reach_llm": 34,
+   "intro_n": 34,
+   "off_topic_declined": 19,
+   "off_topic_n": 22,
+   "unk06_gate": 0.6708
+  },
+  {
+   "option": "(b) intro-frame override",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-04",
+    "OOS-06",
+    "UNK-06"
+   ],
+   "eval_unchanged": true,
+   "intro_reach_llm": 34,
+   "intro_n": 34,
+   "off_topic_declined": 22,
+   "off_topic_n": 22,
+   "unk06_gate": 0.6708
+  },
+  {
+   "option": "(c) short overview chunk",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-04",
+    "OOS-06",
+    "UNK-06"
+   ],
+   "eval_unchanged": true,
+   "intro_reach_llm": 26,
+   "intro_n": 34,
+   "off_topic_declined": 22,
+   "off_topic_n": 22,
+   "unk06_gate": 0.6708
+  },
+  {
+   "option": "(c) Q&A-phrased overview chunk",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-04",
+    "OOS-06",
+    "UNK-06"
+   ],
+   "eval_unchanged": true,
+   "intro_reach_llm": 34,
+   "intro_n": 34,
+   "off_topic_declined": 22,
+   "off_topic_n": 22,
+   "unk06_gate": 0.6708
+  },
+  {
+   "option": "(d) drop filler words",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-04",
+    "OOS-06",
+    "UNK-06"
+   ],
+   "eval_unchanged": true,
+   "intro_reach_llm": 24,
+   "intro_n": 34,
+   "off_topic_declined": 22,
+   "off_topic_n": 22,
+   "unk06_gate": 0.6708
+  },
+  {
+   "option": "(d) expand the product name",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-04",
+    "OOS-06"
+   ],
+   "eval_unchanged": false,
+   "intro_reach_llm": 34,
+   "intro_n": 34,
+   "off_topic_declined": 22,
+   "off_topic_n": 22,
+   "unk06_gate": 0.7823
+  },
+  {
+   "option": "(d) no query prefix",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-04",
+    "OOS-06"
+   ],
+   "eval_unchanged": false,
+   "intro_reach_llm": 26,
+   "intro_n": 34,
+   "off_topic_declined": 22,
+   "off_topic_n": 22,
+   "unk06_gate": 0.7176
+  },
+  {
+   "option": "(d) casefold",
+   "eval_declined": [
+    "OOS-01",
+    "OOS-02",
+    "OOS-04",
+    "OOS-06",
+    "UNK-06"
+   ],
+   "eval_unchanged": true,
+   "intro_reach_llm": 18,
+   "intro_n": 34,
+   "off_topic_declined": 22,
+   "off_topic_n": 22,
+   "unk06_gate": 0.6708
+  }
+ ]
+}
