@@ -467,3 +467,11 @@ def test_rate_limit_key_is_the_right_most_forwarded_hop(make_client):
     r = ask_as("2.2.2.2, 203.0.113.9")
     assert r.status_code == 200 and r.headers["x-ask-reason"] == "rate_limited" and r.json()["sources"]
     assert ask_as("1.1.1.1, 198.51.100.7").headers["x-ask-reason"] == "answered"
+
+
+def test_favicon_is_served(make_client):
+    c = make_client()
+    r = c.get("/favicon.ico")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+    assert r.content.startswith(b"\x89PNG\r\n\x1a\n") and len(r.content) < 2048
+    assert c.head("/favicon.ico").status_code == 200

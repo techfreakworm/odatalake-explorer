@@ -474,6 +474,10 @@ def create_app(settings: Settings | None = None, *, llm=None, embedder_factory: 
             resp.headers.append("Content-Security-Policy", EMBED_CSP)
         return resp
 
+    @app.api_route("/favicon.ico", methods=["GET", "HEAD"])
+    async def favicon():
+        return web_file("favicon.png", "image/png", {"Cache-Control": "public, max-age=86400"})
+
     @app.api_route("/", methods=["GET", "HEAD"])
     async def demo():
         return web_file("demo/index.html", "text/html", {"Cache-Control": "no-cache"})

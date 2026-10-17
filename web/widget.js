@@ -20,15 +20,23 @@
   var q = new URLSearchParams({ theme: "auto", timeout: String(Math.min(600, Math.max(5, parseInt(d.timeout, 10) || 30))) });
   if (d.title) q.set("title", d.title.slice(0, 60));
   if (d.accent && accent === d.accent) q.set("accent", accent);
-  var btn, frame, isOpen = false;
+  var btn, frame, isOpen = false, loaded = false, queue = [];
 
   function theme() {
     var t = document.documentElement.getAttribute("data-theme");
     return t === "dark" || t === "light" ? t : "auto";
   }
 
+  // Until the frame has loaded it still holds about:blank on the host's origin, and posting to the api origin would
+  // fail; queue the latest message of each type and send them on load.
   function post(msg) {
-    if (frame && frame.contentWindow) frame.contentWindow.postMessage(msg, origin);
+    if (!frame) return;
+    if (!loaded) {
+      queue = queue.filter(function (m) { return m.type !== msg.type; });
+      queue.push(msg);
+    } else if (frame.contentWindow) {
+      frame.contentWindow.postMessage(msg, origin);
+    }
   }
 
   function toggle(open) {
@@ -40,12 +48,16 @@
       frame.src = api + "/embed?" + q;
       frame.setAttribute("allow", "clipboard-write");
       frame.addEventListener("load", function () {
+        var pending = queue;
+        loaded = true;
+        queue = [];
         post({ type: "askolake:theme", theme: theme() });
-        if (isOpen) post({ type: "askolake:open" });
+        pending.forEach(function (m) { if (m.type !== "askolake:theme") post(m); });
       });
       document.body.appendChild(frame);
     }
     isOpen = open;
+    if (!open) queue = queue.filter(function (m) { return m.type !== "askolake:open"; });
     btn.setAttribute("aria-expanded", String(open));
     if (!frame) return;
     frame.classList.toggle("askolake-hidden", !open);
